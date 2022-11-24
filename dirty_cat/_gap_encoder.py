@@ -25,7 +25,7 @@ from scipy import sparse
 from sklearn import __version__ as sklearn_version
 from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.cluster import KMeans
-from sklearn.feature_extraction.text import CountVectorizer, HashingVectorizer
+from cuml.feature_extraction.text import CountVectorizer, HashingVectorizer
 from sklearn.neighbors import NearestNeighbors
 from sklearn.utils import check_random_state, gen_batches
 from sklearn.utils.extmath import row_norms, safe_sparse_dot

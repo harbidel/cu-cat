@@ -22,7 +22,7 @@ from joblib import Parallel, delayed
 from numpy.random import RandomState
 from scipy import sparse
 from sklearn.cluster import KMeans
-from sklearn.feature_extraction.text import CountVectorizer, HashingVectorizer
+from cuml.feature_extraction.text import CountVectorizer, HashingVectorizer
 from sklearn.neighbors import NearestNeighbors
 from sklearn.preprocessing import OneHotEncoder
 from sklearn.utils import check_random_state

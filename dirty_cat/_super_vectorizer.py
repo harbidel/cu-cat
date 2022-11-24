@@ -13,7 +13,7 @@ import sklearn
 from pandas.core.dtypes.base import ExtensionDtype
 from sklearn import __version__ as sklearn_version
 from sklearn.base import TransformerMixin, clone
-from sklearn.compose import ColumnTransformer
+from cuml.compose import ColumnTransformer
 from sklearn.preprocessing import OneHotEncoder
 
 from dirty_cat import DatetimeEncoder, GapEncoder
