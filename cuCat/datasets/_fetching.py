@@ -24,14 +24,14 @@ from zipfile import BadZipFile, ZipFile
 import pandas as pd
 from sklearn.datasets import fetch_openml
 
-from dirty_cat.datasets._utils import get_data_dir
+from cuCat.datasets._utils import get_data_dir
 
 # Directory where the ``.gz`` files containing the
 # details on downloaded datasets are stored.
 # Note: the tree structure is created by ``fetch_openml()``.
 # As of october 2020, this function is annotated as
 # ``Experimental`` so the structure might change in future releases.
-# This path will be concatenated to the dirty_cat data directory,
+# This path will be concatenated to the cuCat data directory,
 # available via the function ``get_data_dir()``.
 DETAILS_DIRECTORY: str = "openml/openml.org/api/v1/json/data/"
 
@@ -138,7 +138,7 @@ def _fetch_openml_dataset(
         The ID of the dataset to fetch.
     data_directory: Path
         Optional. A directory to save the data to.
-        By default, the dirty_cat data directory.
+        By default, the cuCat data directory.
 
     Returns
     -------
@@ -221,7 +221,7 @@ def _fetch_world_bank_data(
         The ID of the indicator's dataset to fetch.
     data_directory: Path
         Optional. A directory to save the data to.
-        By default, the dirty_cat data directory.
+        By default, the cuCat data directory.
 
     Returns
     -------

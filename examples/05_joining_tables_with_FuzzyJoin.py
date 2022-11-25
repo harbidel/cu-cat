@@ -17,7 +17,7 @@ with tables provided in `the World Bank open data platform <https://data.worldba
 in order to create a satisfying first prediction model.
 
 
-.. |fj| replace:: :func:`~dirty_cat.fuzzy_join`
+.. |fj| replace:: :func:`~cuCat.fuzzy_join`
 """
 
 #######################################################################
@@ -58,7 +58,7 @@ df = df[["Country", "Happiness score"]]
 # Interesting tables can be found on `the World Bank open data platform
 # <https://data.worldbank.org/>`_, for which we have a downloading
 # function:
-from dirty_cat.datasets import fetch_world_bank_indicator
+from cuCat.datasets import fetch_world_bank_indicator
 
 #################################################################
 # We extract the table containing GDP per capita by country:
@@ -107,8 +107,8 @@ gdppc.sort_values(by="Country Name").tail(7)
 # 1. Joining GDP per capita table
 # ................................
 #
-# To join them with dirty_cat, we only need to do the following:
-from dirty_cat import fuzzy_join
+# To join them with cuCat, we only need to do the following:
+from cuCat import fuzzy_join
 
 df1 = fuzzy_join(
     df,  # our table to join

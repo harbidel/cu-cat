@@ -18,7 +18,7 @@ morphological similarities between strings.
 
 from typing import Dict, List, Literal, Tuple
 
-import numpy as np
+import cupy as np
 from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.utils import murmurhash3_32
 

@@ -1,6 +1,6 @@
 """
 This test suite ensures the docstrings of class methods in
-dirty_cat are formatted according to numpydoc specifications.
+cuCat are formatted according to numpydoc specifications.
 `DOCSTRING_TEMP_IGNORE_SET` defines a set of class methods
 to skip while running the validation tests, so that CI will
 not fail.
@@ -16,44 +16,44 @@ import pytest
 from numpydoc.validate import validate
 
 DOCSTRING_TEMP_IGNORE_SET = {
-    "dirty_cat._datetime_encoder.DatetimeEncoder",
-    "dirty_cat._datetime_encoder.DatetimeEncoder.get_feature_names",
-    "dirty_cat._datetime_encoder.DatetimeEncoder.get_feature_names_out",
-    "dirty_cat._gap_encoder.GapEncoder",
-    "dirty_cat._gap_encoder.GapEncoder.fit",
-    "dirty_cat._gap_encoder.GapEncoder.get_feature_names",
-    "dirty_cat._gap_encoder.GapEncoder.get_feature_names_out",
-    "dirty_cat._gap_encoder.GapEncoder.partial_fit",
-    "dirty_cat._gap_encoder.GapEncoder.score",
-    "dirty_cat._gap_encoder.GapEncoder.transform",
-    "dirty_cat._minhash_encoder.MinHashEncoder",
-    "dirty_cat._minhash_encoder.MinHashEncoder.fit",
-    "dirty_cat._minhash_encoder.MinHashEncoder._get_fast_hash",
-    "dirty_cat._minhash_encoder.MinHashEncoder._get_murmur_hash",
-    "dirty_cat._minhash_encoder.MinHashEncoder.transform",
-    "dirty_cat._similarity_encoder.SimilarityEncoder",
-    "dirty_cat._similarity_encoder.SimilarityEncoder.fit",
-    "dirty_cat._similarity_encoder.SimilarityEncoder.transform",
-    "dirty_cat._similarity_encoder.SimilarityEncoder.fit_transform",
-    "dirty_cat._super_vectorizer.SuperVectorizer.fit_transform",
-    "dirty_cat._super_vectorizer.SuperVectorizer.transform",
-    "dirty_cat._super_vectorizer.SuperVectorizer._auto_cast",
-    "dirty_cat._super_vectorizer.SuperVectorizer._apply_cast",
-    "dirty_cat._super_vectorizer.SuperVectorizer.get_feature_names",
-    "dirty_cat._super_vectorizer.SuperVectorizer.get_feature_names_out",
-    "dirty_cat._target_encoder.TargetEncoder",
-    "dirty_cat._target_encoder.TargetEncoder.fit",
-    "dirty_cat._target_encoder.TargetEncoder.transform",
-    # The following are not documented in dirty_cat (and thus are out of scope)
+    "cuCat._datetime_encoder.DatetimeEncoder",
+    "cuCat._datetime_encoder.DatetimeEncoder.get_feature_names",
+    "cuCat._datetime_encoder.DatetimeEncoder.get_feature_names_out",
+    "cuCat._gap_encoder.GapEncoder",
+    "cuCat._gap_encoder.GapEncoder.fit",
+    "cuCat._gap_encoder.GapEncoder.get_feature_names",
+    "cuCat._gap_encoder.GapEncoder.get_feature_names_out",
+    "cuCat._gap_encoder.GapEncoder.partial_fit",
+    "cuCat._gap_encoder.GapEncoder.score",
+    "cuCat._gap_encoder.GapEncoder.transform",
+    "cuCat._minhash_encoder.MinHashEncoder",
+    "cuCat._minhash_encoder.MinHashEncoder.fit",
+    "cuCat._minhash_encoder.MinHashEncoder._get_fast_hash",
+    "cuCat._minhash_encoder.MinHashEncoder._get_murmur_hash",
+    "cuCat._minhash_encoder.MinHashEncoder.transform",
+    "cuCat._similarity_encoder.SimilarityEncoder",
+    "cuCat._similarity_encoder.SimilarityEncoder.fit",
+    "cuCat._similarity_encoder.SimilarityEncoder.transform",
+    "cuCat._similarity_encoder.SimilarityEncoder.fit_transform",
+    "cuCat._super_vectorizer.SuperVectorizer.fit_transform",
+    "cuCat._super_vectorizer.SuperVectorizer.transform",
+    "cuCat._super_vectorizer.SuperVectorizer._auto_cast",
+    "cuCat._super_vectorizer.SuperVectorizer._apply_cast",
+    "cuCat._super_vectorizer.SuperVectorizer.get_feature_names",
+    "cuCat._super_vectorizer.SuperVectorizer.get_feature_names_out",
+    "cuCat._target_encoder.TargetEncoder",
+    "cuCat._target_encoder.TargetEncoder.fit",
+    "cuCat._target_encoder.TargetEncoder.transform",
+    # The following are not documented in cuCat (and thus are out of scope)
     # They are usually inherited from other libraries.
-    "dirty_cat._super_vectorizer.SuperVectorizer.fit",
-    "dirty_cat._super_vectorizer.SuperVectorizer.set_params",
-    "dirty_cat._super_vectorizer.SuperVectorizer.named_transformers_",
+    "cuCat._super_vectorizer.SuperVectorizer.fit",
+    "cuCat._super_vectorizer.SuperVectorizer.set_params",
+    "cuCat._super_vectorizer.SuperVectorizer.named_transformers_",
 }
 
 
 def all_estimators():
-    module = import_module("dirty_cat")
+    module = import_module("cuCat")
     classes = inspect.getmembers(module, inspect.isclass)
     classes = [(name, est_cls) for name, est_cls in classes if not name.startswith("_")]
     return sorted(classes, key=lambda x: x[0])

@@ -3,9 +3,9 @@ import pandas as pd
 import pytest
 from sklearn import __version__ as sklearn_version
 
-from dirty_cat import GapEncoder
-from dirty_cat._utils import parse_version
-from dirty_cat.tests.utils import generate_data
+from cuCat import GapEncoder
+from cuCat._utils import parse_version
+from cuCat.tests.utils import generate_data
 
 
 def test_analyzer():

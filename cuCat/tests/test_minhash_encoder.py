@@ -5,7 +5,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from dirty_cat import MinHashEncoder
+from cuCat import MinHashEncoder
 
 
 @pytest.mark.parametrize(

@@ -24,9 +24,9 @@ from numpy.random import RandomState
 from scipy import sparse
 from sklearn import __version__ as sklearn_version
 from sklearn.base import BaseEstimator, TransformerMixin
-from sklearn.cluster import KMeans
+from cuml.cluster import KMeans
 from cuml.feature_extraction.text import CountVectorizer, HashingVectorizer
-from sklearn.neighbors import NearestNeighbors
+from cuml.neighbors import NearestNeighbors
 from sklearn.utils import check_random_state, gen_batches
 from sklearn.utils.extmath import row_norms, safe_sparse_dot
 from sklearn.utils.fixes import _object_dtype_isnan
@@ -38,7 +38,8 @@ if parse_version(sklearn_version) < parse_version("0.24"):
 else:
     from sklearn.cluster import kmeans_plusplus
 
-from sklearn.decomposition._nmf import _beta_divergence
+# from sklearn.decomposition._nmf import _beta_divergence
+from cuml.metrics import kl_divergence
 
 
 class GapEncoderColumn(BaseEstimator, TransformerMixin):
@@ -170,34 +171,35 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
         If self.init='k-means', topics are initialized with a KMeans on the
         n-grams counts.
         """
-        if self.init == "k-means++":
-            if parse_version(sklearn_version) < parse_version("0.24"):
-                W = (
-                    _k_init(
-                        V,
-                        self.n_components,
-                        x_squared_norms=row_norms(V, squared=True),
-                        random_state=self.random_state,
-                        n_local_trials=None,
-                    )
-                    + 0.1
-                )
-            else:
-                W, _ = kmeans_plusplus(
-                    V,
-                    self.n_components,
-                    x_squared_norms=row_norms(V, squared=True),
-                    random_state=self.random_state,
-                    n_local_trials=None,
-                )
-                W = W + 0.1  # To avoid restricting topics to a few n-grams only
-        elif self.init == "random":
-            W = self.random_state.gamma(
-                shape=self.gamma_shape_prior,
-                scale=self.gamma_scale_prior,
-                size=(self.n_components, self.n_vocab),
-            )
-        elif self.init == "k-means":
+        # if self.init == "k-means++":
+        #     if parse_version(sklearn_version) < parse_version("0.24"):
+        #         W = (
+        #             _k_init(
+        #                 V,
+        #                 self.n_components,
+        #                 x_squared_norms=row_norms(V, squared=True),
+        #                 random_state=self.random_state,
+        #                 n_local_trials=None,
+        #             )
+        #             + 0.1
+        #         )
+        #     else:
+        #         W, _ = kmeans_plusplus(
+        #             V,
+        #             self.n_components,
+        #             x_squared_norms=row_norms(V, squared=True),
+        #             random_state=self.random_state,
+        #             n_local_trials=None,
+        #         )
+        #         W = W + 0.1  # To avoid restricting topics to a few n-grams only
+        # elif self.init == "random":
+        #     W = self.random_state.gamma(
+        #         shape=self.gamma_shape_prior,
+        #         scale=self.gamma_scale_prior,
+        #         size=(self.n_components, self.n_vocab),
+        #     )
+        # el
+        if self.init == "k-means":
             prototypes = get_kmeans_prototypes(
                 X,
                 self.n_components,
@@ -395,7 +397,7 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
                 gamma_scale_prior=self.gamma_scale_prior,
             )
         # Compute the KL divergence between V and HW
-        kl_divergence = _beta_divergence(
+        kl_divergence = kl_divergence( #_beta_divergence(
             unq_V[lookup], unq_H[lookup], self.W_, "kullback-leibler", square_root=False
         )
         return kl_divergence
@@ -619,7 +621,7 @@ class GapEncoder(BaseEstimator, TransformerMixin):
     >>> enc.fit(X)
     GapEncoder(n_components=2)
 
-    The :class:`~dirty_cat.GapEncoder` has found the following two topics:
+    The :class:`~cuCat.GapEncoder` has found the following two topics:
 
     >>> enc.get_feature_names()
     ['england, london, uk', 'france, paris, pqris']

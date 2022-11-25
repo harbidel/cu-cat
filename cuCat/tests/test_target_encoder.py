@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-from dirty_cat import _target_encoder
+from cuCat import _target_encoder
 
 
 def test_target_encoder():

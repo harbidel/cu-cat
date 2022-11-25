@@ -7,8 +7,8 @@ manually categorize them beforehand, or construct complex Pipelines.
 from typing import Dict, List, Literal, Optional, Tuple, Union
 from warnings import warn
 
-import numpy as np
-import pandas as pd
+import cupy as np
+import cudf as pd
 import sklearn
 from pandas.core.dtypes.base import ExtensionDtype
 from sklearn import __version__ as sklearn_version
@@ -16,8 +16,8 @@ from sklearn.base import TransformerMixin, clone
 from cuml.compose import ColumnTransformer
 from sklearn.preprocessing import OneHotEncoder
 
-from dirty_cat import DatetimeEncoder, GapEncoder
-from dirty_cat._utils import parse_version
+from cuCat import DatetimeEncoder, GapEncoder
+from cuCat._utils import parse_version
 
 # Required for ignoring lines too long in the docstrings
 # flake8: noqa: E501
@@ -364,19 +364,19 @@ class SuperVectorizer(ColumnTransformer):
         # We replace in all columns regardless of their type,
         # as we might have some false missing
         # in numerical columns for instance.
-        X = _replace_false_missing(X)
+        # X = _replace_false_missing(X)
 
         # Handle missing values
-        for col in X.columns:
-            # Convert pandas' NaN value (pd.NA) to numpy NaN value (np.nan)
-            # because the former tends to raise all kind of issues when dealing
-            # with scikit-learn (as of version 0.24).
-            if _has_missing_values(X[col]):
-                # Some numerical dtypes like Int64 or Float64 only support
-                # pd.NA, so they must be converted to np.float64 before.
-                if pd.api.types.is_numeric_dtype(X[col]):
-                    X.loc[:, col] = X[col].astype(np.float64)
-                X[col].fillna(value=np.nan, inplace=True)
+        # for col in X.columns:
+        #     # Convert pandas' NaN value (pd.NA) to numpy NaN value (np.nan)
+        #     # because the former tends to raise all kind of issues when dealing
+        #     # with scikit-learn (as of version 0.24).
+        #     if _has_missing_values(X[col]):
+        #         # Some numerical dtypes like Int64 or Float64 only support
+        #         # pd.NA, so they must be converted to np.float64 before.
+        #         if pd.api.types.is_numeric_dtype(X[col]):
+        #             X.loc[:, col] = X[col].astype(np.float64)
+        #         X[col].fillna(value=np.nan, inplace=True)
 
         # Convert to the best possible data type
         self.types_ = {}
@@ -411,12 +411,12 @@ class SuperVectorizer(ColumnTransformer):
 
         Does the same thing as `_auto_cast`, but applies learnt info.
         """
-        for col in X.columns:
-            X.loc[:, col] = _replace_false_missing(X[col])
-            if _has_missing_values(X[col]):
-                if pd.api.types.is_numeric_dtype(X[col]):
-                    X.loc[:, col] = X[col].astype(np.float64)
-                X[col].fillna(value=np.nan, inplace=True)
+        # for col in X.columns:
+        #     X.loc[:, col] = _replace_false_missing(X[col])
+        #     if _has_missing_values(X[col]):
+        #         if pd.api.types.is_numeric_dtype(X[col]):
+        #             X.loc[:, col] = X[col].astype(np.float64)
+        #         X[col].fillna(value=np.nan, inplace=True)
         for col in self.imputed_columns_:
             X.loc[:, col] = _replace_missing_in_cat_col(X[col])
         for col, dtype in self.types_.items():
@@ -529,36 +529,36 @@ class SuperVectorizer(ColumnTransformer):
                 self.transformers.append(trans)
 
         self.imputed_columns_ = []
-        if self.impute_missing != "skip":
-            # First, replace false missing
-            # This is technically redundant with the call made in `_auto_cast`,
-            # but we do it again anyway.
-            X = _replace_false_missing(X)
+#         if self.impute_missing != "skip":
+#             # First, replace false missing
+#             # This is technically redundant with the call made in `_auto_cast`,
+#             # but we do it again anyway.
+#             # X = _replace_false_missing(X)
 
-            # Then, impute if suiting
-            if _has_missing_values(X):
-                if self.impute_missing == "force":
-                    for col in X.columns:
-                        # Only impute categorical columns
-                        if col in categorical_columns:
-                            X.loc[:, col] = _replace_missing_in_cat_col(X[col])
-                            self.imputed_columns_.append(col)
+#             # Then, impute if suiting
+#             if _has_missing_values(X):
+#                 if self.impute_missing == "force":
+#                     for col in X.columns:
+#                         # Only impute categorical columns
+#                         if col in categorical_columns:
+#                             X.loc[:, col] = _replace_missing_in_cat_col(X[col])
+#                             self.imputed_columns_.append(col)
 
-                elif self.impute_missing == "auto":
-                    for name, trans, cols in all_transformers:
-                        impute: bool = False
+#                 elif self.impute_missing == "auto":
+#                     for name, trans, cols in all_transformers:
+#                         impute: bool = False
 
-                        if isinstance(trans, OneHotEncoder) and parse_version(
-                            sklearn_version
-                        ) < parse_version("0.24"):
-                            impute = True
+#                         if isinstance(trans, OneHotEncoder) and parse_version(
+#                             sklearn_version
+#                         ) < parse_version("0.24"):
+#                             impute = True
 
-                        if impute:
-                            for col in cols:
-                                # Only impute categorical columns
-                                if col in categorical_columns:
-                                    X.loc[:, col] = _replace_missing_in_cat_col(X[col])
-                                    self.imputed_columns_.append(col)
+#                         if impute:
+#                             for col in cols:
+#                                 # Only impute categorical columns
+#                                 if col in categorical_columns:
+#                                     X.loc[:, col] = _replace_missing_in_cat_col(X[col])
+#                                     self.imputed_columns_.append(col)
 
         # If there was missing values imputation, we cast the DataFrame again,
         # as pandas gives different types depending on whether a column has

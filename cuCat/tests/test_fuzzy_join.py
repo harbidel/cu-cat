@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from dirty_cat import fuzzy_join
+from cuCat import fuzzy_join
 
 
 @pytest.mark.parametrize("analyzer", ["char", "char_wb", "word"])

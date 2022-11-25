@@ -5,10 +5,10 @@ import numpy.testing
 import pytest
 from sklearn import __version__ as sklearn_version
 
-from dirty_cat import SimilarityEncoder
-from dirty_cat._similarity_encoder import get_kmeans_prototypes
-from dirty_cat._string_distances import ngram_similarity
-from dirty_cat._utils import parse_version
+from cuCat import SimilarityEncoder
+from cuCat._similarity_encoder import get_kmeans_prototypes
+from cuCat._string_distances import ngram_similarity
+from cuCat._utils import parse_version
 
 
 def test_specifying_categories() -> None:
@@ -234,7 +234,7 @@ def test_reproducibility() -> None:
 
 
 def test_get_features() -> None:
-    # See https://github.com/dirty-cat/dirty_cat/issues/168
+    # See https://github.com/dirty-cat/cuCat/issues/168
     sim_enc = SimilarityEncoder(random_state=435)
     X = np.array(["%s" % chr(i) for i in range(32, 127)]).reshape((-1, 1))
     sim_enc.fit(X)

@@ -1,18 +1,18 @@
 
 ===============================================
-dirty_cat: machine learning on dirty categories
+cuCat: machine learning on dirty categories
 ===============================================
 
 .. toctree::
    :maxdepth: 2
 
-.. currentmodule:: dirty_cat
+.. currentmodule:: cuCat
 
 .. container:: larger-container
 
-    `dirty_cat` facilitates machine-learning on non-curated categories:
+    `cuCat` facilitates machine-learning on non-curated categories:
     **robust to morphological variants**, such as typos.
-    See `the first example notebook <https://dirty-cat.github.io/stable/auto_examples/01_dirty_categories.html>`_
+    See `the first example notebook <https://dirty-cat.github.io/stable/auto_examples/01_cuCategories.html>`_
     for a more in-depth look into the problem and the library's capabilities.
 
 |
@@ -59,7 +59,7 @@ pipeline you can tweak.
 
 .. container:: install_instructions
 
-    :Installing: ``$ pip install --user --upgrade dirty_cat``
+    :Installing: ``$ pip install --user --upgrade cuCat``
 
 
 
@@ -162,7 +162,7 @@ Data download
 About
 =====
 
-dirty_cat is for now a repository for ideas coming out of a research
+cuCat is for now a repository for ideas coming out of a research
 project: there is still little known about the problems of dirty
 categories. Tradeoffs will emerge in the long run. We really need people
 giving feedback on success and failures with the different techniques and
@@ -178,12 +178,12 @@ Related projects
 ================
 
 - `scikit-learn <https://github.com/scikit-learn/scikit-learn>`_
-  - a very popular machine learning library; dirty_cat inherits its API
+  - a very popular machine learning library; cuCat inherits its API
 - `categorical-encoding <https://contrib.scikit-learn.org/category_encoders/>`_
   - scikit-learn compatible classic categorical encoding schemes
 - `spark-dirty-cat <https://github.com/rakutentech/spark-dirty-cat>`_
-  - a Scala implementation of dirty_cat for Spark ML
+  - a Scala implementation of cuCat for Spark ML
 - `CleverCSV <https://github.com/alan-turing-institute/CleverCSV>`_
   - a package for dealing with dirty csv files
 - `GAMA <https://github.com/openml-labs/gama>`_
-  - a modular AutoML assistant that uses dirty_cat as part of its search space
+  - a modular AutoML assistant that uses cuCat as part of its search space

@@ -10,8 +10,8 @@ from sklearn.ensemble import RandomForestRegressor, RandomForestClassifier
 from sklearn.model_selection import GridSearchCV
 from sklearn.pipeline import Pipeline
 
-from dirty_cat import SuperVectorizer
-from dirty_cat.datasets import fetch_open_payments, fetch_drug_directory, \
+from cuCat import SuperVectorizer
+from cuCat.datasets import fetch_open_payments, fetch_drug_directory, \
     fetch_road_safety, fetch_midwest_survey, fetch_medical_charge, \
     fetch_employee_salaries, fetch_traffic_violations
 

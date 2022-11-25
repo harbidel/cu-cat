@@ -16,14 +16,14 @@ The principle is as follows:
 import warnings
 from typing import List, Literal, Optional, Tuple, Union
 
-import numpy as np
+import cupy as np
 import sklearn
 from joblib import Parallel, delayed
 from numpy.random import RandomState
-from scipy import sparse
-from sklearn.cluster import KMeans
+from cupyx.scipy import sparse
+from cuml.cluster import KMeans
 from cuml.feature_extraction.text import CountVectorizer, HashingVectorizer
-from sklearn.neighbors import NearestNeighbors
+from cuml.neighbors import NearestNeighbors
 from sklearn.preprocessing import OneHotEncoder
 from sklearn.utils import check_random_state
 from sklearn.utils.fixes import _object_dtype_isnan
@@ -203,7 +203,7 @@ class SimilarityEncoder(OneHotEncoder):
     Parameters
     ----------
     similarity : None
-        Deprecated in dirty_cat 0.3, will be removed in 0.5.
+        Deprecated in cuCat 0.3, will be removed in 0.5.
         Was used to specify the type of pairwise string similarity to use.
         Since 0.3, only the ngram similarity is supported.
     ngram_range : tuple (min_n, max_n), default=(2, 4)
@@ -328,7 +328,7 @@ class SimilarityEncoder(OneHotEncoder):
 
         if similarity is not None:
             warnings.warn(
-                'The "similarity" argument is deprecated since dirty_cat 0.3, '
+                'The "similarity" argument is deprecated since cuCat 0.3, '
                 "and will be removed in 0.5."
                 "The n-gram similarity is the only one currently supported. ",
                 category=UserWarning,

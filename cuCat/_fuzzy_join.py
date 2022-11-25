@@ -14,11 +14,11 @@ morphological similarities between strings.
 import warnings
 from typing import Literal, Tuple, Union
 
-import numpy as np
-import pandas as pd
-from scipy.sparse import vstack
-from sklearn.feature_extraction.text import CountVectorizer, TfidfTransformer
-from sklearn.neighbors import NearestNeighbors
+import cupy as np
+import cudf as pd
+from cupyx.scipy.sparse import vstack
+from cuml.feature_extraction.text import CountVectorizer,TfidfTransformer
+from cuml.neighbors import NearestNeighbors
 
 
 def fuzzy_join(

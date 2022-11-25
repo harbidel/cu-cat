@@ -10,7 +10,7 @@ assignees: ''
 
 <!--Please fill in the following information, to the best of your ability.-->
 
-dirty_cat version:
+cuCat version:
 
 Expected behavior:
 

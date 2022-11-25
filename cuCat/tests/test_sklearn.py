@@ -1,6 +1,6 @@
 from sklearn.utils.estimator_checks import check_estimator
 
-from dirty_cat import (
+from cuCat import (
     DatetimeEncoder,
     GapEncoder,
     MinHashEncoder,

@@ -1,7 +1,7 @@
 import collections
 from typing import Any, Hashable
 
-import numpy as np
+import cupy as np
 from sklearn.utils import check_array
 
 try:

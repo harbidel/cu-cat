@@ -1,4 +1,4 @@
-from dirty_cat._utils import LRUDict
+from cuCat._utils import LRUDict
 
 
 def test_lrudict():

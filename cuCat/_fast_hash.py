@@ -16,7 +16,7 @@ The principle is as follows:
 
 import functools
 
-import numpy as np
+import cupy as np
 
 # Precompute to avoid the cost and
 # cast to int32 to speed up the min

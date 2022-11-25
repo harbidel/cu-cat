@@ -4,7 +4,7 @@
 # You can set these variables from the command line.
 SPHINXOPTS    =
 SPHINXBUILD   = sphinx-build
-SPHINXPROJ    = dirty_cat
+SPHINXPROJ    = cuCat
 SOURCEDIR     = .
 BUILDDIR      = _build
 

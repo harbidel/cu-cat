@@ -1,14 +1,14 @@
 import collections
 from typing import Dict, List, Literal, Union
 
-import numpy as np
+import cupy as np
 from sklearn.base import BaseEstimator, TransformerMixin
 from cuml.preprocessing import LabelEncoder
 from sklearn.utils import check_array
 from sklearn.utils.fixes import _object_dtype_isnan
 from sklearn.utils.validation import check_is_fitted
 
-from dirty_cat._utils import check_input
+from cuCat._utils import check_input
 
 
 def lambda_(x, n):

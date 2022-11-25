@@ -1,5 +1,5 @@
 """
-dirty_cat: Learning on dirty categories.
+cuCat: Learning on dirty categories.
 """
 from pathlib import Path as _Path
 
