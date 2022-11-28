@@ -18,10 +18,10 @@ The principle is as follows:
 import warnings
 from typing import Dict, Generator, List, Literal, Optional, Tuple, Union
 
-import numpy as np
-import pandas as pd
+import cupy as np
+import cudf as pd
 from numpy.random import RandomState
-from scipy import sparse
+from cupyx.scipy import sparse
 from sklearn import __version__ as sklearn_version
 from sklearn.base import BaseEstimator, TransformerMixin
 from cuml.cluster import KMeans
