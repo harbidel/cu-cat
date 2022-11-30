@@ -24,19 +24,33 @@ from numpy.random import RandomState
 from cupyx.scipy import sparse
 from sklearn import __version__ as sklearn_version
 from sklearn.base import BaseEstimator, TransformerMixin
-from cuml.cluster import KMeans
-from cuml.feature_extraction.text import CountVectorizer, HashingVectorizer
+# from cuml.cluster import KMeans
+from cuml.feature_extraction.text import CountVectorizer #, HashingVectorizer
 from cuml.neighbors import NearestNeighbors
 from sklearn.utils import check_random_state, gen_batches
 from sklearn.utils.extmath import row_norms, safe_sparse_dot
 from sklearn.utils.fixes import _object_dtype_isnan
+# from numpy import unique
+# from gap_encoder import GapEncoder
+from importlib import reload
+import utils
+reload(utils)
+from utils import * # check_input
 
-from ._utils import check_input, parse_version
 
-if parse_version(sklearn_version) < parse_version("0.24"):
-    from sklearn.cluster._kmeans import _k_init
-else:
-    from sklearn.cluster import kmeans_plusplus
+import vectorizers
+reload(vectorizers)
+from vectorizers import *
+
+# from ._utils import check_input, parse_version
+
+# if parse_version(sklearn_version) < parse_version("0.24"):
+#     from sklearn.cluster._kmeans import _k_init
+# else:
+    # from sklearn.cluster import kmeans_plusplus
+from cuml import KMeans
+
+    
 
 # from sklearn.decomposition._nmf import _beta_divergence
 from cuml.metrics import kl_divergence
@@ -59,7 +73,7 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
         rescale_rho: bool = False,
         hashing: bool = False,
         hashing_n_features: int = 2**12,
-        init: Literal["k-means++", "random", "k-means"] = "k-means++",
+        init: Literal["k-means++", "random", "k-means"] = "random",
         tol: float = 1e-4,
         min_iter: int = 2,
         max_iter: int = 5,
@@ -120,17 +134,18 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
         # Init H_dict_ with empty dict to train from scratch
         self.H_dict_ = dict()
         # Build the n-grams counts matrix unq_V on unique elements of X
-        unq_X, lookup = np.unique(X, return_inverse=True)
+        unq_X, lookup = np.unique((X), return_inverse=True)
+        unq_X=np.array_str(unq_X)
         unq_V = self.ngrams_count_.fit_transform(unq_X)
         if self.add_words:  # Add word counts to unq_V
             unq_V2 = self.word_count_.fit_transform(unq_X)
             unq_V = sparse.hstack((unq_V, unq_V2), format="csr")
 
         if not self.hashing:  # Build n-grams/word vocabulary
-            if parse_version(sklearn_version) < parse_version("1.0"):
-                self.vocabulary = self.ngrams_count_.get_feature_names()
-            else:
-                self.vocabulary = self.ngrams_count_.get_feature_names_out()
+            # if parse_version(sklearn_version) < parse_version("1.0"):
+            self.vocabulary = self.ngrams_count_.get_feature_names()
+            # else:
+                # self.vocabulary = self.ngrams_count_.get_feature_names_out()
             if self.add_words:
                 if parse_version(sklearn_version) < parse_version("1.0"):
                     self.vocabulary = np.concatenate(
@@ -142,7 +157,7 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
                     )
         _, self.n_vocab = unq_V.shape
         # Init the topics W given the n-grams counts V
-        self.W_, self.A_, self.B_ = self._init_w(unq_V[lookup], X)
+        self.W_, self.A_, self.B_ = self._init_w(unq_V[lookup], (X))
         # Init the activations unq_H of each unique input string
         unq_H = _rescale_h(unq_V, np.ones((len(unq_X), self.n_components)))
         # Update self.H_dict_ with unique input strings and their activations
@@ -172,70 +187,74 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
         n-grams counts.
         """
         # if self.init == "k-means++":
-        #     if parse_version(sklearn_version) < parse_version("0.24"):
-        #         W = (
-        #             _k_init(
+            # if parse_version(sklearn_version) < parse_version("0.24"):
+            #     W = (
+            #         _k_init(
+            #             V,
+            #             self.n_components,
+            #             x_squared_norms=row_norms(V, squared=True),
+            #             random_state=self.random_state,
+            #             n_local_trials=None,
+            #         )
+            #         + 0.1
+            #     )
+
+            # W, _ = KMeans(
+            #     V,
+            #     self.n_components,
+            #     x_squared_norms=row_norms(V, squared=True),
+            #     random_state=self.random_state,
+            #     n_local_trials=None,
+            # )
+            # W = W + 0.1  # To avoid restricting topics to a few n-grams only
+        # if self.init == "random":
+        # random_state=check_random_state(None)
+        W = self.random_state.gamma(
+            shape=self.gamma_shape_prior,
+            scale=self.gamma_scale_prior,
+            size=(self.n_components, self.n_vocab)
+        )
+        # print([self.n_components,self.n_vocab])
+        # print(W)
+        # elif self.init == "k-means":
+        #     prototypes = get_kmeans_prototypes(
+        #         X,
+        #         self.n_components,
+        #         analyzer=self.analyzer,
+        #         random_state=self.random_state,
+        #     )
+        #     W = self.ngrams_count_.transform(prototypes).A + 0.1
+        #     if self.add_words:
+        #         W2 = self.word_count_.transform(prototypes).A + 0.1
+        #         W = np.hstack((W, W2))
+        #     # if k-means doesn't find the exact number of prototypes
+        #     if W.shape[0] < self.n_components:
+        #         if parse_version(sklearn_version) < parse_version("0.24"):
+        #             W2 = (
+        #                 _k_init(
+        #                     V,
+        #                     self.n_components - W.shape[0],
+        #                     x_squared_norms=row_norms(V, squared=True),
+        #                     random_state=self.random_state,
+        #                     n_local_trials=None,
+        #                 )
+        #                 + 0.1
+        #             )
+        #         else:
+        #             W2, _ = kmeans_plusplus(
         #                 V,
-        #                 self.n_components,
+        #                 self.n_components - W.shape[0],
         #                 x_squared_norms=row_norms(V, squared=True),
         #                 random_state=self.random_state,
         #                 n_local_trials=None,
         #             )
-        #             + 0.1
-        #         )
-        #     else:
-        #         W, _ = kmeans_plusplus(
-        #             V,
-        #             self.n_components,
-        #             x_squared_norms=row_norms(V, squared=True),
-        #             random_state=self.random_state,
-        #             n_local_trials=None,
-        #         )
-        #         W = W + 0.1  # To avoid restricting topics to a few n-grams only
-        # elif self.init == "random":
-        #     W = self.random_state.gamma(
-        #         shape=self.gamma_shape_prior,
-        #         scale=self.gamma_scale_prior,
-        #         size=(self.n_components, self.n_vocab),
-        #     )
-        # el
-        if self.init == "k-means":
-            prototypes = get_kmeans_prototypes(
-                X,
-                self.n_components,
-                analyzer=self.analyzer,
-                random_state=self.random_state,
-            )
-            W = self.ngrams_count_.transform(prototypes).A + 0.1
-            if self.add_words:
-                W2 = self.word_count_.transform(prototypes).A + 0.1
-                W = np.hstack((W, W2))
-            # if k-means doesn't find the exact number of prototypes
-            if W.shape[0] < self.n_components:
-                if parse_version(sklearn_version) < parse_version("0.24"):
-                    W2 = (
-                        _k_init(
-                            V,
-                            self.n_components - W.shape[0],
-                            x_squared_norms=row_norms(V, squared=True),
-                            random_state=self.random_state,
-                            n_local_trials=None,
-                        )
-                        + 0.1
-                    )
-                else:
-                    W2, _ = kmeans_plusplus(
-                        V,
-                        self.n_components - W.shape[0],
-                        x_squared_norms=row_norms(V, squared=True),
-                        random_state=self.random_state,
-                        n_local_trials=None,
-                    )
-                    W2 = W2 + 0.1
-                W = np.concatenate((W, W2), axis=0)
-        else:
-            raise ValueError(f"Initialization method {self.init!r} does not exist. ")
+        #             W2 = W2 + 0.1
+        #         W = np.concatenate((W, W2), axis=0)
+        # else:
+            # raise ValueError(f"Initialization method {self.init!r} does not exist. ")
+        # print(W.shape)
         W /= W.sum(axis=1, keepdims=True)
+
         A = np.ones((self.n_components, self.n_vocab)) * 1e-10
         B = A.copy()
         return W, A, B
@@ -259,7 +278,7 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
         # Copy parameter rho
         self.rho_ = self.rho
         # Check if first item has str or np.str_ type
-        assert isinstance(X[0], str), "Input data is not string. "
+        # assert isinstance(X[0], str), "Input data is not string. "
         # Make n-grams counts matrix unq_V
         unq_X, unq_V, lookup = self._init_vars(X)
         n_batch = (len(X) - 1) // self.batch_size + 1
@@ -274,9 +293,9 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
                     W_last = self.W_.copy()
                 # Update activations unq_H
                 unq_H[unq_idx] = _multiplicative_update_h(
-                    unq_V[unq_idx],
+                    unq_V[unq_idx], #.get(),
                     self.W_,
-                    unq_H[unq_idx],
+                    unq_H[unq_idx], #.get(),
                     epsilon=1e-3,
                     max_iter=self.max_iter_e_step,
                     rescale_W=self.rescale_W,
@@ -376,7 +395,8 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
         """
 
         # Build n-grams/word counts matrix
-        unq_X, lookup = np.unique(X, return_inverse=True)
+        unq_X, lookup = np.unique((X), return_inverse=True)
+        unq_X=np.array_str(unq_X)
         unq_V = self.ngrams_count_.transform(unq_X)
         if self.add_words:
             unq_V2 = self.word_count_.transform(unq_X)
@@ -431,7 +451,8 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
         assert isinstance(X[0], str), "Input data is not string. "
         # Check if it is not the first batch
         if hasattr(self, "vocabulary"):  # Update unq_X, unq_V with new batch
-            unq_X, lookup = np.unique(X, return_inverse=True)
+            unq_X, lookup = np.unique((X), return_inverse=True)
+            unq_X=np.array_str(unq_X)
             unq_V = self.ngrams_count_.transform(unq_X)
             if self.add_words:
                 unq_V2 = self.word_count_.transform(unq_X)
@@ -513,7 +534,8 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
         """
         # Check if first item has str or np.str_ type
         assert isinstance(X[0], str), "Input data is not string. "
-        unq_X = np.unique(X)
+        unq_X = np.unique((X))
+        unq_X=np.array_str(unq_X)
         # Build the n-grams counts matrix V for the string data to encode
         unq_V = self.ngrams_count_.transform(unq_X)
         if self.add_words:  # Add words counts
@@ -672,7 +694,7 @@ class GapEncoder(BaseEstimator, TransformerMixin):
         rescale_rho: bool = False,
         hashing: bool = False,
         hashing_n_features: int = 2**12,
-        init: Literal["k-means++", "random", "k-means"] = "k-means++",
+        init: Literal["k-means++", "random", "k-means"] = "random",
         tol: float = 1e-4,
         min_iter: int = 2,
         max_iter: int = 5,
@@ -957,6 +979,7 @@ def _multiplicative_update_w(
     Multiplicative update step for the topics W.
     """
     A *= rho
+    W=np.array(W)
     A += W * safe_sparse_dot(Ht.T, Vt.multiply(1 / (np.dot(Ht, W) + 1e-10)))
     B *= rho
     B += Ht.sum(axis=0).reshape(-1, 1)
@@ -971,7 +994,11 @@ def _rescale_h(V: np.array, H: np.array) -> np.array:
     Rescale the activations H.
     """
     epsilon = 1e-10  # in case of a document having length=0
-    H *= np.maximum(epsilon, V.sum(axis=1).A)
+    # print(V)
+    R=V.sum()#.A
+    R=np.array(R)
+    H *= np.maximum(epsilon, R)#V.sum(axis=1.A))
+    # H *= np.maximum(epsilon, V.sum(axis=1).A)
     H /= H.sum(axis=1, keepdims=True)
     return H
 
@@ -1000,8 +1027,10 @@ def _multiplicative_update_h(
     for vt, ht in zip(Vt, Ht):
         vt_ = vt.data
         idx = vt.indices
-        W_WT1_ = W_WT1[:, idx]
-        W_ = W[:, idx]
+        # print([W_WT1.shape,idx.tolist().shape])
+        # print([W_WT1,idx.tolist()])
+        W_WT1_ = cp.array(W_WT1[:, idx.tolist()])
+        W_ = cp.array(W[:, idx.tolist()])
         squared_norm = 1
         for n_iter_ in range(max_iter):
             if squared_norm <= squared_epsilon:
@@ -1023,7 +1052,8 @@ def batch_lookup(
     len_iter = len(lookup)
     for idx in range(0, len_iter, n):
         indices = lookup[slice(idx, min(idx + n, len_iter))]
-        unq_indices = np.unique(indices)
+        unq_indices = np.unique((indices))
+        # unq_indices=np.array_str(unq_indices)
         yield unq_indices, indices
 
 
@@ -1058,5 +1088,6 @@ def get_kmeans_prototypes(
     centers = kmeans.cluster_centers_
     neighbors = NearestNeighbors()
     neighbors.fit(projected)
-    indexes_prototypes = np.unique(neighbors.kneighbors(centers, 1)[-1])
+    indexes_prototypes = np.unique((neighbors.kneighbors(centers, 1)[-1]))
+    # indexes_prototypes=np.array_str(indexes_prototypes)
     return np.sort(X[indexes_prototypes])

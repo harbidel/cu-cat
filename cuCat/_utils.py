@@ -1,7 +1,7 @@
 import collections
 from typing import Any, Hashable
 
-import cupy as np
+import cupy as np,cudf
 from sklearn.utils import check_array
 
 try:
@@ -49,20 +49,24 @@ def check_input(X) -> np.array:
     # TODO check for weird type of input to pass scikit learn tests
     #  without messing with the original type too much
 
-    X_ = check_array(
-        X,
-        dtype=None,
-        ensure_2d=True,
-        force_all_finite=False,
-    )
-    # If the array contains both NaNs and strings, convert to object type
-    if X_.dtype.kind in {"U", "S"}:  # contains strings
-        if np.any(X_ == "nan"):  # missing value converted to string
-            return check_array(
-                np.array(X, dtype=object),
-                dtype=None,
-                ensure_2d=True,
-                force_all_finite=False,
-            )
+    for i in X.columns:
+        X[i]=np.frombuffer(X[i].to_numpy())
+    X=X.to_cupy()
+    # X_ = check_array(
+    #     X, #.to_cupy(),
+    #     dtype=None,
+    #     ensure_2d=True,
+    #     force_all_finite=False,
+    # )
+    # # If the array contains both NaNs and strings, convert to object type
+    # if X_.dtype.kind in {"U", "S"}:  # contains strings
+    #     if np.any(X_ == "nan"):  # missing value converted to string
+    #         return check_array(
+    #             # np.array(X, dtype=object),
+    #             X=X, #.to_cupy(),
+    #             dtype=None,
+    #             ensure_2d=True,
+    #             force_all_finite=False,
+    #         )
 
-    return X_
+    return X
