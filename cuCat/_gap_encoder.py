@@ -32,17 +32,19 @@ from sklearn.utils.extmath import row_norms, safe_sparse_dot
 from sklearn.utils.fixes import _object_dtype_isnan
 # from numpy import unique
 # from gap_encoder import GapEncoder
+
 from importlib import reload
-import utils
-reload(utils)
-from utils import * # check_input
+# import utils
+# reload(utils)
+# from utils import * # check_cuml_input
 
 
 import vectorizers
 reload(vectorizers)
 from vectorizers import *
 
-# from ._utils import check_input, parse_version
+
+from cuCat._utils import check_cuml_input, parse_version
 
 # if parse_version(sklearn_version) < parse_version("0.24"):
 #     from sklearn.cluster._kmeans import _k_init
@@ -533,7 +535,7 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
             Transformed input.
         """
         # Check if first item has str or np.str_ type
-        assert isinstance(X[0], str), "Input data is not string. "
+        # assert isinstance(X[0], str), "Input data is not string. "
         unq_X = np.unique((X))
         unq_X=np.array_str(unq_X)
         # Build the n-grams counts matrix V for the string data to encode
@@ -797,7 +799,7 @@ class GapEncoder(BaseEstimator, TransformerMixin):
         if isinstance(X, pd.DataFrame):
             self.column_names_ = list(X.columns)
         # Check input data shape
-        X = check_input(X)
+        X = check_cuml_input(X)
         X = self._handle_missing(X)
         self.fitted_models_ = []
         for k in range(X.shape[1]):
@@ -828,7 +830,7 @@ class GapEncoder(BaseEstimator, TransformerMixin):
         """
 
         # Check input data shape
-        X = check_input(X)
+        X = check_cuml_input(X)
         X = self._handle_missing(X)
         X_enc = []
         for k in range(X.shape[1]):
@@ -859,7 +861,7 @@ class GapEncoder(BaseEstimator, TransformerMixin):
         if isinstance(X, pd.DataFrame):
             self.column_names_ = list(X.columns)
         # Check input data shape
-        X = check_input(X)
+        X = check_cuml_input(X)
         X = self._handle_missing(X)
         # Init the `GapEncoderColumn` instances if the model was
         # not fitted already.
@@ -949,7 +951,7 @@ class GapEncoder(BaseEstimator, TransformerMixin):
         float.
             The Kullback-Leibler divergence.
         """
-        X = check_input(X)
+        X = check_cuml_input(X)
         kl_divergence = 0
         for k in range(X.shape[1]):
             kl_divergence += self.fitted_models_[k].score(X[:, k])

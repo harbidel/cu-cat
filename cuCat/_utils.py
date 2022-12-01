@@ -41,6 +41,14 @@ class LRUDict:
         return key in self.cache
 
 
+def check_cuml_input(X) -> np.array:
+    
+    for i in X.columns:
+        X[i]=np.frombuffer(X[i].to_numpy())
+    X_=X.to_cupy()
+    
+    return X_
+
 def check_input(X) -> np.array:
     """
     Check input with sklearn standards.
@@ -49,24 +57,23 @@ def check_input(X) -> np.array:
     # TODO check for weird type of input to pass scikit learn tests
     #  without messing with the original type too much
 
-    for i in X.columns:
-        X[i]=np.frombuffer(X[i].to_numpy())
-    X=X.to_cupy()
-    # X_ = check_array(
-    #     X, #.to_cupy(),
-    #     dtype=None,
-    #     ensure_2d=True,
-    #     force_all_finite=False,
-    # )
-    # # If the array contains both NaNs and strings, convert to object type
-    # if X_.dtype.kind in {"U", "S"}:  # contains strings
-    #     if np.any(X_ == "nan"):  # missing value converted to string
-    #         return check_array(
-    #             # np.array(X, dtype=object),
-    #             X=X, #.to_cupy(),
-    #             dtype=None,
-    #             ensure_2d=True,
-    #             force_all_finite=False,
-    #         )
+    
+    
+    X_ = check_array(
+        X, #.to_cupy(),
+        dtype=None,
+        ensure_2d=True,
+        force_all_finite=False,
+    )
+    # If the array contains both NaNs and strings, convert to object type
+    if X_.dtype.kind in {"U", "S"}:  # contains strings
+        if np.any(X_ == "nan"):  # missing value converted to string
+            return check_array(
+                np.array(X, dtype=object),
+                # X=X, #.to_cupy(),
+                dtype=None,
+                ensure_2d=True,
+                force_all_finite=False,
+            )
 
-    return X
+    return X_

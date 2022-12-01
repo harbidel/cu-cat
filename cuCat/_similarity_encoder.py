@@ -22,14 +22,19 @@ from joblib import Parallel, delayed
 from numpy.random import RandomState
 from cupyx.scipy import sparse
 from cuml.cluster import KMeans
-from cuml.feature_extraction.text import CountVectorizer, HashingVectorizer
+from cuml.feature_extraction.text import CountVectorizer #, HashingVectorizer
 from cuml.neighbors import NearestNeighbors
 from sklearn.preprocessing import OneHotEncoder
 from sklearn.utils import check_random_state
 from sklearn.utils.fixes import _object_dtype_isnan
 
-from ._string_distances import get_ngram_count, preprocess
-from ._utils import parse_version
+from importlib import reload
+import vectorizers
+reload(vectorizers)
+from vectorizers import *
+
+from cuCat._string_distances import get_ngram_count, preprocess
+from cuCat._utils import parse_version
 
 
 def _ngram_similarity_one_sample_inplace(
@@ -408,7 +413,9 @@ class SimilarityEncoder(OneHotEncoder):
                 else:
                     X[mask] = self.handle_missing
 
-        Xlist, n_samples, n_features = self._check_X(X)
+        # Xlist, n_samples, n_features = self._check_X(X)
+        n_samples, n_features = X.shape
+        # Xlist = X.columns
         self.n_features_in_ = n_features
 
         if self.handle_unknown not in ["error", "ignore"]:
@@ -432,7 +439,7 @@ class SimilarityEncoder(OneHotEncoder):
         self.random_state_ = check_random_state(self.random_state)
 
         for i in range(n_features):
-            Xi = Xlist[i]
+            Xi = X.iloc[:,i]
             if self.categories == "auto":
                 self.categories_.append(np.unique(Xi))
             elif self.categories == "most_frequent":
@@ -449,7 +456,7 @@ class SimilarityEncoder(OneHotEncoder):
                 )
             else:
                 if self.handle_unknown == "error":
-                    valid_mask = np.in1d(Xi, self.categories[i])
+                    valid_mask = np.in1d(Xi.values, self.categories_[i])
                     if not np.all(valid_mask):
                         diff = np.unique(Xi[~valid_mask])
                         raise ValueError(
@@ -538,11 +545,13 @@ class SimilarityEncoder(OneHotEncoder):
                 else:
                     X[mask] = self.handle_missing
 
-        Xlist, n_samples, n_features = self._check_X(X)
-
+        # Xlist, n_samples, n_features = self._check_X(X)
+        n_samples, n_features = X.shape
+        # Xlist = X.columns
+        
         for i in range(n_features):
-            Xi = Xlist[i]
-            valid_mask = np.in1d(Xi, self.categories_[i])
+            Xi = X.iloc[:,i]
+            valid_mask = np.in1d(Xi.values, self.categories_[i])
 
             if not np.all(valid_mask):
                 if self.handle_unknown == "error":
@@ -558,10 +567,10 @@ class SimilarityEncoder(OneHotEncoder):
         last = 0
         for j, categories in enumerate(self.categories_):
             if fast:
-                encoded_Xj = self._ngram_similarity_fast(Xlist[j], j)
+                encoded_Xj = self._ngram_similarity_fast(X.iloc[:,j], j)
             else:
                 encoded_Xj = ngram_similarity(
-                    Xlist[j],
+                    X.iloc[:,j],
                     categories,
                     ngram_range=(min_n, max_n),
                     hashing_dim=self.hashing_dim,
