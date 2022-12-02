@@ -79,10 +79,13 @@ def _ngram_similarity_one_sample_inplace(
     all_grams = (
         get_ngram_count(str_x, ngram_range) + vocabulary_ngram_counts - same_grams
     )
+
     similarity = np.divide(
-        same_grams, all_grams, out=np.zeros_like(same_grams), where=all_grams != 0
-    )
-    se_dict[unq_X[i]] = similarity.reshape(-1)
+        same_grams, all_grams) #, out=np.zeros_like(same_grams), where=all_grams != 0
+    # )
+
+    se_dict[unq_X[i].item()] = similarity.reshape(-1)
+
 
 
 def ngram_similarity(
@@ -606,7 +609,10 @@ class SimilarityEncoder(OneHotEncoder):
         vectorizer = self.vectorizers_[col_idx]
 
         unq_X = np.unique(X)
-        unq_X_ = np.array([preprocess(x) for x in unq_X])
+        # print(X)
+        # print(unq_X)
+        # unq_X_ = np.array([preprocess(x) for x in unq_X])
+        unq_X_=np.array_str(unq_X)
 
         X_count_matrix = vectorizer.transform(unq_X_)
         vocabulary_count_matrix = self.vocabulary_count_matrices_[col_idx]
@@ -616,27 +622,33 @@ class SimilarityEncoder(OneHotEncoder):
 
         se_dict = {}
 
-        Parallel(n_jobs=self.n_jobs, backend="threading")(
-            delayed(_ngram_similarity_one_sample_inplace)(
-                X_count_vector,
-                vocabulary_count_matrix,
-                x_str,
-                vocabulary_ngram_count,
-                se_dict,
-                unq_X,
-                i,
-                self.ngram_range,
-            )
-            for X_count_vector, x_str, i in zip(
-                X_count_matrix, unq_X_, range(len(unq_X))
-            )
-        )
+        # Parallel(n_jobs=self.n_jobs, backend="threading")(
+        #     delayed(
+        # _ngram_similarity_one_sample_inplace(
+        #         X_count_vector,
+        #         vocabulary_count_matrix,
+        #         x_str,
+        #         vocabulary_ngram_count,
+        #         se_dict,
+        #         unq_X,
+        #         i,
+        #         self.ngram_range,
+        #     )
+        #     for X_count_vector, x_str, i in zip(
+        #         X_count_matrix, unq_X_, range(len(unq_X))
+        #     )
+        # )
+        
+        
+        for X_count_vector, x_str, i in zip(X_count_matrix, unq_X_, range(len(unq_X))):
+            # print([X_count_vector,vocabulary_count_matrix, x_str, vocabulary_ngram_count, se_dict, unq_X, i, self.ngram_range])
+            
+            _ngram_similarity_one_sample_inplace(X_count_vector, vocabulary_count_matrix, x_str, vocabulary_ngram_count, se_dict, unq_X, i, self.ngram_range)
 
         out = np.empty(
             (len(X), vocabulary_count_matrix.shape[0]),
             dtype=self.dtype,
         )
-
         for x, out_row in zip(X, out):
             out_row[:] = se_dict[x]
 
@@ -669,3 +681,4 @@ class SimilarityEncoder(OneHotEncoder):
         else:
             # fit method of arity 2 (supervised transformation)
             return self.fit(X, y, **fit_params).transform(X)
+        
