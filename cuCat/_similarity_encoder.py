@@ -649,10 +649,16 @@ class SimilarityEncoder(OneHotEncoder):
             (len(X), vocabulary_count_matrix.shape[0]),
             dtype=self.dtype,
         )
-        for x, out_row in zip(X, out):
-            out_row[:] = se_dict[x]
-
-        return np.nan_to_num(out, copy=False)
+        # print([X.values_host,X])
+        for x, out_row in zip(X.values_host, out):
+            # print(X)
+            # print(x)
+            # print(out_row[:])
+            # print(cudf.DataFrame(se_dict).iloc[x])
+            # print(X.values_host)
+            out_row = cudf.DataFrame(se_dict).iloc[x] #cp.round(x).astype(int)] #se_dict[x] 
+ 
+        return np.nan_to_num(out)#, copy=False)
 
     def fit_transform(self, X, y=None, **fit_params) -> np.array:
         """

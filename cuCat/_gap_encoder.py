@@ -137,7 +137,7 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
         self.H_dict_ = dict()
         # Build the n-grams counts matrix unq_V on unique elements of X
         unq_X, lookup = np.unique((X), return_inverse=True)
-        unq_X=np.array_str(unq_X)
+        unq_X=np.array2string(unq_X,precision=2, separator=',', suppress_small=True)
         unq_V = self.ngrams_count_.fit_transform(unq_X)
         if self.add_words:  # Add word counts to unq_V
             unq_V2 = self.word_count_.fit_transform(unq_X)
@@ -175,6 +175,7 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
         """
         H_out = np.empty((len(X), self.n_components))
         for x, h_out in zip(X, H_out):
+            # print([self.H_dict_,x])
             h_out[:] = self.H_dict_[x]
         return H_out
 
@@ -398,13 +399,13 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
 
         # Build n-grams/word counts matrix
         unq_X, lookup = np.unique((X), return_inverse=True)
-        unq_X=np.array_str(unq_X)
-        unq_V = self.ngrams_count_.transform(unq_X)
+        unq_XX=np.array2string(unq_X,precision=2, separator=',', suppress_small=True)
+        unq_V = self.ngrams_count_.transform(unq_XX)
         if self.add_words:
-            unq_V2 = self.word_count_.transform(unq_X)
+            unq_V2 = self.word_count_.transform(unq_XX)
             unq_V = sparse.hstack((unq_V, unq_V2), format="csr")
-
-        self._add_unseen_keys_to_H_dict(unq_X)
+        # unq_X = np.unique((X))
+        self._add_unseen_keys_to_H_dict(unq_XX)
         unq_H = self._get_H(unq_X)
         # Given the learnt topics W, optimize the activations H to fit V = HW
         for slice in gen_batches(n=unq_H.shape[0], batch_size=self.batch_size):
@@ -454,13 +455,13 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
         # Check if it is not the first batch
         if hasattr(self, "vocabulary"):  # Update unq_X, unq_V with new batch
             unq_X, lookup = np.unique((X), return_inverse=True)
-            unq_X=np.array_str(unq_X)
+            unq_X=np.array2string(unq_X)
             unq_V = self.ngrams_count_.transform(unq_X)
             if self.add_words:
                 unq_V2 = self.word_count_.transform(unq_X)
                 unq_V = sparse.hstack((unq_V, unq_V2), format="csr")
 
-            unseen_X = np.setdiff1d(unq_X, np.array([*self.H_dict_]))
+            unseen_X = np.setdiff1d(unq_X, np.array([*self.H_dict_]).values)
             unseen_V = self.ngrams_count_.transform(unseen_X)
             if self.add_words:
                 unseen_V2 = self.word_count_.transform(unseen_X)
@@ -507,8 +508,15 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
         """
         Add activations of unseen string categories from X to H_dict.
         """
-        unseen_X = np.setdiff1d(X, np.array([*self.H_dict_]))
+        # print(np.array(*[cudf.DataFrame(self.H_dict_).to_cupy()]))
+        # print(np.array(X, dtype=np.float64))
+        # print((X))
+        X=eval('np.array(' + X + ')')
+        unseen_X = np.setdiff1d(X, np.array(*[cudf.DataFrame(self.H_dict_).to_cupy()]))
+        print(unseen_X)
+        
         if unseen_X.size > 0:
+            unseen_X=np.array2string(unseen_X,precision=2, separator=',', suppress_small=True)
             unseen_V = self.ngrams_count_.transform(unseen_X)
             if self.add_words:
                 unseen_V2 = self.word_count_.transform(unseen_X)
@@ -537,15 +545,17 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
         # Check if first item has str or np.str_ type
         # assert isinstance(X[0], str), "Input data is not string. "
         unq_X = np.unique((X))
-        unq_X=np.array_str(unq_X)
+        unq_XX=np.array2string(unq_X,precision=2, separator=',', suppress_small=True)
         # Build the n-grams counts matrix V for the string data to encode
-        unq_V = self.ngrams_count_.transform(unq_X)
+        unq_V = self.ngrams_count_.transform(unq_XX)
         if self.add_words:  # Add words counts
-            unq_V2 = self.word_count_.transform(unq_X)
+            unq_V2 = self.word_count_.transform(unq_XX)
             unq_V = sparse.hstack((unq_V, unq_V2), format="csr")
         # Add unseen strings in X to H_dict
-        self._add_unseen_keys_to_H_dict(unq_X)
-        unq_H = self._get_H(unq_X)
+        # print(unq_X)
+        # unq_X = np.unique((X))
+        self._add_unseen_keys_to_H_dict(unq_XX)
+        unq_H = self._get_H(unq_XX)
         # Loop over batches
         for slc in gen_batches(n=unq_H.shape[0], batch_size=self.batch_size):
             # Given the learnt topics W, optimize H to fit V = HW
@@ -560,8 +570,9 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
                 gamma_scale_prior=self.gamma_scale_prior,
             )
         # Store and return the encoded vectors of X
-        self.H_dict_.update(zip(unq_X, unq_H))
-        return self._get_H(X)
+        self.H_dict_.update(zip(unq_XX, unq_H))
+        XX=np.array2string(X,precision=2, separator=',', suppress_small=True)
+        return self._get_H(XX)
 
 
 class GapEncoder(BaseEstimator, TransformerMixin):
@@ -796,7 +807,7 @@ class GapEncoder(BaseEstimator, TransformerMixin):
         # Copy parameter rho
         self.rho_ = self.rho
         # If X is a dataframe, store its column names
-        if isinstance(X, pd.DataFrame):
+        if isinstance(X, cudf.DataFrame):
             self.column_names_ = list(X.columns)
         # Check input data shape
         X = check_cuml_input(X)
@@ -858,7 +869,7 @@ class GapEncoder(BaseEstimator, TransformerMixin):
         """
 
         # If X is a dataframe, store its column names
-        if isinstance(X, pd.DataFrame):
+        if isinstance(X, cudf.DataFrame):
             self.column_names_ = list(X.columns)
         # Check input data shape
         X = check_cuml_input(X)
@@ -1029,8 +1040,7 @@ def _multiplicative_update_h(
     for vt, ht in zip(Vt, Ht):
         vt_ = vt.data
         idx = vt.indices
-        # print([W_WT1.shape,idx.tolist().shape])
-        # print([W_WT1,idx.tolist()])
+
         W_WT1_ = cp.array(W_WT1[:, idx.tolist()])
         W_ = cp.array(W[:, idx.tolist()])
         squared_norm = 1
@@ -1055,7 +1065,7 @@ def batch_lookup(
     for idx in range(0, len_iter, n):
         indices = lookup[slice(idx, min(idx + n, len_iter))]
         unq_indices = np.unique((indices))
-        # unq_indices=np.array_str(unq_indices)
+        # unq_indices=np.array2string(unq_indices)
         yield unq_indices, indices
 
 
@@ -1091,5 +1101,5 @@ def get_kmeans_prototypes(
     neighbors = NearestNeighbors()
     neighbors.fit(projected)
     indexes_prototypes = np.unique((neighbors.kneighbors(centers, 1)[-1]))
-    # indexes_prototypes=np.array_str(indexes_prototypes)
+    # indexes_prototypes=np.array2string(indexes_prototypes)
     return np.sort(X[indexes_prototypes])
