@@ -24,7 +24,7 @@ from cupyx.scipy import sparse
 from cuml.cluster import KMeans
 from cuml.feature_extraction.text import CountVectorizer #, HashingVectorizer
 from cuml.neighbors import NearestNeighbors
-from sklearn.preprocessing import OneHotEncoder
+from cuml.preprocessing import OneHotEncoder
 from sklearn.utils import check_random_state
 from sklearn.utils.fixes import _object_dtype_isnan
 
@@ -197,7 +197,7 @@ def get_kmeans_prototypes(
     return np.sort(X[indexes_prototypes])
 
 
-class SimilarityEncoder(OneHotEncoder):
+class SimilarityEncoder():
     """
     Encode string categorical features as a numeric array.
 
@@ -503,9 +503,9 @@ class SimilarityEncoder(OneHotEncoder):
                 ]
             )
 
-        self.drop_idx_ = self._compute_drop_idx()
-        if parse_version(sklearn.__version__) >= parse_version("1.1.0"):
-            self._infrequent_enabled = False
+        # self.drop_idx_ = self._compute_drop_idx()
+        # if parse_version(sklearn.__version__) >= parse_version("1.1.0"):
+        #     self._infrequent_enabled = False
 
         return self
 
@@ -609,8 +609,6 @@ class SimilarityEncoder(OneHotEncoder):
         vectorizer = self.vectorizers_[col_idx]
 
         unq_X = np.unique(X)
-        # print(X)
-        # print(unq_X)
         # unq_X_ = np.array([preprocess(x) for x in unq_X])
         unq_X_=np.array_str(unq_X)
 
@@ -641,7 +639,6 @@ class SimilarityEncoder(OneHotEncoder):
         
         
         for X_count_vector, x_str, i in zip(X_count_matrix, unq_X_, range(len(unq_X))):
-            # print([X_count_vector,vocabulary_count_matrix, x_str, vocabulary_ngram_count, se_dict, unq_X, i, self.ngram_range])
             
             _ngram_similarity_one_sample_inplace(X_count_vector, vocabulary_count_matrix, x_str, vocabulary_ngram_count, se_dict, unq_X, i, self.ngram_range)
 
@@ -649,13 +646,8 @@ class SimilarityEncoder(OneHotEncoder):
             (len(X), vocabulary_count_matrix.shape[0]),
             dtype=self.dtype,
         )
-        # print([X.values_host,X])
+
         for x, out_row in zip(X.values_host, out):
-            # print(X)
-            # print(x)
-            # print(out_row[:])
-            # print(cudf.DataFrame(se_dict).iloc[x])
-            # print(X.values_host)
             out_row = cudf.DataFrame(se_dict).iloc[x] #cp.round(x).astype(int)] #se_dict[x] 
  
         return np.nan_to_num(out)#, copy=False)

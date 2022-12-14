@@ -175,7 +175,6 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
         """
         H_out = np.empty((len(X), self.n_components))
         for x, h_out in zip(X, H_out):
-            # print([self.H_dict_,x])
             h_out[:] = self.H_dict_[x]
         return H_out
 
@@ -217,8 +216,6 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
             scale=self.gamma_scale_prior,
             size=(self.n_components, self.n_vocab)
         )
-        # print([self.n_components,self.n_vocab])
-        # print(W)
         # elif self.init == "k-means":
         #     prototypes = get_kmeans_prototypes(
         #         X,
@@ -255,7 +252,7 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
         #         W = np.concatenate((W, W2), axis=0)
         # else:
             # raise ValueError(f"Initialization method {self.init!r} does not exist. ")
-        # print(W.shape)
+
         W /= W.sum(axis=1, keepdims=True)
 
         A = np.ones((self.n_components, self.n_vocab)) * 1e-10
@@ -508,12 +505,8 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
         """
         Add activations of unseen string categories from X to H_dict.
         """
-        # print(np.array(*[cudf.DataFrame(self.H_dict_).to_cupy()]))
-        # print(np.array(X, dtype=np.float64))
-        # print((X))
         X=eval('np.array(' + X + ')')
         unseen_X = np.setdiff1d(X, np.array(*[cudf.DataFrame(self.H_dict_).to_cupy()]))
-        print(unseen_X)
         
         if unseen_X.size > 0:
             unseen_X=np.array2string(unseen_X,precision=2, separator=',', suppress_small=True)
@@ -552,8 +545,6 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
             unq_V2 = self.word_count_.transform(unq_XX)
             unq_V = sparse.hstack((unq_V, unq_V2), format="csr")
         # Add unseen strings in X to H_dict
-        # print(unq_X)
-        # unq_X = np.unique((X))
         self._add_unseen_keys_to_H_dict(unq_XX)
         unq_H = self._get_H(unq_XX)
         # Loop over batches
@@ -1007,7 +998,6 @@ def _rescale_h(V: np.array, H: np.array) -> np.array:
     Rescale the activations H.
     """
     epsilon = 1e-10  # in case of a document having length=0
-    # print(V)
     R=V.sum()#.A
     R=np.array(R)
     H *= np.maximum(epsilon, R)#V.sum(axis=1.A))

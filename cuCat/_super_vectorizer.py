@@ -14,7 +14,7 @@ from pandas.core.dtypes.base import ExtensionDtype
 from sklearn import __version__ as sklearn_version
 from sklearn.base import TransformerMixin, clone
 from cuml.compose import ColumnTransformer
-from sklearn.preprocessing import OneHotEncoder
+from cuml.preprocessing import OneHotEncoder
 
 from cuCat import DatetimeEncoder, GapEncoder
 from cuCat._utils import parse_version
@@ -310,7 +310,7 @@ class SuperVectorizer(ColumnTransformer):
         if isinstance(self.low_card_cat_transformer, sklearn.base.TransformerMixin):
             self.low_card_cat_transformer_ = clone(self.low_card_cat_transformer)
         elif self.low_card_cat_transformer is None:
-            self.low_card_cat_transformer_ = OneHotEncoder(drop="if_binary")
+            self.low_card_cat_transformer_ = OneHotEncoder(handle_unknown='ignore',output_type=self.output_type) #drop=if_binary
         elif self.low_card_cat_transformer == "remainder":
             self.low_card_cat_transformer_ = self.remainder
         else:

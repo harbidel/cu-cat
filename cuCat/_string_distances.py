@@ -86,8 +86,8 @@ def get_unique_ngrams(string: str, ngram_range: Tuple[int, int]):
 def get_ngrams(string, n):
     """Return the set of different tri-grams in a string"""
     # Pure Python implementation: no numpy
-    spaces = " "  # * (n // 2 + n % 2)
-    string = spaces + " ".join(string.lower().split()) + spaces
+    # spaces = " "  # * (n // 2 + n % 2)
+    string = " ".join(string.lower().split())
     string_list = [string[i:] for i in range(n)]
     return list(zip(*string_list))
 
@@ -108,6 +108,27 @@ def ngram_similarity(string1, string2, n, preprocess_strings=True):
     similarity = samegrams / (allgrams - samegrams)
     return similarity
 
+def cuml_ngram_similarity(string1, string2,n, preprocess_strings=True):
+    if preprocess_strings=True:
+        string1 = string1.replace(' ', '  ')
+        string1 = string1.replace(r'([^\s])', r'\1 ',regex=True)
+        string1 = cudf.Series(string1).str.normalize_characters()
+
+        string2 = string2.replace(' ','  ')
+        string2 = string2.replace(r'([^\s])', r'\1 ',regex=True)
+        string2 = cudf.Series(string2).str.normalize_characters()
+
+    ngrams1 = string1.str.ngrams_tokenize(n=4,separator=',',delimiter=' ')
+    count1 = ngrams1.value_counts()
+
+    ngrams2 = string2.str.ngrams_tokenize(n=4,separator=',',delimiter=' ')
+    count2 = ngrams2.value_counts()
+
+    cc=cudf.merge(count1,count2,right_index=True,left_index=True)
+    cc=cc[cc['title']==cc['document']]
+    samegrams=cc.title.sum()
+    similarity=CC/((len(ngrams1) + len(ngrams2))-CC)
+    return similarity
 
 if __name__ == "__main__":
     s1 = "aa"
