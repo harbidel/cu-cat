@@ -18,48 +18,31 @@ The principle is as follows:
 import warnings
 from typing import Dict, Generator, List, Literal, Optional, Tuple, Union
 
-import cupy as np
-import cudf as pd
+import numpy as np
+import cupy as cp
+import pandas as pd
 from numpy.random import RandomState
-from cupyx.scipy import sparse
+from scipy import sparse
 from sklearn import __version__ as sklearn_version
 from sklearn.base import BaseEstimator, TransformerMixin
-# from cuml.cluster import KMeans
-from cuml.feature_extraction.text import CountVectorizer #, HashingVectorizer
-from cuml.neighbors import NearestNeighbors
+from sklearn.cluster import KMeans
+from sklearn.feature_extraction.text import CountVectorizer, HashingVectorizer
+from sklearn.neighbors import NearestNeighbors
 from sklearn.utils import check_random_state, gen_batches
 from sklearn.utils.extmath import row_norms, safe_sparse_dot
 from sklearn.utils.fixes import _object_dtype_isnan
-# from numpy import unique
-# from gap_encoder import GapEncoder
 
-import torch
-from torchnmf.nmf import NMF
-from torchnmf.metrics import kl_div
+from ._utils import check_input, parse_version
 
-from importlib import reload
-# import utils
-# reload(utils)
-# from utils import * # check_cuml_input
+if parse_version(sklearn_version) < parse_version("0.24"):
+    from sklearn.cluster._kmeans import _k_init
+else:
+    from sklearn.cluster import kmeans_plusplus
 
+from sklearn.decomposition._nmf import _beta_divergence
 
-import vectorizers
-reload(vectorizers)
-from vectorizers import *
-
-
-from cuCat._utils import check_cuml_input, parse_version
-
-# if parse_version(sklearn_version) < parse_version("0.24"):
-#     from sklearn.cluster._kmeans import _k_init
-# else:
-    # from sklearn.cluster import kmeans_plusplus
-from cuml import KMeans
-
-    
-
-# from sklearn.decomposition._nmf import _beta_divergence
-from cuml.metrics import kl_divergence
+# Ignore lines too long, as some things in the docstring cannot be cut.
+# flake8: noqa: E501
 
 
 class GapEncoderColumn(BaseEstimator, TransformerMixin):
@@ -67,7 +50,7 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
     """See GapEncoder's docstring."""
 
     rho_: float
-    H_dict_: Dict[np.array, np.array]
+    H_dict_: Dict[np.ndarray, np.ndarray]
 
     def __init__(
         self,
@@ -79,7 +62,7 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
         rescale_rho: bool = False,
         hashing: bool = False,
         hashing_n_features: int = 2**12,
-        init: Literal["k-means++", "random", "k-means"] = "random",
+        init: Literal["k-means++", "random", "k-means"] = "k-means++",
         tol: float = 1e-4,
         min_iter: int = 2,
         max_iter: int = 5,
@@ -89,6 +72,7 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
         random_state: Optional[Union[int, RandomState]] = None,
         rescale_W: bool = True,
         max_iter_e_step: int = 20,
+        gpu: bool = True,
     ):
         self.ngram_range = ngram_range
         self.n_components = n_components
@@ -108,8 +92,9 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
         self.random_state = check_random_state(random_state)
         self.rescale_W = rescale_W
         self.max_iter_e_step = max_iter_e_step
+        self.gpu = gpu
 
-    def _init_vars(self, X) -> Tuple[np.array, np.array, np.array]:
+    def _init_vars(self, X) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
         """
         Build the bag-of-n-grams representation V of X and initialize
         the topics W.
@@ -140,18 +125,17 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
         # Init H_dict_ with empty dict to train from scratch
         self.H_dict_ = dict()
         # Build the n-grams counts matrix unq_V on unique elements of X
-        unq_X, lookup = np.unique((X), return_inverse=True)
-        unq_X=np.array2string(unq_X,precision=2, separator=',', suppress_small=True)
+        unq_X, lookup = np.unique(X, return_inverse=True)
         unq_V = self.ngrams_count_.fit_transform(unq_X)
         if self.add_words:  # Add word counts to unq_V
             unq_V2 = self.word_count_.fit_transform(unq_X)
             unq_V = sparse.hstack((unq_V, unq_V2), format="csr")
 
         if not self.hashing:  # Build n-grams/word vocabulary
-            # if parse_version(sklearn_version) < parse_version("1.0"):
-            self.vocabulary = self.ngrams_count_.get_feature_names()
-            # else:
-                # self.vocabulary = self.ngrams_count_.get_feature_names_out()
+            if parse_version(sklearn_version) < parse_version("1.0"):
+                self.vocabulary = self.ngrams_count_.get_feature_names()
+            else:
+                self.vocabulary = self.ngrams_count_.get_feature_names_out()
             if self.add_words:
                 if parse_version(sklearn_version) < parse_version("1.0"):
                     self.vocabulary = np.concatenate(
@@ -163,7 +147,7 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
                     )
         _, self.n_vocab = unq_V.shape
         # Init the topics W given the n-grams counts V
-        self.W_, self.A_, self.B_ = self._init_w(unq_V[lookup], (X))
+        self.W_, self.A_, self.B_ = self._init_w(unq_V[lookup], X)
         # Init the activations unq_H of each unique input string
         unq_H = _rescale_h(unq_V, np.ones((len(unq_X), self.n_components)))
         # Update self.H_dict_ with unique input strings and their activations
@@ -192,73 +176,70 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
         If self.init='k-means', topics are initialized with a KMeans on the
         n-grams counts.
         """
-        # if self.init == "k-means++":
-            # if parse_version(sklearn_version) < parse_version("0.24"):
-            #     W = (
-            #         _k_init(
-            #             V,
-            #             self.n_components,
-            #             x_squared_norms=row_norms(V, squared=True),
-            #             random_state=self.random_state,
-            #             n_local_trials=None,
-            #         )
-            #         + 0.1
-            #     )
-
-            # W, _ = KMeans(
-            #     V,
-            #     self.n_components,
-            #     x_squared_norms=row_norms(V, squared=True),
-            #     random_state=self.random_state,
-            #     n_local_trials=None,
-            # )
-            # W = W + 0.1  # To avoid restricting topics to a few n-grams only
-        # if self.init == "random":
-        # random_state=check_random_state(None)
-        W = self.random_state.gamma(
-            shape=self.gamma_shape_prior,
-            scale=self.gamma_scale_prior,
-            size=(self.n_components, self.n_vocab)
-        )
-        # elif self.init == "k-means":
-        #     prototypes = get_kmeans_prototypes(
-        #         X,
-        #         self.n_components,
-        #         analyzer=self.analyzer,
-        #         random_state=self.random_state,
-        #     )
-        #     W = self.ngrams_count_.transform(prototypes).A + 0.1
-        #     if self.add_words:
-        #         W2 = self.word_count_.transform(prototypes).A + 0.1
-        #         W = np.hstack((W, W2))
-        #     # if k-means doesn't find the exact number of prototypes
-        #     if W.shape[0] < self.n_components:
-        #         if parse_version(sklearn_version) < parse_version("0.24"):
-        #             W2 = (
-        #                 _k_init(
-        #                     V,
-        #                     self.n_components - W.shape[0],
-        #                     x_squared_norms=row_norms(V, squared=True),
-        #                     random_state=self.random_state,
-        #                     n_local_trials=None,
-        #                 )
-        #                 + 0.1
-        #             )
-        #         else:
-        #             W2, _ = kmeans_plusplus(
-        #                 V,
-        #                 self.n_components - W.shape[0],
-        #                 x_squared_norms=row_norms(V, squared=True),
-        #                 random_state=self.random_state,
-        #                 n_local_trials=None,
-        #             )
-        #             W2 = W2 + 0.1
-        #         W = np.concatenate((W, W2), axis=0)
-        # else:
-            # raise ValueError(f"Initialization method {self.init!r} does not exist. ")
-
+        if self.init == "k-means++":
+            if parse_version(sklearn_version) < parse_version("0.24"):
+                W = (
+                    _k_init(
+                        V,
+                        self.n_components,
+                        x_squared_norms=row_norms(V, squared=True),
+                        random_state=self.random_state,
+                        n_local_trials=None,
+                    )
+                    + 0.1
+                )
+            else:
+                W, _ = kmeans_plusplus(
+                    V,
+                    self.n_components,
+                    x_squared_norms=row_norms(V, squared=True),
+                    random_state=self.random_state,
+                    n_local_trials=None,
+                )
+                W = W + 0.1  # To avoid restricting topics to a few n-grams only
+        elif self.init == "random":
+            W = self.random_state.gamma(
+                shape=self.gamma_shape_prior,
+                scale=self.gamma_scale_prior,
+                size=(self.n_components, self.n_vocab),
+            )
+        elif self.init == "k-means":
+            prototypes = get_kmeans_prototypes(
+                X,
+                self.n_components,
+                analyzer=self.analyzer,
+                random_state=self.random_state,
+            )
+            W = self.ngrams_count_.transform(prototypes).A + 0.1
+            if self.add_words:
+                W2 = self.word_count_.transform(prototypes).A + 0.1
+                W = np.hstack((W, W2))
+            # if k-means doesn't find the exact number of prototypes
+            if W.shape[0] < self.n_components:
+                if parse_version(sklearn_version) < parse_version("0.24"):
+                    W2 = (
+                        _k_init(
+                            V,
+                            self.n_components - W.shape[0],
+                            x_squared_norms=row_norms(V, squared=True),
+                            random_state=self.random_state,
+                            n_local_trials=None,
+                        )
+                        + 0.1
+                    )
+                else:
+                    W2, _ = kmeans_plusplus(
+                        V,
+                        self.n_components - W.shape[0],
+                        x_squared_norms=row_norms(V, squared=True),
+                        random_state=self.random_state,
+                        n_local_trials=None,
+                    )
+                    W2 = W2 + 0.1
+                W = np.concatenate((W, W2), axis=0)
+        else:
+            raise ValueError(f"Initialization method {self.init!r} does not exist. ")
         W /= W.sum(axis=1, keepdims=True)
-
         A = np.ones((self.n_components, self.n_vocab)) * 1e-10
         B = A.copy()
         return W, A, B
@@ -281,58 +262,52 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
         """
         # Copy parameter rho
         self.rho_ = self.rho
-        # # Check if first item has str or np.str_ type
-        # # assert isinstance(X[0], str), "Input data is not string. "
-        # # Make n-grams counts matrix unq_V
-        # unq_X, unq_V, lookup = self._init_vars(X)
-        # n_batch = (len(X) - 1) // self.batch_size + 1
-        # del X
-        # # Get activations unq_H
-        # unq_H = self._get_H(unq_X)
+        # Check if first item has str or np.str_ type
+        assert isinstance(X[0], str), "Input data is not string. "
+        # Make n-grams counts matrix unq_V
+        unq_X, unq_V, lookup = self._init_vars(X)
+        n_batch = (len(X) - 1) // self.batch_size + 1
+        del X
+        # Get activations unq_H
+        unq_H = self._get_H(unq_X)
 
-#         for n_iter_ in range(self.max_iter):
-#             # Loop over batches
-#             for i, (unq_idx, idx) in enumerate(batch_lookup(lookup, n=self.batch_size)):
-#                 if i == n_batch - 1:
-#                     W_last = self.W_.copy()
-#                 # Update activations unq_H
-#                 unq_H[unq_idx] = _multiplicative_update_h(
-#                     unq_V[unq_idx], #.get(),
-#                     self.W_,
-#                     unq_H[unq_idx], #.get(),
-#                     epsilon=1e-3,
-#                     max_iter=self.max_iter_e_step,
-#                     rescale_W=self.rescale_W,
-#                     gamma_shape_prior=self.gamma_shape_prior,
-#                     gamma_scale_prior=self.gamma_scale_prior,
-#                 )
-#                 # Update the topics self.W_
-#                 _multiplicative_update_w(
-#                     unq_V[idx],
-#                     self.W_,
-#                     self.A_,
-#                     self.B_,
-#                     unq_H[idx],
-#                     self.rescale_W,
-#                     self.rho_,
-#                 )
+        for n_iter_ in range(self.max_iter):
+            # Loop over batches
+            for i, (unq_idx, idx) in enumerate(batch_lookup(lookup, n=self.batch_size)):
+                if i == n_batch - 1:
+                    W_last = self.W_.copy()
+                # Update activations unq_H
+                unq_H[unq_idx] = _multiplicative_update_h(
+                    unq_V[unq_idx],
+                    self.W_,
+                    unq_H[unq_idx],
+                    epsilon=1e-3,
+                    max_iter=self.max_iter_e_step,
+                    rescale_W=self.rescale_W,
+                    gamma_shape_prior=self.gamma_shape_prior,
+                    gamma_scale_prior=self.gamma_scale_prior,
+                    gpu = self.gpu,
+                )
+                # Update the topics self.W_
+                _multiplicative_update_w(
+                    unq_V[idx],
+                    self.W_,
+                    self.A_,
+                    self.B_,
+                    unq_H[idx],
+                    self.rescale_W,
+                    self.rho_,
+                )
 
-#                 if i == n_batch - 1:
-#                     # Compute the norm of the update of W in the last batch
-#                     W_change = np.linalg.norm(self.W_ - W_last) / np.linalg.norm(W_last)
+                if i == n_batch - 1:
+                    # Compute the norm of the update of W in the last batch
+                    W_change = np.linalg.norm(self.W_ - W_last) / np.linalg.norm(W_last)
 
-#             if (W_change < self.tol) and (n_iter_ >= self.min_iter - 1):
-#                 break  # Stop if the change in W is smaller than the tolerance
-        AA=torch.Tensor(X.toarray())
-        model = NMF(AA.t().shape, rank=self.rho_)
-        model.fit(AA.t())
-        self.H_dict_.update=model.W.detach().numpy()
-        # self.H_dict_.update=model.W @ model.H.t()
-        
-        
+            if (W_change < self.tol) and (n_iter_ >= self.min_iter - 1):
+                break  # Stop if the change in W is smaller than the tolerance
 
         # Update self.H_dict_ with the learned encoded vectors (activations)
-        # self.H_dict_.update(zip(unq_X, unq_H))
+        self.H_dict_.update(zip(unq_X, unq_H))
         return self
 
     def get_feature_names(self, n_labels=3, prefix=""):
@@ -406,14 +381,13 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
         """
 
         # Build n-grams/word counts matrix
-        unq_X, lookup = np.unique((X), return_inverse=True)
-        unq_XX=np.array2string(unq_X,precision=2, separator=',', suppress_small=True)
-        unq_V = self.ngrams_count_.transform(unq_XX)
+        unq_X, lookup = np.unique(X, return_inverse=True)
+        unq_V = self.ngrams_count_.transform(unq_X)
         if self.add_words:
-            unq_V2 = self.word_count_.transform(unq_XX)
+            unq_V2 = self.word_count_.transform(unq_X)
             unq_V = sparse.hstack((unq_V, unq_V2), format="csr")
-        # unq_X = np.unique((X))
-        self._add_unseen_keys_to_H_dict(unq_XX)
+
+        self._add_unseen_keys_to_H_dict(unq_X)
         unq_H = self._get_H(unq_X)
         # Given the learnt topics W, optimize the activations H to fit V = HW
         for slice in gen_batches(n=unq_H.shape[0], batch_size=self.batch_size):
@@ -426,9 +400,10 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
                 rescale_W=self.rescale_W,
                 gamma_shape_prior=self.gamma_shape_prior,
                 gamma_scale_prior=self.gamma_scale_prior,
+                gpu = self.gpu,
             )
         # Compute the KL divergence between V and HW
-        kl_divergence = kl_divergence( #_beta_divergence(
+        kl_divergence = _beta_divergence(
             unq_V[lookup], unq_H[lookup], self.W_, "kullback-leibler", square_root=False
         )
         return kl_divergence
@@ -462,14 +437,13 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
         assert isinstance(X[0], str), "Input data is not string. "
         # Check if it is not the first batch
         if hasattr(self, "vocabulary"):  # Update unq_X, unq_V with new batch
-            unq_X, lookup = np.unique((X), return_inverse=True)
-            unq_X=np.array2string(unq_X)
+            unq_X, lookup = np.unique(X, return_inverse=True)
             unq_V = self.ngrams_count_.transform(unq_X)
             if self.add_words:
                 unq_V2 = self.word_count_.transform(unq_X)
                 unq_V = sparse.hstack((unq_V, unq_V2), format="csr")
 
-            unseen_X = np.setdiff1d(unq_X, np.array([*self.H_dict_]).values)
+            unseen_X = np.setdiff1d(unq_X, np.array([*self.H_dict_]))
             unseen_V = self.ngrams_count_.transform(unseen_X)
             if self.add_words:
                 unseen_V2 = self.word_count_.transform(unseen_X)
@@ -497,6 +471,7 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
             rescale_W=self.rescale_W,
             gamma_shape_prior=self.gamma_shape_prior,
             gamma_scale_prior=self.gamma_scale_prior,
+            gpu = self.gpu,
         )
         # Update the topics self.W_
         _multiplicative_update_w(
@@ -516,11 +491,8 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
         """
         Add activations of unseen string categories from X to H_dict.
         """
-        X=eval('np.array(' + X + ')')
-        unseen_X = np.setdiff1d(X, np.array(*[cudf.DataFrame(self.H_dict_).to_cupy()]))
-        
+        unseen_X = np.setdiff1d(X, np.array([*self.H_dict_]))
         if unseen_X.size > 0:
-            unseen_X=np.array2string(unseen_X,precision=2, separator=',', suppress_small=True)
             unseen_V = self.ngrams_count_.transform(unseen_X)
             if self.add_words:
                 unseen_V2 = self.word_count_.transform(unseen_X)
@@ -547,17 +519,16 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
             Transformed input.
         """
         # Check if first item has str or np.str_ type
-        # assert isinstance(X[0], str), "Input data is not string. "
-        unq_X = np.unique((X))
-        unq_XX=np.array2string(unq_X,precision=2, separator=',', suppress_small=True)
+        assert isinstance(X[0], str), "Input data is not string. "
+        unq_X = np.unique(X)
         # Build the n-grams counts matrix V for the string data to encode
-        unq_V = self.ngrams_count_.transform(unq_XX)
+        unq_V = self.ngrams_count_.transform(unq_X)
         if self.add_words:  # Add words counts
-            unq_V2 = self.word_count_.transform(unq_XX)
+            unq_V2 = self.word_count_.transform(unq_X)
             unq_V = sparse.hstack((unq_V, unq_V2), format="csr")
         # Add unseen strings in X to H_dict
-        self._add_unseen_keys_to_H_dict(unq_XX)
-        unq_H = self._get_H(unq_XX)
+        self._add_unseen_keys_to_H_dict(unq_X)
+        unq_H = self._get_H(unq_X)
         # Loop over batches
         for slc in gen_batches(n=unq_H.shape[0], batch_size=self.batch_size):
             # Given the learnt topics W, optimize H to fit V = HW
@@ -570,81 +541,99 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
                 rescale_W=self.rescale_W,
                 gamma_shape_prior=self.gamma_shape_prior,
                 gamma_scale_prior=self.gamma_scale_prior,
+                gpu = self.gpu,
             )
         # Store and return the encoded vectors of X
-        self.H_dict_.update(zip(unq_XX, unq_H))
-        XX=np.array2string(X,precision=2, separator=',', suppress_small=True)
-        return self._get_H(XX)
+        self.H_dict_.update(zip(unq_X, unq_H))
+        return self._get_H(X)
 
 
 class GapEncoder(BaseEstimator, TransformerMixin):
-    """
+    """Constructs latent topics with continuous encoding.
+
     This encoder can be understood as a continuous encoding on a set of latent
     categories estimated from the data. The latent categories are built by
     capturing combinations of substrings that frequently co-occur.
 
-    The GapEncoder supports online learning on batches of data for
-    scalability through the partial_fit method.
+    The :class:`~dirty_cat.GapEncoder` supports online learning on batches of
+    data for scalability through the :func:`~dirty_cat.GapEncoder.partial_fit`
+    method.
 
     Parameters
     ----------
-    n_components : int, default=10
+    n_components : int, optional, default=10
         Number of latent categories used to model string data.
-    batch_size : int, default=128
+    batch_size : int, optional, default=128
         Number of samples per batch.
-    gamma_shape_prior : float, default=1.1
+    gamma_shape_prior : float, optional, default=1.1
         Shape parameter for the Gamma prior distribution.
-    gamma_scale_prior : float, default=1.0
+    gamma_scale_prior : float, optional, default=1.0
         Scale parameter for the Gamma prior distribution.
-    rho : float, default=0.95
-        Weight parameter for the update of the W matrix.
-    rescale_rho : bool, default=False
-        If true, use rho ** (batch_size / len(X)) instead of rho to obtain an
+    rho : float, optional, default=0.95
+        Weight parameter for the update of the *W* matrix.
+    rescale_rho : bool, optional, default=False
+        If true, use ``rho ** (batch_size / len(X))`` instead of rho to obtain an
         update rate per iteration that is independent of the batch size.
-    hashing : bool, default=False
-        If true, HashingVectorizer is used instead of CountVectorizer.
-        It has the advantage of being very low memory scalable to large
+    hashing : bool, optional, default=False
+        If true, :class:`~sklearn.feature_extraction.text.HashingVectorizer`
+        is used instead of :class:`~sklearn.feature_extraction.text.CountVectorizer`.
+        It has the advantage of being very low memory, scalable to large
         datasets as there is no need to store a vocabulary dictionary in
         memory.
-    hashing_n_features : int, default=2**12
-        Number of features for the HashingVectorizer. Only relevant if
-        hashing=True.
-    init : typing.Literal["k-means++", "random", "k-means"], default='k-means++'
+    hashing_n_features : int, optional, default=2**12
+        Number of features for the :class:`~sklearn.feature_extraction.text.HashingVectorizer`.
+        Only relevant if `hashing=True`.
+    init : {"k-means++", "random", "k-means"}, optional, default='k-means++'
         Initialization method of the W matrix.
-        Options: {'k-means++', 'random', 'k-means'}.
-        If init='k-means++', we use the init method of sklearn.cluster.KMeans.
-        If init='random', topics are initialized with a Gamma distribution.
-        If init='k-means', topics are initialized with a KMeans on the n-grams
+        If `init='k-means++'`, we use the init method of :class:`~sklearn.cluster.KMeans`.
+        If `init='random'`, topics are initialized with a Gamma distribution.
+        If `init='k-means'`, topics are initialized with a KMeans on the n-grams
         counts. This usually makes convergence faster but is a bit slower.
     tol : float, default=1e-4
-        Tolerance for the convergence of the matrix W.
-    min_iter : int, default=2
+        Tolerance for the convergence of the matrix *W*.
+    min_iter : int, optional, default=2
         Minimum number of iterations on the input data.
-    max_iter : int, default=5
+    max_iter : int, optional, default=5
         Maximum number of iterations on the input data.
-    ngram_range : typing.Tuple[int, int], default=(2, 4)
+    ngram_range : int 2-tuple, optional, default=(2, 4)
         The range of ngram length that will be used to build the
         bag-of-n-grams representation of the input data.
-    analyzer : typing.Literal["word", "char", "char_wb"], default='char'.
-        Analyzer parameter for the CountVectorizer/HashingVectorizer.
-        Options: {‘word’, ‘char’, ‘char_wb’}, describing whether the matrix V
-        to factorize should be made of word counts or character n-gram counts.
+    analyzer : {"word", "char", "char_wb"}, optional, default='char'
+        Analyzer parameter for the :class:`~sklearn.feature_extraction.text.HashingVectorizer`
+        / :class:`~sklearn.feature_extraction.text.CountVectorizer`.
+        Describes whether the matrix *V* to factorize should be made of word counts
+        or character n-gram counts.
         Option ‘char_wb’ creates character n-grams only from text inside word
         boundaries; n-grams at the edges of words are padded with space.
-    add_words : bool, default=False
+    add_words : bool, optional, default=False
         If true, add the words counts to the bag-of-n-grams representation
         of the input data.
-    random_state : typing.Optional[Union[int, RandomState]], default=None
-        Pass an int for reproducible output across multiple function calls.
-    rescale_W : bool, default=True
-        If true, the weight matrix W is rescaled at each iteration
+    random_state : int, :class:`numpy.random.RandomState` or None, optional, default=None
+        RNG seed for reproducible output across multiple function calls.
+    rescale_W : bool, optional, default=True
+        If true, the weight matrix *W* is rescaled at each iteration
         to have a l1 norm equal to 1 for each row.
     max_iter_e_step : int, default=20
         Maximum number of iterations to adjust the activations h at each step.
-    handle_missing : typing.Literal["error", "empty_impute"], default=empty_impute
-        Whether to raise an error or impute with empty string '' if missing
+    handle_missing : {"error", "empty_impute"}, optional, default='empty_impute'
+        Whether to raise an error or impute with empty string ``''`` if missing
         values (NaN) are present during fit (default is to impute).
         In the inverse transform, the missing category will be denoted as None.
+
+    Attributes
+    ----------
+    rho_: float
+        Effective update rate for the W matrix
+    fitted_models_: list of GapEncoderColumn
+        Column-wise fitted GapEncoders
+    column_names_: list of str
+        Column names of the data the Gap was fitted on
+
+    References
+    ----------
+    For a detailed description of the method, see
+    `Encoding high-cardinality string categorical variables
+    <https://hal.inria.fr/hal-02171256v4>`_ by Cerda, Varoquaux (2019).
 
     Examples
     --------
@@ -658,13 +647,13 @@ class GapEncoder(BaseEstimator, TransformerMixin):
     >>> enc.fit(X)
     GapEncoder(n_components=2)
 
-    The :class:`~cuCat.GapEncoder` has found the following two topics:
+    The :class:`~dirty_cat.GapEncoder` has found the following two topics:
 
     >>> enc.get_feature_names()
     ['england, london, uk', 'france, paris, pqris']
 
-    He got it right, reccuring topics are "London" and "England" on the
-    one side and and "Paris" and "France" on the other.
+    It got it right, reccuring topics are "London" and "England" on the
+    one side and "Paris" and "France" on the other.
 
     As this is a continuous encoding, we can look at the level of
     activation of each topic for each category:
@@ -680,19 +669,6 @@ class GapEncoder(BaseEstimator, TransformerMixin):
           [ 0.05002016,  4.54997983]])
 
     The higher the value, the bigger the correspondance with the topic.
-
-    Attributes
-    ----------
-    rho_: float
-    fitted_models_: typing.List[GapEncoderColumn]
-    column_names_: typing.List[str]
-
-    References
-    ----------
-    For a detailed description of the method, see
-    `Encoding high-cardinality string categorical variables
-    <https://hal.inria.fr/hal-02171256v4>`_ by Cerda, Varoquaux (2019).
-
     """
 
     rho_: float
@@ -709,7 +685,7 @@ class GapEncoder(BaseEstimator, TransformerMixin):
         rescale_rho: bool = False,
         hashing: bool = False,
         hashing_n_features: int = 2**12,
-        init: Literal["k-means++", "random", "k-means"] = "random",
+        init: Literal["k-means++", "random", "k-means"] = "k-means++",
         tol: float = 1e-4,
         min_iter: int = 2,
         max_iter: int = 5,
@@ -809,10 +785,10 @@ class GapEncoder(BaseEstimator, TransformerMixin):
         # Copy parameter rho
         self.rho_ = self.rho
         # If X is a dataframe, store its column names
-        if isinstance(X, cudf.DataFrame):
+        if isinstance(X, pd.DataFrame):
             self.column_names_ = list(X.columns)
         # Check input data shape
-        X = check_cuml_input(X)
+        X = check_input(X)
         X = self._handle_missing(X)
         self.fitted_models_ = []
         for k in range(X.shape[1]):
@@ -843,7 +819,7 @@ class GapEncoder(BaseEstimator, TransformerMixin):
         """
 
         # Check input data shape
-        X = check_cuml_input(X)
+        X = check_input(X)
         X = self._handle_missing(X)
         X_enc = []
         for k in range(X.shape[1]):
@@ -871,10 +847,10 @@ class GapEncoder(BaseEstimator, TransformerMixin):
         """
 
         # If X is a dataframe, store its column names
-        if isinstance(X, cudf.DataFrame):
+        if isinstance(X, pd.DataFrame):
             self.column_names_ = list(X.columns)
         # Check input data shape
-        X = check_cuml_input(X)
+        X = check_input(X)
         X = self._handle_missing(X)
         # Init the `GapEncoderColumn` instances if the model was
         # not fitted already.
@@ -964,7 +940,7 @@ class GapEncoder(BaseEstimator, TransformerMixin):
         float.
             The Kullback-Leibler divergence.
         """
-        X = check_cuml_input(X)
+        X = check_input(X)
         kl_divergence = 0
         for k in range(X.shape[1]):
             kl_divergence += self.fitted_models_[k].score(X[:, k])
@@ -994,7 +970,6 @@ def _multiplicative_update_w(
     Multiplicative update step for the topics W.
     """
     A *= rho
-    W=np.array(W)
     A += W * safe_sparse_dot(Ht.T, Vt.multiply(1 / (np.dot(Ht, W) + 1e-10)))
     B *= rho
     B += Ht.sum(axis=0).reshape(-1, 1)
@@ -1009,27 +984,27 @@ def _rescale_h(V: np.array, H: np.array) -> np.array:
     Rescale the activations H.
     """
     epsilon = 1e-10  # in case of a document having length=0
-    R=V.sum()#.A
-    R=np.array(R)
-    H *= np.maximum(epsilon, R)#V.sum(axis=1.A))
-    # H *= np.maximum(epsilon, V.sum(axis=1).A)
+    H *= np.maximum(epsilon, V.sum(axis=1).A)
     H /= H.sum(axis=1, keepdims=True)
     return H
 
 
-def multiplicative_update_gpu(
-    Vt: cp.array,
-    W: cp.array,
-    Ht: cp.array,
+def _multiplicative_update_h(
+    Vt: np.array,
+    W: np.array,
+    Ht: np.array,
     epsilon: float = 1e-3,
     max_iter: int = 10,
     rescale_W: bool = False,
     gamma_shape_prior: float = 1.1,
     gamma_scale_prior: float = 1.0,
+    gpu: bool = True,
 ):
     """
     Multiplicative update step for the activations H.
     """
+    if gpu:
+        W,Ht=[cp.array(X) for X in [W,Ht]]    
     if rescale_W:
         WT1 = 1 + 1 / gamma_scale_prior
         W_WT1 = W / WT1
@@ -1038,22 +1013,21 @@ def multiplicative_update_gpu(
         W_WT1 = W / WT1.reshape(-1, 1)
     const = (gamma_shape_prior - 1) / WT1
     squared_epsilon = epsilon**2
-    for vt, ht in zip(Vt, Ht):
-        vt_ = vt.data
-        idx = cp.arange(len(vt)) #vt.indices
-
-        W_WT1_ = cp.array(W_WT1[:, idx.tolist()])
-        W_ = cp.array(W[:, idx.tolist()])
+    for vt, ht in zip(Vt,Ht):
+        vt_ = cp.array(vt.data)
+        idx = vt.indices
+        W_WT1_ = W_WT1[:, idx]
+        W_ = W[:, idx]
         squared_norm = 1
         for n_iter_ in range(max_iter):
             if squared_norm <= squared_epsilon:
                 break
-            aux = cp.dot(W_WT1_, cp.divide(vt , (cp.dot(ht, W_) + 1e-10)))
+            Wht=cp.dot(ht, W_)
+            aux = cp.dot(W_WT1_, cp.divide(vt_ , (Wht + 1e-10)))
             ht_out = ht * aux + const
             squared_norm = cp.dot(ht_out - ht, ht_out - ht) / cp.dot(ht, ht)
             ht[:] = ht_out
     return
-    
 
 
 def batch_lookup(
@@ -1066,8 +1040,7 @@ def batch_lookup(
     len_iter = len(lookup)
     for idx in range(0, len_iter, n):
         indices = lookup[slice(idx, min(idx + n, len_iter))]
-        unq_indices = np.unique((indices))
-        # unq_indices=np.array2string(unq_indices)
+        unq_indices = np.unique(indices)
         yield unq_indices, indices
 
 
@@ -1102,6 +1075,5 @@ def get_kmeans_prototypes(
     centers = kmeans.cluster_centers_
     neighbors = NearestNeighbors()
     neighbors.fit(projected)
-    indexes_prototypes = np.unique((neighbors.kneighbors(centers, 1)[-1]))
-    # indexes_prototypes=np.array2string(indexes_prototypes)
+    indexes_prototypes = np.unique(neighbors.kneighbors(centers, 1)[-1])
     return np.sort(X[indexes_prototypes])
