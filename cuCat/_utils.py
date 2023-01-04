@@ -44,8 +44,17 @@ class LRUDict:
 def check_cuml_input(X) -> np.array:
     
     for i in X.columns:
-        X[i]=np.frombuffer(X[i].to_numpy())
-    X_=X.to_cupy()
+        X_=X.dropna()
+        # try:
+        #     X_[i]=X[i].astype(float)
+        # except:
+            # X_[i]=X[i]
+        # if isinstance(X[i][0],str):
+        
+        if isinstance(X[i][0], (int, float, complex,np.float32)) and not isinstance(X[i][0], bool):
+            X_[i]=X[i].astype(float)
+        else:
+            X_[i]=np.array_str(X[i]) #.to_cupy()
     
     return X_
 
@@ -57,8 +66,6 @@ def check_input(X) -> np.array:
     # TODO check for weird type of input to pass scikit learn tests
     #  without messing with the original type too much
 
-    
-    
     X_ = check_array(
         X, #.to_cupy(),
         dtype=None,

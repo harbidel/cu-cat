@@ -33,6 +33,10 @@ from sklearn.utils.fixes import _object_dtype_isnan
 # from numpy import unique
 # from gap_encoder import GapEncoder
 
+import torch
+from torchnmf.nmf import NMF
+from torchnmf.metrics import kl_div
+
 from importlib import reload
 # import utils
 # reload(utils)
@@ -277,51 +281,58 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
         """
         # Copy parameter rho
         self.rho_ = self.rho
-        # Check if first item has str or np.str_ type
-        # assert isinstance(X[0], str), "Input data is not string. "
-        # Make n-grams counts matrix unq_V
-        unq_X, unq_V, lookup = self._init_vars(X)
-        n_batch = (len(X) - 1) // self.batch_size + 1
-        del X
-        # Get activations unq_H
-        unq_H = self._get_H(unq_X)
+        # # Check if first item has str or np.str_ type
+        # # assert isinstance(X[0], str), "Input data is not string. "
+        # # Make n-grams counts matrix unq_V
+        # unq_X, unq_V, lookup = self._init_vars(X)
+        # n_batch = (len(X) - 1) // self.batch_size + 1
+        # del X
+        # # Get activations unq_H
+        # unq_H = self._get_H(unq_X)
 
-        for n_iter_ in range(self.max_iter):
-            # Loop over batches
-            for i, (unq_idx, idx) in enumerate(batch_lookup(lookup, n=self.batch_size)):
-                if i == n_batch - 1:
-                    W_last = self.W_.copy()
-                # Update activations unq_H
-                unq_H[unq_idx] = _multiplicative_update_h(
-                    unq_V[unq_idx], #.get(),
-                    self.W_,
-                    unq_H[unq_idx], #.get(),
-                    epsilon=1e-3,
-                    max_iter=self.max_iter_e_step,
-                    rescale_W=self.rescale_W,
-                    gamma_shape_prior=self.gamma_shape_prior,
-                    gamma_scale_prior=self.gamma_scale_prior,
-                )
-                # Update the topics self.W_
-                _multiplicative_update_w(
-                    unq_V[idx],
-                    self.W_,
-                    self.A_,
-                    self.B_,
-                    unq_H[idx],
-                    self.rescale_W,
-                    self.rho_,
-                )
+#         for n_iter_ in range(self.max_iter):
+#             # Loop over batches
+#             for i, (unq_idx, idx) in enumerate(batch_lookup(lookup, n=self.batch_size)):
+#                 if i == n_batch - 1:
+#                     W_last = self.W_.copy()
+#                 # Update activations unq_H
+#                 unq_H[unq_idx] = _multiplicative_update_h(
+#                     unq_V[unq_idx], #.get(),
+#                     self.W_,
+#                     unq_H[unq_idx], #.get(),
+#                     epsilon=1e-3,
+#                     max_iter=self.max_iter_e_step,
+#                     rescale_W=self.rescale_W,
+#                     gamma_shape_prior=self.gamma_shape_prior,
+#                     gamma_scale_prior=self.gamma_scale_prior,
+#                 )
+#                 # Update the topics self.W_
+#                 _multiplicative_update_w(
+#                     unq_V[idx],
+#                     self.W_,
+#                     self.A_,
+#                     self.B_,
+#                     unq_H[idx],
+#                     self.rescale_W,
+#                     self.rho_,
+#                 )
 
-                if i == n_batch - 1:
-                    # Compute the norm of the update of W in the last batch
-                    W_change = np.linalg.norm(self.W_ - W_last) / np.linalg.norm(W_last)
+#                 if i == n_batch - 1:
+#                     # Compute the norm of the update of W in the last batch
+#                     W_change = np.linalg.norm(self.W_ - W_last) / np.linalg.norm(W_last)
 
-            if (W_change < self.tol) and (n_iter_ >= self.min_iter - 1):
-                break  # Stop if the change in W is smaller than the tolerance
+#             if (W_change < self.tol) and (n_iter_ >= self.min_iter - 1):
+#                 break  # Stop if the change in W is smaller than the tolerance
+        AA=torch.Tensor(X.toarray())
+        model = NMF(AA.t().shape, rank=self.rho_)
+        model.fit(AA.t())
+        self.H_dict_.update=model.W.detach().numpy()
+        # self.H_dict_.update=model.W @ model.H.t()
+        
+        
 
         # Update self.H_dict_ with the learned encoded vectors (activations)
-        self.H_dict_.update(zip(unq_X, unq_H))
+        # self.H_dict_.update(zip(unq_X, unq_H))
         return self
 
     def get_feature_names(self, n_labels=3, prefix=""):
@@ -1006,10 +1017,10 @@ def _rescale_h(V: np.array, H: np.array) -> np.array:
     return H
 
 
-def _multiplicative_update_h(
-    Vt: np.array,
-    W: np.array,
-    Ht: np.array,
+def multiplicative_update_gpu(
+    Vt: cp.array,
+    W: cp.array,
+    Ht: cp.array,
     epsilon: float = 1e-3,
     max_iter: int = 10,
     rescale_W: bool = False,
@@ -1023,13 +1034,13 @@ def _multiplicative_update_h(
         WT1 = 1 + 1 / gamma_scale_prior
         W_WT1 = W / WT1
     else:
-        WT1 = np.sum(W, axis=1) + 1 / gamma_scale_prior
+        WT1 = cp.sum(W, axis=1) + 1 / gamma_scale_prior
         W_WT1 = W / WT1.reshape(-1, 1)
     const = (gamma_shape_prior - 1) / WT1
     squared_epsilon = epsilon**2
     for vt, ht in zip(Vt, Ht):
         vt_ = vt.data
-        idx = vt.indices
+        idx = cp.arange(len(vt)) #vt.indices
 
         W_WT1_ = cp.array(W_WT1[:, idx.tolist()])
         W_ = cp.array(W[:, idx.tolist()])
@@ -1037,11 +1048,12 @@ def _multiplicative_update_h(
         for n_iter_ in range(max_iter):
             if squared_norm <= squared_epsilon:
                 break
-            aux = np.dot(W_WT1_, vt_ / (np.dot(ht, W_) + 1e-10))
+            aux = cp.dot(W_WT1_, cp.divide(vt , (cp.dot(ht, W_) + 1e-10)))
             ht_out = ht * aux + const
-            squared_norm = np.dot(ht_out - ht, ht_out - ht) / np.dot(ht, ht)
+            squared_norm = cp.dot(ht_out - ht, ht_out - ht) / cp.dot(ht, ht)
             ht[:] = ht_out
-    return Ht
+    return
+    
 
 
 def batch_lookup(
