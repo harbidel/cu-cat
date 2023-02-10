@@ -18,18 +18,17 @@ The principle is as follows:
 import warnings
 from typing import Dict, Generator, List, Literal, Optional, Tuple, Union
 
-from cupyx.scipy.sparse import csr_matrix as csr_gpu
-import numpy as np, cupy as cp
+import cupy as cp
+import numpy as np
 import pandas as pd
+from cupyx.scipy.sparse import csr_matrix as csr_gpu
 from numpy.random import RandomState
 from scipy import sparse
-from cupyx.scipy.sparse import csr_matrix as csr_gpu
 from scipy.sparse import csr_matrix as csr_cpu
-
 from sklearn import __version__ as sklearn_version
 from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.cluster import KMeans
-from sklearn.feature_extraction.text import CountVectorizer,HashingVectorizer
+from sklearn.feature_extraction.text import CountVectorizer, HashingVectorizer
 from sklearn.neighbors import NearestNeighbors
 from sklearn.utils import check_random_state, gen_batches
 from sklearn.utils.extmath import row_norms, safe_sparse_dot

@@ -15,24 +15,26 @@ The principle is as follows:
        We thus optimize H and W with the multiplicative update method.
 """
 
+import timeit
 import warnings
 from typing import Dict, Generator, List, Literal, Optional, Tuple, Union
-import timeit
+
+import cupy as cp
 import numpy as np
 import pandas as pd
-import cupy as cp
+
 cp._default_memory_pool.set_limit(fraction=1)
 mempool = cp.get_default_memory_pool()
+from cupyx.scipy import sparse
+from cupyx.scipy.sparse import csr_matrix as csr_gpu
 from joblib import Parallel, delayed
 from numpy.random import RandomState
-from cupyx.scipy.sparse import csr_matrix as csr_gpu
 from scipy.sparse import csr_matrix as csr_cpu
-
-from cupyx.scipy import sparse
 from sklearn import __version__ as sklearn_version
 from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.cluster import KMeans
-from sklearn.feature_extraction.text import CountVectorizer,HashingVectorizer
+from sklearn.feature_extraction.text import CountVectorizer, HashingVectorizer
+
 # from vectorizers import HashingVectorizer
 from sklearn.neighbors import NearestNeighbors
 from sklearn.utils import check_random_state, gen_batches
@@ -813,7 +815,7 @@ class vGapEncoder(BaseEstimator, TransformerMixin):
 
         return X
 
-    def fit(self, X, y=None) -> "GapEncoder":
+    def fit(self, X, y=None) -> "vGapEncoder":
         """
         Fit the instance on batches of X.
 
@@ -875,9 +877,9 @@ class vGapEncoder(BaseEstimator, TransformerMixin):
         X_enc = np.hstack(X_enc)
         return X_enc
 
-    def partial_fit(self, X, y=None) -> "GapEncoder":
+    def partial_fit(self, X, y=None) -> "vGapEncoder":
         """
-        Partial fit of the GapEncoder on X.
+        Partial fit of the vGapEncoder on X.
         To be used in an online learning procedure where batches of data are
         coming one by one.
 
