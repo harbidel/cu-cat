@@ -21,9 +21,9 @@ machine-learning pipeline. In particular, it enables tuning parameters of
 |fj| to find the matches that maximize prediction accuracy.
 
 
-.. |fj| replace:: :func:`~dirty_cat.fuzzy_join`
+.. |fj| replace:: :func:`~cuCat.fuzzy_join`
 
-.. |fa| replace:: :func:`~dirty_cat.FeatureAugmenter`
+.. |fa| replace:: :func:`~cuCat.FeatureAugmenter`
 """
 
 ###############################################################################
@@ -64,7 +64,7 @@ df = df[["Country", "Happiness score"]]
 # Interesting tables can be found on `the World Bank open data platform
 # <https://data.worldbank.org/>`_, for which we have a downloading
 # function:
-from dirty_cat.datasets import fetch_world_bank_indicator
+from cuCat.datasets import fetch_world_bank_indicator
 
 ###############################################################################
 # We extract the table containing GDP per capita by country:
@@ -115,8 +115,8 @@ gdppc.sort_values(by="Country Name").tail(7)
 # 1. Joining GDP per capita table
 # ...............................
 #
-# To join them with dirty_cat, we only need to do the following:
-from dirty_cat import fuzzy_join
+# To join them with cuCat, we only need to do the following:
+from cuCat import fuzzy_join
 
 # We will ignore the warnings:
 import warnings
@@ -385,7 +385,7 @@ y = df["Happiness score"]
 # We gather the auxilliary tables into a
 # list of (tables, keys) for the `tables` parameter.
 # An instance of the transformer with the necessary information is:
-from dirty_cat import FeatureAugmenter
+from cuCat import FeatureAugmenter
 
 fa = FeatureAugmenter(
     tables=[

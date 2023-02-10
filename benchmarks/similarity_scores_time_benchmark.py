@@ -24,8 +24,8 @@ from sklearn import linear_model, model_selection
 from sklearn.compose import ColumnTransformer
 from sklearn.preprocessing import OneHotEncoder
 
-from dirty_cat import SimilarityEncoder
-from dirty_cat.datasets import fetch_traffic_violations
+from cuCat import SimilarityEncoder
+from cuCat.datasets import fetch_traffic_violations
 
 
 data = fetch_traffic_violations()

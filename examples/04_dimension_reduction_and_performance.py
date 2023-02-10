@@ -13,9 +13,9 @@ either chosen as the most frequent categories, or with kmeans clustering.
     and should be preferred in large-scale settings.
 
 
- .. |SE| replace:: :class:`~dirty_cat.SimilarityEncoder`
+ .. |SE| replace:: :class:`~cuCat.SimilarityEncoder`
 
- .. |Gap| replace:: :class:`~dirty_cat.GapEncoder`
+ .. |Gap| replace:: :class:`~cuCat.GapEncoder`
 
  .. |ColumnTransformer| replace:: :class:`~sklearn.compose.ColumnTransformer`
 
@@ -58,7 +58,7 @@ def resource_used(func):
 #
 # First, let's fetch the dataset we'll use further down:
 import pandas as pd
-from dirty_cat.datasets import fetch_open_payments
+from cuCat.datasets import fetch_open_payments
 
 open_payments = fetch_open_payments()
 X = open_payments.X
@@ -107,7 +107,7 @@ X[dirty_columns].nunique()
 # a |OHE| and a |SE|.
 from sklearn.preprocessing import OneHotEncoder
 from sklearn.compose import ColumnTransformer
-from dirty_cat import SimilarityEncoder
+from cuCat import SimilarityEncoder
 
 clean_col_transformer = [
     (
