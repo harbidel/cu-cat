@@ -276,35 +276,58 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
         self.W_=cp.array(self.W_);self.B_=cp.array(self.B_);self.A_=cp.array(self.A_)
 
         for n_iter_ in range(self.max_iter):
-            # Loop over batches
-            for i, (unq_idx, idx) in enumerate(batch_lookup(lookup, n=self.batch_size)):
-                if i == n_batch - 1:
-                    W_last = self.W_.copy()
-                # Update activations unq_H
-                unq_H[unq_idx] = _multiplicative_update_h(
-                    unq_V[unq_idx],
+            
+            if unq_H.shape[1]<5000:
+                W_last = self.W_.copy()
+                unq_H = _multiplicative_update_h_smallfast(
+                    unq_V,
                     self.W_,
-                    unq_H[unq_idx],
+                    unq_H,
                     epsilon=1e-3,
                     max_iter=self.max_iter_e_step,
                     rescale_W=self.rescale_W,
                     gamma_shape_prior=self.gamma_shape_prior,
                     gamma_scale_prior=self.gamma_scale_prior,
                 )
-                # Update the topics self.W_
-                _multiplicative_update_w(
-                    unq_V[idx],
+                _multiplicative_update_w_smallfast(
+                    unq_V,
                     self.W_,
                     self.A_,
                     self.B_,
-                    unq_H[idx],
+                    unq_H,
                     self.rescale_W,
                     self.rho_,
                 )
+            else:
+                    # Loop over batches
+                for i, (unq_idx, idx) in enumerate(batch_lookup(lookup, n=self.batch_size)):
+                    if i == n_batch - 1:
+                        W_last = self.W_.copy()
+                    # Update activations unq_H
+                        unq_H[unq_idx] = _multiplicative_update_h(
+                            unq_V[unq_idx],
+                            self.W_,
+                            unq_H[unq_idx],
+                            epsilon=1e-3,
+                            max_iter=self.max_iter_e_step,
+                            rescale_W=self.rescale_W,
+                            gamma_shape_prior=self.gamma_shape_prior,
+                            gamma_scale_prior=self.gamma_scale_prior,
+                        )
+                        # Update the topics self.W_
+                        _multiplicative_update_w(
+                            unq_V[idx],
+                            self.W_,
+                            self.A_,
+                            self.B_,
+                            unq_H[idx],
+                            self.rescale_W,
+                            self.rho_,
+                        )
 
-                if i == n_batch - 1:
-                    # Compute the norm of the update of W in the last batch
-                    W_change = cp.multiply(cp.linalg.norm(self.W_ - W_last), cp.reciprocal(cp.linalg.norm(W_last)))
+            # if i == n_batch - 1:
+                # Compute the norm of the update of W in the last batch
+            W_change = cp.multiply(cp.linalg.norm(self.W_ - W_last), cp.reciprocal(cp.linalg.norm(W_last)))
 
             if (W_change < self.tol) and (n_iter_ >= self.min_iter - 1):
                 break  # Stop if the change in W is smaller than the tolerance
@@ -411,20 +434,31 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
         self._add_unseen_keys_to_H_dict(unq_X)
         unq_H = self._get_H(unq_X)
         # Loop over batches
-        unq_V=csr_gpu(unq_V);unq_H=cp.array(unq_H);self.W_=cp.array(self.W_)
-
-        for slc in gen_batches(n=unq_H.shape[0], batch_size=self.batch_size):
-            # Given the learnt topics W, optimize H to fit V = HW
-            unq_H[slc] = _multiplicative_update_h(
-                unq_V[slc],
-                self.W_,
-                unq_H[slc],
-                epsilon=1e-3,
-                max_iter=100,
-                rescale_W=self.rescale_W,
-                gamma_shape_prior=self.gamma_shape_prior,
-                gamma_scale_prior=self.gamma_scale_prior,
-            )
+        if unq_H.shape[0]<5000:
+            unq_H = _multiplicative_update_h_smallfast(
+                    unq_V,
+                    self.W_,
+                    unq_H,
+                    epsilon=1e-3,
+                    max_iter=100,
+                    rescale_W=self.rescale_W,
+                    gamma_shape_prior=self.gamma_shape_prior,
+                    gamma_scale_prior=self.gamma_scale_prior,
+                )
+        else:
+            unq_V=csr_gpu(unq_V);unq_H=cp.array(unq_H);self.W_=cp.array(self.W_)
+            for slc in gen_batches(n=unq_H.shape[0], batch_size=self.batch_size):
+                # Given the learnt topics W, optimize H to fit V = HW
+                unq_H[slc] = _multiplicative_update_h(
+                    unq_V[slc],
+                    self.W_,
+                    unq_H[slc],
+                    epsilon=1e-3,
+                    max_iter=100,
+                    rescale_W=self.rescale_W,
+                    gamma_shape_prior=self.gamma_shape_prior,
+                    gamma_scale_prior=self.gamma_scale_prior,
+                )
         # Store and return the encoded vectors of X
         self.H_dict_.update(zip(unq_X, unq_H.get()))
         return self._get_H(X)
@@ -818,7 +852,7 @@ def _multiplicative_update_w(
         _rescale_W(W, A)
     return W, A, B
 
-def _multiplicative_update_fast(
+def _multiplicative_update_w_smallfast(
     Vt: np.array,
     W: np.array,
     A: np.array,
@@ -838,16 +872,14 @@ def _multiplicative_update_fast(
     A *= rho
     C = cp.matmul(Ht, W)
     R = Vt.multiply(cp.reciprocal(C) + 1e-10)
-    print(['Ht='+str(Ht.shape),'R='+str(R.shape)])
     T = R.T.dot(Ht).T ## drop .T on sparse Vt
-    print(['T='+str(T.shape),'W='+str(W.shape)])
     A += cp.multiply(W, T)
     B *= rho
     B += Ht.sum(axis=0).reshape(-1, 1)
     cp.multiply(A, 1/B, out=W)
     if rescale_W:
         _rescale_W(W, A)
-    W=W.get();A=A.get();B=B.get()
+    # W=W.get();A=A.get();B=B.get()
     del C,R,T,Ht,Vt
     cp._default_memory_pool.free_all_blocks()
     return W,A,B
@@ -883,7 +915,6 @@ def _multiplicative_update_h(
         W_WT1 = W / WT1.reshape(-1, 1)
     const = (gamma_shape_prior - 1) / WT1
     squared_epsilon = epsilon**2
-    # aaa=0
     for vt, ht in zip(Vt, Ht):
         vt_ = vt.data
         idx = vt.indices
@@ -897,11 +928,9 @@ def _multiplicative_update_h(
             ht_out = cp.multiply(ht, aux) + const
             squared_norm = cp.multiply(cp.dot(ht_out - ht, ht_out - ht), cp.reciprocal(cp.dot(ht, ht)))
             ht[:] = ht_out
-            # aaa=aaa+1
-            # print('h'+str(aaa))
     return Ht
 
-def _multiplicative_update_fast(
+def _multiplicative_update_h_smallfast(
     Vt: np.array,
     W: np.array,
     Ht: np.array,
@@ -924,25 +953,21 @@ def _multiplicative_update_fast(
     squared_epsilon = epsilon #**2
 
     squared_norm = 1
-    print(['Vt='+str(Vt.shape),'Ht='+str(Ht.shape),'W='+str(W.shape),'WWT1='+str(W_WT1.T.shape)])
+    # print(['Vt='+str(Vt.shape),'Ht='+str(Ht.shape),'W='+str(W.shape),'WWT1='+str(W_WT1.T.shape)])
     Vt=csr_gpu(Vt);Ht=cp.array(Ht);W=cp.array(W);W_WT1=cp.array(W_WT1.T)#;Vt=cp.array(Vt)
     for n_iter_ in range(max_iter):
         if squared_norm <= squared_epsilon:
             break
         C=Vt.multiply( cp.reciprocal(cp.matmul(Ht, W) + 1e-10)) ##sparse now
-        # print(['C='+str(C.shape)])
         # aux = cp.matmul(W_WT1, 
         aux=C.dot(W_WT1)
         # aux = cp.matmul(W_WT1, Vt.multiply( 1/ (cp.matmul(Ht, W) + 1e-10)).T)
-
         ht_out = cp.multiply(Ht,aux) + const
-
         squared_norm = cp.sum(cp.multiply(ht_out - Ht, ht_out - Ht) / cp.multiply(Ht, Ht))
-
         # Ht[:] = ht_out#.get()
         Ht = ht_out#.get()
 
-    return Ht.get()
+    return Ht#.get()
 
 def batch_lookup(
     lookup: np.array,
