@@ -61,7 +61,7 @@ jobs:
         name: 'Setup python'
       - shell: bash {0}
         run: ./build_tools/github/install.sh
-        name: 'Install dirty-cat'
+        name: 'Install cuCat'
         env:
           DEPS_VERSION: ${{ matrix.dependencies-version }}
       - shell: bash {0}
