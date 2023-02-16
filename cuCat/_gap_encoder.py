@@ -308,6 +308,10 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
                     print('sent to cupy')
                     # Loop over batches
                 else:
+                    if hasattr(unq_H, 'device'):
+                        unq_V=unq_V.get();unq_H=unq_H.get();
+                    # self.W_=self.W_.get();#self.B_=self.B_.get();self.A_=self.A_.get()
+                        print('taken from cupy')
                     print('kept in numpy')
                 for i, (unq_idx, idx) in enumerate(batch_lookup(lookup, n=self.batch_size)):
                     if i == n_batch - 1:
