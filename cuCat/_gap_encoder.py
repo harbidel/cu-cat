@@ -15,7 +15,7 @@ The principle is as follows:
        We thus optimize H and W with the multiplicative update method.
 """
 
-import warnings
+import warnings,sys
 from typing import Dict, Generator, List, Literal, Optional, Tuple, Union
 
 import cupy as cp
@@ -269,15 +269,19 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
         # Make n-grams counts matrix unq_V
         unq_X, unq_V, lookup = self._init_vars(X)
         n_batch = (len(X) - 1) // self.batch_size + 1
+        # X=sys.getsizeof(X)
         del X
         # Get activations unq_H
         unq_H = self._get_H(unq_X)
         unq_V=csr_gpu(unq_V);unq_H=cp.array(unq_H);
-        self.W_=cp.array(self.W_);self.B_=cp.array(self.B_);self.A_=cp.array(self.A_)
-
+        
+        
+        print(unq_V.shape)
         for n_iter_ in range(self.max_iter):
-            
-            if unq_H.shape[1]<5000:
+            # print([unq_V.shape,unq_H.shape,self.W_.shape])
+            if (unq_V.shape[0]*unq_V.shape[1])<1e9: #or hasattr(self.W_, 'device'):
+                print('fitting smallfast-wise')
+                self.W_=cp.array(self.W_);self.B_=cp.array(self.B_);self.A_=cp.array(self.A_)
                 W_last = self.W_.copy()
                 unq_H = _multiplicative_update_h_smallfast(
                     unq_V,
@@ -299,7 +303,12 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
                     self.rho_,
                 )
             else:
+                if (unq_V.shape[0]*unq_V.shape[1])>2e9 :# or (hasattr(unq_H, 'device')):
+                    self.W_=cp.array(self.W_);self.B_=cp.array(self.B_);self.A_=cp.array(self.A_)
+                    print('sent to cupy')
                     # Loop over batches
+                else:
+                    print('kept in numpy')
                 for i, (unq_idx, idx) in enumerate(batch_lookup(lookup, n=self.batch_size)):
                     if i == n_batch - 1:
                         W_last = self.W_.copy()
@@ -331,9 +340,14 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
 
             if (W_change < self.tol) and (n_iter_ >= self.min_iter - 1):
                 break  # Stop if the change in W is smaller than the tolerance
-        
+        if hasattr(unq_H, 'device'):
+            # unq_H=unq_H.get()
+                # print('back to numpy')
         # Update self.H_dict_ with the learned encoded vectors (activations)
-        self.H_dict_.update(zip(unq_X, unq_H.get()))
+            self.H_dict_.update(zip(unq_X, unq_H.get()))
+        else:
+            self.H_dict_.update(zip(unq_X, unq_H))
+        print('fit complete')
         return self
 
     def get_feature_names(self, n_labels=3, prefix=""):
@@ -425,6 +439,8 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
         # Check if first item has str or np.str_ type
         assert isinstance(X[0], str), "Input data is not string. "
         unq_X = np.unique(X)
+        # X=sys.getsizeof(X)
+        # print(X)
         # Build the n-grams counts matrix V for the string data to encode
         unq_V = self.ngrams_count_.transform(unq_X)
         if self.add_words:  # Add words counts
@@ -434,7 +450,9 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
         self._add_unseen_keys_to_H_dict(unq_X)
         unq_H = self._get_H(unq_X)
         # Loop over batches
-        if unq_H.shape[0]<5000:
+        print(unq_V.shape)
+        if unq_V.shape[0]*unq_V.shape[1]<1e9: #or hasattr(self.W_, 'device'):
+            print('smallfast transform')
             unq_H = _multiplicative_update_h_smallfast(
                     unq_V,
                     self.W_,
@@ -446,7 +464,15 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
                     gamma_scale_prior=self.gamma_scale_prior,
                 )
         else:
-            unq_V=csr_gpu(unq_V);unq_H=cp.array(unq_H);self.W_=cp.array(self.W_)
+            if unq_V.shape[0]*unq_V.shape[1]>2e9:
+                print('cupy transform')
+                unq_V=csr_gpu(unq_V);unq_H=cp.array(unq_H);self.W_=cp.array(self.W_)
+            else:
+                if hasattr(self.W_, 'device'):
+                    # unq_V=unq_V.get();unq_H=unq_H.get();
+                    self.W_=self.W_.get()
+                    print('got from cupy for numpy transform')
+                print('numpy transform')
             for slc in gen_batches(n=unq_H.shape[0], batch_size=self.batch_size):
                 # Given the learnt topics W, optimize H to fit V = HW
                 unq_H[slc] = _multiplicative_update_h(
@@ -459,8 +485,13 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
                     gamma_shape_prior=self.gamma_shape_prior,
                     gamma_scale_prior=self.gamma_scale_prior,
                 )
+        if hasattr(unq_H, 'device'):
+                # unq_H=unq_H.get()
+                # import cupy as np
         # Store and return the encoded vectors of X
-        self.H_dict_.update(zip(unq_X, unq_H.get()))
+            self.H_dict_.update(zip(unq_X, unq_H.get()))
+        else:
+            self.H_dict_.update(zip(unq_X, unq_H))
         return self._get_H(X)
 
 
@@ -843,13 +874,23 @@ def _multiplicative_update_w(
     """
     Multiplicative update step for the topics W.
     """
-    A *= rho
-    A += cp.multiply(W, safe_sparse_dot(Ht.T, Vt.multiply(1 / (cp.dot(Ht, W) + 1e-10))))
-    B *= rho
-    B += Ht.sum(axis=0).reshape(-1, 1)
-    W=cp.multiply(A, cp.reciprocal(B))#, out=W)
-    if rescale_W:
-        _rescale_W(W, A)
+    if Vt.shape[0]*Vt.shape[1]>2e9:
+        A *= rho
+        A += cp.multiply(W, safe_sparse_dot(Ht.T, Vt.multiply(1 / (cp.dot(Ht, W) + 1e-10))))
+        B *= rho
+        B += Ht.sum(axis=0).reshape(-1, 1)
+        W=cp.multiply(A, cp.reciprocal(B))#, out=W)
+        if rescale_W:
+            _rescale_W(W, A)
+        
+    else:
+        A *= rho
+        A += np.multiply(W, safe_sparse_dot(Ht.T, Vt.multiply(1 / (np.dot(Ht, W) + 1e-10))))
+        B *= rho
+        B += Ht.sum(axis=0).reshape(-1, 1)
+        W=np.multiply(A, np.reciprocal(B))#, out=W)
+        if rescale_W:
+            _rescale_W(W, A)
     return W, A, B
 
 def _multiplicative_update_w_smallfast(
@@ -915,19 +956,39 @@ def _multiplicative_update_h(
         W_WT1 = W / WT1.reshape(-1, 1)
     const = (gamma_shape_prior - 1) / WT1
     squared_epsilon = epsilon**2
-    for vt, ht in zip(Vt, Ht):
-        vt_ = vt.data
-        idx = vt.indices
-        W_WT1_ = W_WT1[:, idx]
-        W_ = W[:, idx]
-        squared_norm = 1
-        for n_iter_ in range(max_iter):
-            if squared_norm <= squared_epsilon:
-                break
-            aux = cp.dot(W_WT1_, cp.multiply(vt_,cp.reciprocal(cp.dot(ht, W_) + 1e-10)))
-            ht_out = cp.multiply(ht, aux) + const
-            squared_norm = cp.multiply(cp.dot(ht_out - ht, ht_out - ht), cp.reciprocal(cp.dot(ht, ht)))
-            ht[:] = ht_out
+    
+    if Vt.shape[0]*Vt.shape[1]>2e9:
+        # print('fitting on gpu')
+
+        for vt, ht in zip(Vt, Ht):
+            vt_ = vt.data
+            idx = vt.indices
+            W_WT1_ = W_WT1[:, idx]
+            W_ = W[:, idx]
+            squared_norm = 1
+            for n_iter_ in range(max_iter):
+                if squared_norm <= squared_epsilon:
+                    break
+                aux = cp.dot(W_WT1_, np.multiply(vt_,cp.reciprocal(cp.dot(ht, W_) + 1e-10)))
+                ht_out = cp.multiply(ht, aux) + const
+                squared_norm = cp.multiply(np.dot(ht_out - ht, ht_out - ht), cp.reciprocal(cp.dot(ht, ht)))
+                ht[:] = ht_out
+    else:
+        # print('fitting on cpu')
+
+        for vt, ht in zip(Vt, Ht):
+            vt_ = vt.data
+            idx = vt.indices
+            W_WT1_ = W_WT1[:, idx]
+            W_ = W[:, idx]
+            squared_norm = 1
+            for n_iter_ in range(max_iter):
+                if squared_norm <= squared_epsilon:
+                    break
+                aux = np.dot(W_WT1_, np.multiply(vt_,np.reciprocal(np.dot(ht, W_) + 1e-10)))
+                ht_out = np.multiply(ht, aux) + const
+                squared_norm = np.multiply(np.dot(ht_out - ht, ht_out - ht), np.reciprocal(np.dot(ht, ht)))
+                ht[:] = ht_out
     return Ht
 
 def _multiplicative_update_h_smallfast(
