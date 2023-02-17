@@ -269,17 +269,15 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
         # Make n-grams counts matrix unq_V
         unq_X, unq_V, lookup = self._init_vars(X)
         n_batch = (len(X) - 1) // self.batch_size + 1
-        # X=sys.getsizeof(X)
         del X
         # Get activations unq_H
         unq_H = self._get_H(unq_X)
         unq_V=csr_gpu(unq_V);unq_H=cp.array(unq_H);
-        
-        
+
+
         print(unq_V.shape)
         for n_iter_ in range(self.max_iter):
-            # print([unq_V.shape,unq_H.shape,self.W_.shape])
-            if (unq_V.shape[0]*unq_V.shape[1])<1e9: #or hasattr(self.W_, 'device'):
+            if (unq_V.shape[0]*unq_V.shape[1])<1e9:
                 print('fitting smallfast-wise')
                 self.W_=cp.array(self.W_);self.B_=cp.array(self.B_);self.A_=cp.array(self.A_)
                 W_last = self.W_.copy()
@@ -303,14 +301,13 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
                     self.rho_,
                 )
             else:
-                if (unq_V.shape[0]*unq_V.shape[1])>2e9 :# or (hasattr(unq_H, 'device')):
+                if (unq_V.shape[0]*unq_V.shape[1])>2e9 :
                     self.W_=cp.array(self.W_);self.B_=cp.array(self.B_);self.A_=cp.array(self.A_)
                     print('sent to cupy')
                     # Loop over batches
                 else:
                     if hasattr(unq_H, 'device'):
                         unq_V=unq_V.get();unq_H=unq_H.get();
-                    # self.W_=self.W_.get();#self.B_=self.B_.get();self.A_=self.A_.get()
                         print('taken from cupy')
                     print('kept in numpy')
                 for i, (unq_idx, idx) in enumerate(batch_lookup(lookup, n=self.batch_size)):
@@ -345,10 +342,8 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
             if (W_change < self.tol) and (n_iter_ >= self.min_iter - 1):
                 break  # Stop if the change in W is smaller than the tolerance
         if hasattr(unq_H, 'device'):
-            # unq_H=unq_H.get()
-                # print('back to numpy')
-        # Update self.H_dict_ with the learned encoded vectors (activations)
             self.H_dict_.update(zip(unq_X, unq_H.get()))
+
         else:
             self.H_dict_.update(zip(unq_X, unq_H))
         print('fit complete')
@@ -443,8 +438,6 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
         # Check if first item has str or np.str_ type
         assert isinstance(X[0], str), "Input data is not string. "
         unq_X = np.unique(X)
-        # X=sys.getsizeof(X)
-        # print(X)
         # Build the n-grams counts matrix V for the string data to encode
         unq_V = self.ngrams_count_.transform(unq_X)
         if self.add_words:  # Add words counts
@@ -455,7 +448,7 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
         unq_H = self._get_H(unq_X)
         # Loop over batches
         print(unq_V.shape)
-        if unq_V.shape[0]*unq_V.shape[1]<1e9: #or hasattr(self.W_, 'device'):
+        if unq_V.shape[0]*unq_V.shape[1]<1e9:
             print('smallfast transform')
             unq_H = _multiplicative_update_h_smallfast(
                     unq_V,
@@ -473,7 +466,6 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
                 unq_V=csr_gpu(unq_V);unq_H=cp.array(unq_H);self.W_=cp.array(self.W_)
             else:
                 if hasattr(self.W_, 'device'):
-                    # unq_V=unq_V.get();unq_H=unq_H.get();
                     self.W_=self.W_.get()
                     print('got from cupy for numpy transform')
                 print('numpy transform')
@@ -490,10 +482,8 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
                     gamma_scale_prior=self.gamma_scale_prior,
                 )
         if hasattr(unq_H, 'device'):
-                # unq_H=unq_H.get()
-                # import cupy as np
-        # Store and return the encoded vectors of X
             self.H_dict_.update(zip(unq_X, unq_H.get()))
+            # self.W_=self.W_.get()
         else:
             self.H_dict_.update(zip(unq_X, unq_H))
         return self._get_H(X)
