@@ -164,7 +164,6 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
         """
         H_out = np.empty((len(X), self.n_components))
         for x, h_out in zip(X, H_out):
-            # print(self.H_dict_[x])
             h_out[:] = self.H_dict_[x]
         return H_out
 
@@ -274,11 +273,9 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
         unq_H = self._get_H(unq_X)
         unq_V=csr_gpu(unq_V);unq_H=cp.array(unq_H);
 
-
-        print(unq_V.shape)
         for n_iter_ in range(self.max_iter):
             if (unq_V.shape[0]*unq_V.shape[1])<1e9:
-                print('fitting smallfast-wise')
+                # print('fitting smallfast-wise')
                 self.W_=cp.array(self.W_);self.B_=cp.array(self.B_);self.A_=cp.array(self.A_)
                 W_last = self.W_.copy()
                 unq_H = _multiplicative_update_h_smallfast(
@@ -303,13 +300,12 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
             else:
                 if (unq_V.shape[0]*unq_V.shape[1])>2e9 :
                     self.W_=cp.array(self.W_);self.B_=cp.array(self.B_);self.A_=cp.array(self.A_)
-                    print('sent to cupy')
+                    # print('sent to cupy')
                     # Loop over batches
                 else:
                     if hasattr(unq_H, 'device'):
                         unq_V=unq_V.get();unq_H=unq_H.get();
-                        print('taken from cupy')
-                    print('kept in numpy')
+                    # print('kept in numpy')
                 for i, (unq_idx, idx) in enumerate(batch_lookup(lookup, n=self.batch_size)):
                     if i == n_batch - 1:
                         W_last = self.W_.copy()
@@ -346,7 +342,7 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
 
         else:
             self.H_dict_.update(zip(unq_X, unq_H))
-        print('fit complete')
+        # print('fit complete')
         return self
 
     def get_feature_names(self, n_labels=3, prefix=""):
@@ -447,9 +443,8 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
         self._add_unseen_keys_to_H_dict(unq_X)
         unq_H = self._get_H(unq_X)
         # Loop over batches
-        print(unq_V.shape)
         if unq_V.shape[0]*unq_V.shape[1]<1e9:
-            print('smallfast transform')
+            # print('smallfast transform')
             unq_H = _multiplicative_update_h_smallfast(
                     unq_V,
                     self.W_,
@@ -462,13 +457,12 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
                 )
         else:
             if unq_V.shape[0]*unq_V.shape[1]>2e9:
-                print('cupy transform')
+                # print('cupy transform')
                 unq_V=csr_gpu(unq_V);unq_H=cp.array(unq_H);self.W_=cp.array(self.W_)
             else:
                 if hasattr(self.W_, 'device'):
                     self.W_=self.W_.get()
-                    print('got from cupy for numpy transform')
-                print('numpy transform')
+                # print('numpy transform')
             for slc in gen_batches(n=unq_H.shape[0], batch_size=self.batch_size):
                 # Given the learnt topics W, optimize H to fit V = HW
                 unq_H[slc] = _multiplicative_update_h(
@@ -952,8 +946,6 @@ def _multiplicative_update_h(
     squared_epsilon = epsilon**2
     
     if Vt.shape[0]*Vt.shape[1]>2e9:
-        # print('fitting on gpu')
-
         for vt, ht in zip(Vt, Ht):
             vt_ = vt.data
             idx = vt.indices
@@ -968,8 +960,6 @@ def _multiplicative_update_h(
                 squared_norm = cp.multiply(np.dot(ht_out - ht, ht_out - ht), cp.reciprocal(cp.dot(ht, ht)))
                 ht[:] = ht_out
     else:
-        # print('fitting on cpu')
-
         for vt, ht in zip(Vt, Ht):
             vt_ = vt.data
             idx = vt.indices
@@ -1008,7 +998,6 @@ def _multiplicative_update_h_smallfast(
     squared_epsilon = epsilon #**2
 
     squared_norm = 1
-    # print(['Vt='+str(Vt.shape),'Ht='+str(Ht.shape),'W='+str(W.shape),'WWT1='+str(W_WT1.T.shape)])
     Vt=csr_gpu(Vt);Ht=cp.array(Ht);W=cp.array(W);W_WT1=cp.array(W_WT1.T)#;Vt=cp.array(Vt)
     for n_iter_ in range(max_iter):
         if squared_norm <= squared_epsilon:
