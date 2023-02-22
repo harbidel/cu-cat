@@ -75,6 +75,7 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
         random_state: Optional[Union[int, RandomState]] = None,
         rescale_W: bool = True,
         max_iter_e_step: int = 20,
+        engine: Literal["cpu", "gpu", "tpu"] = 'gpu',
     ):
         self.ngram_range = ngram_range
         self.n_components = n_components
@@ -94,6 +95,7 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
         self.random_state = check_random_state(random_state)
         self.rescale_W = rescale_W
         self.max_iter_e_step = max_iter_e_step
+        self.engine = engine
 
     def _init_vars(self, X) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
         """
@@ -274,7 +276,7 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
         unq_V=csr_gpu(unq_V);unq_H=cp.array(unq_H);
 
         for n_iter_ in range(self.max_iter):
-            if (unq_V.shape[0]*unq_V.shape[1])<1e9:
+            if (unq_V.shape[0]*unq_V.shape[1])<1e9 and self.engine=='gpu':
                 # print('fitting smallfast-wise')
                 self.W_=cp.array(self.W_);self.B_=cp.array(self.B_);self.A_=cp.array(self.A_)
                 W_last = self.W_.copy()
@@ -298,11 +300,11 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
                     self.rho_,
                 )
             else:
-                if (unq_V.shape[0]*unq_V.shape[1])>2e9 :
+                if (unq_V.shape[0]*unq_V.shape[1])>2e9 and self.engine=='gpu':
                     self.W_=cp.array(self.W_);self.B_=cp.array(self.B_);self.A_=cp.array(self.A_)
                     # print('sent to cupy')
                     # Loop over batches
-                else:
+                elif self.engine!='gpu':
                     if hasattr(unq_H, 'device'):
                         unq_V=unq_V.get();unq_H=unq_H.get();
                     # print('kept in numpy')
@@ -640,6 +642,8 @@ class GapEncoder(BaseEstimator, TransformerMixin):
         rescale_W: bool = True,
         max_iter_e_step: int = 20,
         handle_missing: Literal["error", "empty_impute"] = "zero_impute",
+        engine: Literal["cpu", "gpu", "tpu"] = 'gpu',
+
     ):
         self.ngram_range = ngram_range
         self.n_components = n_components
@@ -660,6 +664,8 @@ class GapEncoder(BaseEstimator, TransformerMixin):
         self.rescale_W = rescale_W
         self.max_iter_e_step = max_iter_e_step
         self.handle_missing = handle_missing
+        self.engine = engine
+
 
     def _more_tags(self) -> Dict[str, List[str]]:
         """
