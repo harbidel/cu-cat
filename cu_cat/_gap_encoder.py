@@ -961,9 +961,9 @@ def _multiplicative_update_h(
             for n_iter_ in range(max_iter):
                 if squared_norm <= squared_epsilon:
                     break
-                aux = cp.dot(W_WT1_, np.multiply(vt_,cp.reciprocal(cp.dot(ht, W_) + 1e-10)))
+                aux = cp.dot(W_WT1_, cp.multiply(vt_,cp.reciprocal(cp.dot(ht, W_) + 1e-10)))
                 ht_out = cp.multiply(ht, aux) + const
-                squared_norm = cp.multiply(np.dot(ht_out - ht, ht_out - ht), cp.reciprocal(cp.dot(ht, ht)))
+                squared_norm = cp.multiply(cp.dot(ht_out - ht, ht_out - ht), cp.reciprocal(cp.dot(ht, ht)))
                 ht[:] = ht_out
     else:
         for vt, ht in zip(Vt, Ht):
