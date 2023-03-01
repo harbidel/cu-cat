@@ -13,9 +13,9 @@ from joblib import Parallel, delayed, effective_n_jobs
 from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.utils import gen_even_slices, murmurhash3_32
 
-from cuCat._fast_hash import ngram_min_hash
-from cuCat._string_distances import get_unique_ngrams
-from cuCat._utils import LRUDict, check_input
+from cu_cat._fast_hash import ngram_min_hash
+from cu_cat._string_distances import get_unique_ngrams
+from cu_cat._utils import LRUDict, check_input
 
 NoneType = type(None)
 
@@ -372,7 +372,7 @@ from argparse import ArgumentParser
 from pathlib import Path
 
 from utils import monitor, parse_func_repr, find_result, default_parser
-from cuCat.tests.utils import generate_data
+from cu_cat.tests.utils import generate_data
 
 benchmark_name = "minhash_batch_comparison"
 

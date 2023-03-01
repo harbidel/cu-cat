@@ -7,7 +7,7 @@
 
 To run this benchmark, you will need,
 
- * cuCat
+ * cu_cat
  * pandas
  * memory_profiler
 
@@ -19,10 +19,10 @@ import numpy as np
 import pandas as pd
 from memory_profiler import memory_usage
 
-from cuCat.datasets import fetch_traffic_violations
+from cu_cat.datasets import fetch_traffic_violations
 
-from cuCat import SimilarityEncoder, GapEncoder, MinHashEncoder
-from cuCat import TableVectorizer
+from cu_cat import SimilarityEncoder, GapEncoder, MinHashEncoder
+from cu_cat import TableVectorizer
 
 n_repeat = 3
 
@@ -40,7 +40,7 @@ data = fetch_traffic_violations()
 X = data[1][:5000]
 y = data[2][:5000]
 
-print("=" * 80 + "\n#" + "    cuCat encoders benchmark" + "\n" + "=" * 80 + "\n")
+print("=" * 80 + "\n#" + "    cu_cat encoders benchmark" + "\n" + "=" * 80 + "\n")
 print(f"Using a subset of the traffic violations dataset ({len(X)} observations).")
 print("This benchmarks runs in ~1 min ...")
 

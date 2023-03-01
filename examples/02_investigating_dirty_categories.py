@@ -13,13 +13,13 @@ dataset.
 
 
 .. |Gap| replace::
-     :class:`~cuCat.GapEncoder`
+     :class:`~cu_cat.GapEncoder`
 
 .. |OneHotEncoder| replace::
      :class:`~sklearn.preprocessing.OneHotEncoder`
 
 .. |SE| replace::
-     :class:`~cuCat.SimilarityEncoder`
+     :class:`~cu_cat.SimilarityEncoder`
 """
 
 ###############################################################################
@@ -27,7 +27,7 @@ dataset.
 # ------------------------------------
 #
 # Let's look at the dataset:
-from cuCat import datasets
+from cu_cat import datasets
 
 employee_salaries = datasets.fetch_employee_salaries()
 print(employee_salaries.description)
@@ -78,7 +78,7 @@ values.insert(0, "current_annual_salary", employee_salaries.y)
 
 sorted_values = values["employee_position_title"].sort_values().unique()
 
-from cuCat import SimilarityEncoder
+from cu_cat import SimilarityEncoder
 
 similarity_encoder = SimilarityEncoder()
 transformed_values = similarity_encoder.fit_transform(sorted_values.reshape(-1, 1))
@@ -183,7 +183,7 @@ print(f"Number of dirty entries = {len(X_dirty)}")
 #
 # Then, we'll create an instance of the |Gap| with 10 components:
 
-from cuCat import GapEncoder
+from cu_cat import GapEncoder
 
 enc = GapEncoder(n_components=10, random_state=42)
 

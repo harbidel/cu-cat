@@ -8,7 +8,7 @@ This document is here to trigger documentation generation for internal
 functions and classes which should not be on the index page or anywhere else,
 but still have a generated page.
 
-.. currentmodule:: cuCat
+.. currentmodule:: cu_cat
 
 .. autosummary::
    :toctree: generated/

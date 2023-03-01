@@ -1,19 +1,19 @@
 
 =================================================
-cuCat: machine learning with dirty categories
+cu_cat: machine learning with dirty categories
 =================================================
 
 .. toctree::
    :maxdepth: 2
 
-.. currentmodule:: cuCat
+.. currentmodule:: cu_cat
 
 .. container:: larger-container
 
-    `cuCat` facilitates machine-learning with non-curated categories:
+    `cu_cat` facilitates machine-learning with non-curated categories:
     **robust to morphological variants**, such as typos. See
     :ref:`examples <usage_examples>`, such as `the first one
-    <https://dirty-cat.github.io/stable/auto_examples/01_cuCategories.html>`_,
+    <https://cu-cat.github.io/stable/auto_examples/01_cu_categories.html>`_,
     for an introduction to problems of dirty categories or misspelled
     entities.
 
@@ -88,7 +88,7 @@ pipeline you can tweak.
 
 .. container:: install_instructions
 
-    :Installing: ``$ pip install --user --upgrade cuCat``
+    :Installing: ``$ pip install --user --upgrade cu_cat``
 
 .. _usage_examples:
 
@@ -210,12 +210,12 @@ Data download and generation
 About
 =====
 
-cuCat is for now a repository for ideas coming out of a research
+cu_cat is for now a repository for ideas coming out of a research
 project: there is still little known about the problems of dirty
 categories. Tradeoffs will emerge in the long run. We really need people
 giving feedback on success and failures with the different techniques and
 pointing us to open datasets on which we can do more empirical work.
-dirty-cat received funding from `project DirtyData
+cu-cat received funding from `project DirtyData
 <https://project.inria.fr/dirtydata/>`_ (ANR-17-CE23-0018).
 
 .. [1] Patricio Cerda, Gaël Varoquaux. Encoding high-cardinality string categorical variables. 2020. IEEE Transactions on Knowledge & Data Engineering.
@@ -226,12 +226,12 @@ Related projects
 ================
 
 - `scikit-learn <https://github.com/scikit-learn/scikit-learn>`_
-  - a very popular machine learning library; cuCat inherits its API
+  - a very popular machine learning library; cu_cat inherits its API
 - `categorical-encoding <https://contrib.scikit-learn.org/category_encoders/>`_
   - scikit-learn compatible classic categorical encoding schemes
-- `spark-dirty-cat <https://github.com/rakutentech/spark-dirty-cat>`_
-  - a Scala implementation of cuCat for Spark ML
+- `spark-cu-cat <https://github.com/rakutentech/spark-cu-cat>`_
+  - a Scala implementation of cu_cat for Spark ML
 - `CleverCSV <https://github.com/alan-turing-institute/CleverCSV>`_
   - a package for dealing with dirty csv files
 - `GAMA <https://github.com/openml-labs/gama>`_
-  - a modular AutoML assistant that uses cuCat as part of its search space
+  - a modular AutoML assistant that uses cu_cat as part of its search space
