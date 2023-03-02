@@ -447,7 +447,7 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
         self._add_unseen_keys_to_H_dict(unq_X)
         unq_H = self._get_H(unq_X)
         # Loop over batches
-        logger.info(f"features and samples = " `{unq_V.shape}`")
+        logger.info(f"features and samples =  `{unq_V.shape}`, ie `{unq_V.shape[0]*unq_V.shape[1]}`")
         if unq_V.shape[0]*unq_V.shape[1]<1e9:
             logger.debug(f"smallfast transform")
             unq_H = _multiplicative_update_h_smallfast(
