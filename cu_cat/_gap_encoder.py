@@ -36,6 +36,7 @@ from sklearn.utils.fixes import _object_dtype_isnan
 from sklearn.utils.validation import check_is_fitted
 
 from ._utils import check_input, parse_version
+import logging
 
 if parse_version(sklearn_version) < parse_version("0.24"):
     from sklearn.cluster._kmeans import _k_init
@@ -45,8 +46,9 @@ else:
 from sklearn.decomposition._nmf import _beta_divergence
 
 # Ignore lines too long, as some things in the docstring cannot be cut.
-# flake8: noqa: E501
+# flake8: noqa: E501'
 
+logger = logging.getLogger()
 
 class GapEncoderColumn(BaseEstimator, TransformerMixin):
 
@@ -277,7 +279,7 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
 
         for n_iter_ in range(self.max_iter):
             if (unq_V.shape[0]*unq_V.shape[1])<1e9 and self.engine=='gpu':
-                # print('fitting smallfast-wise')
+                logger.debug(f"fitting smallfast-wise")
                 self.W_=cp.array(self.W_);self.B_=cp.array(self.B_);self.A_=cp.array(self.A_)
                 W_last = self.W_.copy()
                 unq_H = _multiplicative_update_h_smallfast(
@@ -302,12 +304,12 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
             else:
                 if (unq_V.shape[0]*unq_V.shape[1])>2e9 and self.engine=='gpu':
                     self.W_=cp.array(self.W_);self.B_=cp.array(self.B_);self.A_=cp.array(self.A_)
-                    # print('sent to cupy')
+                    logger.debug(f"sent to cupy")
                     # Loop over batches
-                elif self.engine!='gpu':
+                else: #if self.engine!='gpu': #### if 1e9 > samples * features > 2e9 go to cpu even if user wants gpu -- could lessen gap in future
                     if hasattr(unq_H, 'device'):
                         unq_V=unq_V.get();unq_H=unq_H.get();
-                    # print('kept in numpy')
+                    logger.debug(f"kept in numpy")
                 for i, (unq_idx, idx) in enumerate(batch_lookup(lookup, n=self.batch_size)):
                     if i == n_batch - 1:
                         W_last = self.W_.copy()
@@ -344,7 +346,7 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
 
         else:
             self.H_dict_.update(zip(unq_X, unq_H))
-        # print('fit complete')
+        logger.debug(f"fit complete")
         return self
 
     def get_feature_names(self, n_labels=3, prefix=""):
@@ -445,8 +447,9 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
         self._add_unseen_keys_to_H_dict(unq_X)
         unq_H = self._get_H(unq_X)
         # Loop over batches
+        logger.info(f"features and samples = " `{unq_V.shape}`")
         if unq_V.shape[0]*unq_V.shape[1]<1e9:
-            # print('smallfast transform')
+            logger.debug(f"smallfast transform")
             unq_H = _multiplicative_update_h_smallfast(
                     unq_V,
                     self.W_,
@@ -459,12 +462,12 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
                 )
         else:
             if unq_V.shape[0]*unq_V.shape[1]>2e9:
-                # print('cupy transform')
+                logger.debug(f"cupy transform")
                 unq_V=csr_gpu(unq_V);unq_H=cp.array(unq_H);self.W_=cp.array(self.W_)
             else:
                 if hasattr(self.W_, 'device'):
                     self.W_=self.W_.get()
-                # print('numpy transform')
+                logger.debug(f"numpy transform")
             for slc in gen_batches(n=unq_H.shape[0], batch_size=self.batch_size):
                 # Given the learnt topics W, optimize H to fit V = HW
                 unq_H[slc] = _multiplicative_update_h(
