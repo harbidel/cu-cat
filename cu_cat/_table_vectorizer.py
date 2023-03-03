@@ -63,8 +63,19 @@ def _replace_false_missing(
         "#N/A",
         "NaN",
     ]  # taken from pandas.io.parsers (version 1.1.4)
-    df = df.replace(STR_NA_VALUES + [None, "?", "..."], np.nan)
-    df = df.replace(r"^\s+$", np.nan, regex=True)  # Replace whitespaces
+    if isinstance(df, pd.DataFrame):
+        df.astype(object).replace(STR_NA_VALUES + [None, "?", "..."], np.nan,inplace=True)
+        df.astype(object).replace(r"^\s+$", '0', regex=True,inplace=True)  # Replace whitespaces
+
+    if 'cudf.core.dataframe' in str(getmodule(df)):
+        df.astype(object).replace(STR_NA_VALUES + [None, "?", "..."], '0',inplace=True)
+        df.astype(object).replace('0', np.nan,inplace=True)
+        for i in df.columns:
+            try:
+                df[i]=df[i].str.normalize_spaces()
+                df[i]=df[i].str.normalize_characters()
+            except:
+                df[i]=df[i]
     return df
 
 
@@ -475,7 +486,7 @@ class TableVectorizer(ColumnTransformer):
         self._clone_transformers()
 
         # Convert to pandas DataFrame if not already.
-        if not isinstance(X, pd.DataFrame):
+        if not isinstance(X, pd.DataFrame) and not 'cudf.core.dataframe' in str(getmodule(X)):
             X = pd.DataFrame(X)
         else:
             # Create a copy to avoid altering the original data.

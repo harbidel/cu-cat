@@ -395,3 +395,23 @@ def test_check_fitted_super_vectorizer():
         sim_enc.transform(X)
     sim_enc.fit(X)
     sim_enc.transform(X)
+
+
+def test_perf():
+    """Test gpu speed boost and correctness"""
+    askHN = pd.read_csv('https://storage.googleapis.com/cohere-assets/blog/text-clustering/data/askhn3k_df.csv', index_col=0)
+    df = df.sample(1000,replace=False)
+
+    t0 = time()
+    cpu_enc = SimilarityEncoder(random_state=42, engine='cpu')
+    CW=cpu_enc.fit_transform(df)
+    t01=time()-t0
+    t1 = time()
+    gpu_enc = SimilarityEncoder(random_state=42, engine='gpu')
+    GW=gpu_enc.fit_transform(df)
+    t02=time()-t1
+
+    assert(t01 > t02)
+    intersect=np.sum(np.sum(pd.DataFrame(CW)==pd.DataFrame(GW)))
+    union=pd.DataFrame(CW).shape[0]*pd.DataFrame(CW).shape[1]
+    assert(intersect==union)

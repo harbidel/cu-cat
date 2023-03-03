@@ -221,7 +221,7 @@ def test_small_sample():
 
 def test_perf():
     """Test gpu speed boost and correctness"""
-    n_samples = 200
+    n_samples = 2000
     X = generate_data(n_samples, random_state=0)
     Y = generate_data(n_samples, random_state=0)
     Z = generate_data(n_samples, random_state=0)

@@ -17,6 +17,7 @@ The principle is as follows:
 
 import warnings,sys
 from typing import Dict, Generator, List, Literal, Optional, Tuple, Union
+from inspect import getmodule
 
 import cupy as cp
 import numpy as np
@@ -130,7 +131,10 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
         # Init H_dict_ with empty dict to train from scratch
         self.H_dict_ = dict()
         # Build the n-grams counts matrix unq_V on unique elements of X
-        unq_X, lookup = np.unique(X, return_inverse=True)
+        if 'cudf.core.series' not in str(getmodule(X)):
+            unq_X, lookup = np.unique(X, return_inverse=True)
+        elif 'cudf.core.series' in str(getmodule(X)):
+            unq_X,lookup = X.unique() #X, return_inverse=True)
         unq_V = self.ngrams_count_.fit_transform(unq_X)
         if self.add_words:  # Add word counts to unq_V
             unq_V2 = self.word_count_.fit_transform(unq_X)
@@ -746,12 +750,21 @@ class GapEncoder(BaseEstimator, TransformerMixin):
         if isinstance(X, pd.DataFrame):
             self.column_names_ = list(X.columns)
         # Check input data shape
-        X = check_input(X)
-        X = self._handle_missing(X)
-        self.fitted_models_ = []
-        for k in range(X.shape[1]):
-            col_enc = self._create_column_gap_encoder()
-            self.fitted_models_.append(col_enc.fit(X[:, k]))
+        if 'cudf.core.dataframe' not in str(getmodule(X)):
+            X = check_input(X)
+            X = self._handle_missing(X)
+            self.fitted_models_ = []
+            for k in range(X.shape[1]):
+                col_enc = self._create_column_gap_encoder()
+                self.fitted_models_.append(col_enc.fit(X[:, k]))
+        elif 'cudf.core.dataframe' in str(getmodule(X)):
+            # X = check_input(X)
+            # X = self._handle_missing(X)
+            self.fitted_models_ = []
+            for k in range(X.shape[1]):
+                col_enc = self._create_column_gap_encoder()
+                self.fitted_models_.append(col_enc.fit(X.iloc[:,k]))
+            
         return self
 
     def transform(self, X) -> np.array:
