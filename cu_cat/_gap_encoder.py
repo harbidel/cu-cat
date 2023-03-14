@@ -276,7 +276,6 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
         # Make n-grams counts matrix unq_V
         unq_X, unq_V, lookup = self._init_vars(X)
         n_batch = (len(X) - 1) // self.batch_size + 1
-        del X
         # Get activations unq_H
         unq_H = self._get_H(unq_X)
         unq_V=csr_gpu(unq_V);unq_H=cp.array(unq_H);
@@ -284,7 +283,12 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
         for n_iter_ in range(self.max_iter):
             if (unq_V.shape[0]*unq_V.shape[1])<1e9 and self.engine=='gpu':
                 logger.debug(f"fitting smallfast-wise")
-                self.W_=cp.array(self.W_);self.B_=cp.array(self.B_);self.A_=cp.array(self.A_)
+                if 'cudf.core.dataframe' not in str(getmodule(X)):
+                    logger.debug(f"moving to gpu")
+                    self.W_=cp.array(self.W_);self.B_=cp.array(self.B_);self.A_=cp.array(self.A_)
+                elif 'cudf.core.dataframe' in str(getmodule(X)):
+                    logger.debug(f"keeping on gpu")
+                    self.W_=self.W_.to_cupy();self.B_=self.B_.to_cupy();self.A_=self.A_.to_cupy()
                 W_last = self.W_.copy()
                 unq_H = _multiplicative_update_h_smallfast(
                     unq_V,
@@ -307,11 +311,14 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
                 )
             else:
                 if (unq_V.shape[0]*unq_V.shape[1])>2e9 and self.engine=='gpu':
-                    self.W_=cp.array(self.W_);self.B_=cp.array(self.B_);self.A_=cp.array(self.A_)
+                    if 'cudf.core.dataframe' not in str(getmodule(X)):
+                        self.W_=cp.array(self.W_);self.B_=cp.array(self.B_);self.A_=cp.array(self.A_)
+                    elif 'cudf.core.dataframe' in str(getmodule(X)):
+                        self.W_=self.W_.to_cupy();self.B_=self.B_.to_cupy();self.A_=self.A_.to_cupy()
                     logger.debug(f"sent to cupy")
                     # Loop over batches
                 else: #if self.engine!='gpu': #### if 1e9 > samples * features > 2e9 go to cpu even if user wants gpu -- could lessen gap in future
-                    if hasattr(unq_H, 'device'):
+                    if hasattr(unq_H, 'device') or 'cudf.core.dataframe' in str(getmodule(X)):
                         unq_V=unq_V.get();unq_H=unq_H.get();
                     logger.debug(f"kept in numpy")
                 for i, (unq_idx, idx) in enumerate(batch_lookup(lookup, n=self.batch_size)):
