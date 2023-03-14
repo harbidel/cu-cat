@@ -312,9 +312,9 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
             else:
                 if (unq_V.shape[0]*unq_V.shape[1])>2e9 and self.engine=='gpu':
                     if 'cudf.core.dataframe' not in str(getmodule(X)):
-                        self.W_=cp.array(self.W_);self.B_=cp.array(self.B_);self.A_=cp.array(self.A_)
+                        self.W_=cp.array(self.W_);unq_V=cp.array(unq_V);unq_H=cp.array(unq_H);self.B_=cp.array(self.B_);self.A_=cp.array(self.A_)
                     elif 'cudf.core.dataframe' in str(getmodule(X)):
-                        self.W_=self.W_.to_cupy();self.B_=self.B_.to_cupy();self.A_=self.A_.to_cupy()
+                        self.W_=self.W_.to_cupy();unq_V=unq_V.to_cupy();unq_H=unq_H.to_cupy();self.B_=self.B_.to_cupy();self.A_=self.A_.to_cupy()
                     logger.debug(f"sent to cupy")
                     # Loop over batches
                 else: #if self.engine!='gpu': #### if 1e9 > samples * features > 2e9 go to cpu even if user wants gpu -- could lessen gap in future
@@ -922,11 +922,11 @@ def _multiplicative_update_w_smallfast(
     """
     Multiplicative update step for the topics W.
     """
-    A=cp.array(A)
-    B=cp.array(B)
-    Ht=cp.array(Ht) ## not needed if we figure way to .get() outside function
-    W=cp.array(W)
-    Vt=csr_gpu(Vt)
+    # A=cp.array(A)
+    # B=cp.array(B)
+    # Ht=cp.array(Ht) ## not needed if we figure way to .get() outside function
+    # W=cp.array(W)
+    # Vt=csr_gpu(Vt)
     A *= rho
     C = cp.matmul(Ht, W)
     R = Vt.multiply(cp.reciprocal(C) + 1e-10)

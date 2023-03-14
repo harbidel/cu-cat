@@ -6,6 +6,7 @@ manually categorize them beforehand, or construct complex Pipelines.
 
 from typing import Dict, List, Literal, Optional, Tuple, Union
 from warnings import warn
+from inspect import getmodule
 
 import numpy as np
 import pandas as pd
@@ -63,19 +64,21 @@ def _replace_false_missing(
         "#N/A",
         "NaN",
     ]  # taken from pandas.io.parsers (version 1.1.4)
+    if 'cudf.core.dataframe' in str(getmodule(df)):
+        df=df.to_pandas()
     if isinstance(df, pd.DataFrame):
         df.astype(object).replace(STR_NA_VALUES + [None, "?", "..."], np.nan,inplace=True)
         df.astype(object).replace(r"^\s+$", '0', regex=True,inplace=True)  # Replace whitespaces
 
-    if 'cudf.core.dataframe' in str(getmodule(df)):
-        df.astype(object).replace(STR_NA_VALUES + [None, "?", "..."], '0',inplace=True)
-        df.astype(object).replace('0', np.nan,inplace=True)
-        for i in df.columns:
-            try:
-                df[i]=df[i].str.normalize_spaces()
-                df[i]=df[i].str.normalize_characters()
-            except:
-                df[i]=df[i]
+    # if 'cudf.core.dataframe' in str(getmodule(df)):
+    #     df.astype(object).replace(STR_NA_VALUES + [None, "?", "..."], '0',inplace=True)
+    #     df.astype(object).replace('0', np.nan,inplace=True)
+    #     for i in df.columns:
+    #         try:
+    #             df[i]=df[i].str.normalize_spaces()
+    #             df[i]=df[i].str.normalize_characters()
+    #         except:
+    #             df[i]=df[i]
     return df
 
 
