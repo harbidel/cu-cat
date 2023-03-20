@@ -283,6 +283,7 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
         for n_iter_ in range(self.max_iter):
             if (unq_V.shape[0]*unq_V.shape[1])<1e9 and self.engine=='gpu':
                 logger.debug(f"fitting smallfast-wise")
+                print(str(getmodule(X)))
                 if 'cudf.core.dataframe' not in str(getmodule(X)):
                     logger.debug(f"moving to gpu")
                     self.W_=cp.array(self.W_);self.B_=cp.array(self.B_);self.A_=cp.array(self.A_)
@@ -310,17 +311,16 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
                     self.rho_,
                 )
             else:
-                if (unq_V.shape[0]*unq_V.shape[1])>2e9 and self.engine=='gpu':
-                    if 'cudf.core.dataframe' not in str(getmodule(X)):
-                        self.W_=cp.array(self.W_);self.B_=cp.array(self.B_);self.A_=cp.array(self.A_); # unq_V=cp.array(unq_V);unq_H=cp.array(unq_H);
-                    elif 'cudf.core.dataframe' in str(getmodule(X)):
-                        self.W_=self.W_.to_cupy();self.B_=self.B_.to_cupy();self.A_=self.A_.to_cupy(); # unq_V=unq_V.to_cupy();unq_H=unq_H.to_cupy();
-                    logger.debug(f"sent to cupy")
+                X_type= str(getmodule(X));
+                if 'cudf.core.dataframe' in X_type:
+                    self.W_=self.W_.to_cupy();self.B_=self.B_.to_cupy();self.A_=self.A_.to_cupy(); # unq_V=unq_V.to_cupy();unq_H=unq_H.to_cupy();
+
                     # Loop over batches
-                else: #if self.engine!='gpu': #### if 1e9 > samples * features > 2e9 go to cpu even if user wants gpu -- could lessen gap in future
-                    if hasattr(unq_H, 'device') or 'cudf.core.dataframe' in str(getmodule(X)):
-                        unq_V=unq_V.get();unq_H=unq_H.get();
-                    logger.debug(f"kept in numpy")
+                elif 'cudf.core.dataframe' not in X_type and (unq_V.shape[0]*unq_V.shape[1])>2e9 and self.engine=='gpu':
+                    self.W_=cp.array(self.W_);self.B_=cp.array(self.B_);self.A_=cp.array(self.A_); # unq_V=cp.array(unq_V);unq_H=cp.array(unq_H);
+                elif self.engine!='gpu' and hasattr(unq_H, 'device') or 'cudf.core.dataframe' in str(getmodule(X)): #### if 1e9 > samples * features > 2e9 go to cpu even if user wants gpu -- could lessen gap in future
+                    unq_V=unq_V.get();unq_H=unq_H.get();
+                    logger.debug(f"forced into numpy")
                 for i, (unq_idx, idx) in enumerate(batch_lookup(lookup, n=self.batch_size)):
                     if i == n_batch - 1:
                         W_last = self.W_.copy()
@@ -460,6 +460,7 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
         # Loop over batches
         logger.info(f"features and samples =  `{unq_V.shape}`, ie `{unq_V.shape[0]*unq_V.shape[1]}`")
         if unq_V.shape[0]*unq_V.shape[1]<1e9:
+            unq_V=csr_gpu(unq_V);unq_H=cp.array(unq_H);self.W_=cp.array(self.W_) ## if not already in cupy
             logger.debug(f"smallfast transform")
             unq_H = _multiplicative_update_h_smallfast(
                     unq_V,
@@ -472,16 +473,16 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
                     gamma_scale_prior=self.gamma_scale_prior,
                 )
         else:
-            if unq_V.shape[0]*unq_V.shape[1]>2e9:
+            if 'cudf.core.dataframe' in str(getmodule(unq_V)):
                 logger.debug(f"cupy transform")
-                unq_V=csr_gpu(unq_V);unq_H=cp.array(unq_H);self.W_=cp.array(self.W_)
-            else:
-                if hasattr(self.W_, 'device'):
-                    self.W_=self.W_.get()
-                logger.debug(f"numpy transform")
+                unq_V=csr_gpu(unq_V.to_cupy());unq_H=(unq_H.to_cupy());self.W_=(self.W_.to_cupy())
+            elif self.engine!='gpu':
+                self.W_=self.W_.get() ### numpy is fastest for this caseset
+                logger.debug(f"force numpy transform")
             for slc in gen_batches(n=unq_H.shape[0], batch_size=self.batch_size):
                 # Given the learnt topics W, optimize H to fit V = HW
                 unq_H[slc] = _multiplicative_update_h(
+                    self,
                     unq_V[slc],
                     self.W_,
                     unq_H[slc],
@@ -953,6 +954,7 @@ def _rescale_h(V: np.array, H: np.array) -> np.array:
 
 
 def _multiplicative_update_h(
+    self,
     Vt: np.array,
     W: np.array,
     Ht: np.array,
@@ -974,7 +976,7 @@ def _multiplicative_update_h(
     const = (gamma_shape_prior - 1) / WT1
     squared_epsilon = epsilon**2
     
-    if Vt.shape[0]*Vt.shape[1]>2e9:
+    if self.engine=='gpu': # Vt.shape[0]*Vt.shape[1]>2e9:
         for vt, ht in zip(Vt, Ht):
             vt_ = vt.data
             idx = vt.indices
@@ -988,7 +990,7 @@ def _multiplicative_update_h(
                 ht_out = cp.multiply(ht, aux) + const
                 squared_norm = cp.multiply(cp.dot(ht_out - ht, ht_out - ht), cp.reciprocal(cp.dot(ht, ht)))
                 ht[:] = ht_out
-    else:
+    if self.engine!='gpu':
         for vt, ht in zip(Vt, Ht):
             vt_ = vt.data
             idx = vt.indices
