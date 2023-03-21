@@ -903,6 +903,7 @@ def _multiplicative_update_w(
         W=cp.multiply(A, cp.reciprocal(B))#, out=W)
         if rescale_W:
             _rescale_W(W, A)
+        cp._default_memory_pool.free_all_blocks()
         
     elif self.engine!='gpu':
         A *= rho
@@ -993,6 +994,8 @@ def _multiplicative_update_h(
                 ht_out = cp.multiply(ht, aux) + const
                 squared_norm = cp.multiply(cp.dot(ht_out - ht, ht_out - ht), cp.reciprocal(cp.dot(ht, ht)))
                 ht[:] = ht_out
+        del Vt,W_,W_WT1,ht,ht_out,vt,vt_
+        cp._default_memory_pool.free_all_blocks()
     elif self.engine!='gpu':
         for vt, ht in zip(Vt, Ht):
             vt_ = vt.data
