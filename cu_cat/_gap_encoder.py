@@ -283,7 +283,6 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
         for n_iter_ in range(self.max_iter):
             if (unq_V.shape[0]*unq_V.shape[1])<1e9 and self.engine=='gpu':
                 logger.debug(f"fitting smallfast-wise")
-                print(str(getmodule(X)))
                 if 'cudf.core.dataframe' not in str(getmodule(X)):
                     logger.debug(f"moving to gpu")
                     self.W_=cp.array(self.W_);self.B_=cp.array(self.B_);self.A_=cp.array(self.A_)
@@ -311,21 +310,23 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
                     self.rho_,
                 )
             else:
-                X_type= str(getmodule(X));
-                if 'cudf.core.dataframe' in X_type:
-                    self.W_=self.W_.to_cupy();self.B_=self.B_.to_cupy();self.A_=self.A_.to_cupy(); # unq_V=unq_V.to_cupy();unq_H=unq_H.to_cupy();
-
+                if self.engine=='gpu':
+                    if 'cudf.core.dataframe' not in str(getmodule(X)):
+                        self.W_=cp.array(self.W_);self.B_=cp.array(self.B_);self.A_=cp.array(self.A_); # unq_V=cp.array(unq_V);unq_H=cp.array(unq_H);
+                    elif 'cudf.core.dataframe' in str(getmodule(X)):
+                        self.W_=self.W_.to_cupy();self.B_=self.B_.to_cupy();self.A_=self.A_.to_cupy(); # unq_V=unq_V.to_cupy();unq_H=unq_H.to_cupy();
+                    logger.debug(f"sent to cupy")
                     # Loop over batches
-                elif 'cudf.core.dataframe' not in X_type and (unq_V.shape[0]*unq_V.shape[1])>2e9 and self.engine=='gpu':
-                    self.W_=cp.array(self.W_);self.B_=cp.array(self.B_);self.A_=cp.array(self.A_); # unq_V=cp.array(unq_V);unq_H=cp.array(unq_H);
-                elif self.engine!='gpu' and hasattr(unq_H, 'device') or 'cudf.core.dataframe' in str(getmodule(X)): #### if 1e9 > samples * features > 2e9 go to cpu even if user wants gpu -- could lessen gap in future
-                    unq_V=unq_V.get();unq_H=unq_H.get();
-                    logger.debug(f"forced into numpy")
+                elif self.engine!='gpu': 
+                    if hasattr(unq_H, 'device') or 'cudf.core.dataframe' in str(getmodule(X)):
+                        unq_V=unq_V.get();unq_H=unq_H.get();
+                    logger.debug(f"kept in numpy")
                 for i, (unq_idx, idx) in enumerate(batch_lookup(lookup, n=self.batch_size)):
                     if i == n_batch - 1:
                         W_last = self.W_.copy()
                     # Update activations unq_H
                         unq_H[unq_idx] = _multiplicative_update_h(
+                            self,
                             unq_V[unq_idx],
                             self.W_,
                             unq_H[unq_idx],
@@ -337,6 +338,7 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
                         )
                         # Update the topics self.W_
                         _multiplicative_update_w(
+                            self,
                             unq_V[idx],
                             self.W_,
                             self.A_,
@@ -460,7 +462,6 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
         # Loop over batches
         logger.info(f"features and samples =  `{unq_V.shape}`, ie `{unq_V.shape[0]*unq_V.shape[1]}`")
         if unq_V.shape[0]*unq_V.shape[1]<1e9:
-            unq_V=csr_gpu(unq_V);unq_H=cp.array(unq_H);self.W_=cp.array(self.W_) ## if not already in cupy
             logger.debug(f"smallfast transform")
             unq_H = _multiplicative_update_h_smallfast(
                     unq_V,
@@ -473,11 +474,12 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
                     gamma_scale_prior=self.gamma_scale_prior,
                 )
         else:
-            if 'cudf.core.dataframe' in str(getmodule(unq_V)):
+            if self.engine=='gpu':
                 logger.debug(f"cupy transform")
-                unq_V=csr_gpu(unq_V.to_cupy());unq_H=(unq_H.to_cupy());self.W_=(self.W_.to_cupy())
+                unq_V=csr_gpu(unq_V);unq_H=cp.array(unq_H);self.W_=cp.array(self.W_)
             elif self.engine!='gpu':
-                self.W_=self.W_.get() ### numpy is fastest for this caseset
+                # if hasattr(self.W_, 'device'):
+                self.W_=self.W_.get()
                 logger.debug(f"force numpy transform")
             for slc in gen_batches(n=unq_H.shape[0], batch_size=self.batch_size):
                 # Given the learnt topics W, optimize H to fit V = HW
@@ -881,6 +883,7 @@ def _rescale_W(W: np.array, A: np.array) -> None:
 
 
 def _multiplicative_update_w(
+    self,
     Vt: np.array,
     W: np.array,
     A: np.array,
@@ -892,7 +895,7 @@ def _multiplicative_update_w(
     """
     Multiplicative update step for the topics W.
     """
-    if Vt.shape[0]*Vt.shape[1]>2e9:
+    if self.engine=='gpu':
         A *= rho
         A += cp.multiply(W, safe_sparse_dot(Ht.T, Vt.multiply(1 / (cp.dot(Ht, W) + 1e-10))))
         B *= rho
@@ -900,8 +903,9 @@ def _multiplicative_update_w(
         W=cp.multiply(A, cp.reciprocal(B))#, out=W)
         if rescale_W:
             _rescale_W(W, A)
+        cp._default_memory_pool.free_all_blocks()
         
-    else:
+    elif self.engine!='gpu':
         A *= rho
         A += np.multiply(W, safe_sparse_dot(Ht.T, Vt.multiply(1 / (np.dot(Ht, W) + 1e-10))))
         B *= rho
@@ -976,7 +980,7 @@ def _multiplicative_update_h(
     const = (gamma_shape_prior - 1) / WT1
     squared_epsilon = epsilon**2
     
-    if self.engine=='gpu': # Vt.shape[0]*Vt.shape[1]>2e9:
+    if self.engine=='gpu':
         for vt, ht in zip(Vt, Ht):
             vt_ = vt.data
             idx = vt.indices
@@ -990,7 +994,9 @@ def _multiplicative_update_h(
                 ht_out = cp.multiply(ht, aux) + const
                 squared_norm = cp.multiply(cp.dot(ht_out - ht, ht_out - ht), cp.reciprocal(cp.dot(ht, ht)))
                 ht[:] = ht_out
-    if self.engine!='gpu':
+        del Vt,W_,W_WT1,ht,ht_out,vt,vt_
+        cp._default_memory_pool.free_all_blocks()
+    elif self.engine!='gpu':
         for vt, ht in zip(Vt, Ht):
             vt_ = vt.data
             idx = vt.indices
