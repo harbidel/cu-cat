@@ -25,54 +25,6 @@ from cu_cat._utils import parse_version
 # Required for ignoring lines too long in the docstrings
 # flake8: noqa: E501
 
-
-def _has_missing_values(df: Union[pd.DataFrame, pd.Series]) -> bool:
-    """
-    Returns True if `array` contains missing values, False otherwise.
-    """
-    return any(df.isnull())
-
-
-def _replace_false_missing(
-    df: Union[pd.DataFrame, pd.Series]
-) -> Union[pd.DataFrame, pd.Series]:
-    """
-    Takes a DataFrame or a Series, and replaces the "false missing", that is,
-    strings that designate a missing value, but do not have the corresponding
-    type. We convert these strings to np.nan.
-    Also replaces `None` to np.nan.
-    """
-    # Should not replace "missing" (the string used for imputation in
-    # categorical features).
-    STR_NA_VALUES = [
-        "null",
-        "","""
-Implements the TableVectorizer: a preprocessor to automatically apply
-transformers/encoders to different types of data, without the need to
-manually categorize them beforehand, or construct complex Pipelines.
-"""
-
-from typing import Dict, List, Literal, Optional, Tuple, Union
-from warnings import warn
-from inspect import getmodule
-
-import numpy as np
-import pandas as pd
-import sklearn
-from pandas.core.dtypes.base import ExtensionDtype
-from sklearn import __version__ as sklearn_version
-from sklearn.base import TransformerMixin, clone
-from sklearn.compose import ColumnTransformer
-from sklearn.preprocessing import OneHotEncoder
-from sklearn.utils.deprecation import deprecated
-from sklearn.utils.validation import check_is_fitted
-
-from cu_cat import DatetimeEncoder, GapEncoder
-from cu_cat._utils import parse_version
-
-# Required for ignoring lines too long in the docstrings
-# flake8: noqa: E501
-
 def _df_type(df):
     """
     Returns df type
