@@ -29,7 +29,10 @@ def _df_type(df):
     """
     Returns df type
     """
-    return str(getmodule(df))
+    df_type=str(getmodule(df))
+    if 'cudf.core.dataframe' in df_type:
+        import cudf
+    return df_type
 
 
 def _has_missing_values(df: Union[pd.DataFrame, pd.Series]) -> bool:
@@ -69,8 +72,8 @@ def _replace_false_missing(
         "#N/A",
         "NaN",
     ]  # taken from pandas.io.parsers (version 1.1.4)
-    df_type= str(getmodule(df))
-    if 'cudf.core.dataframe' in df_type:
+    Xt_= _df_type(df)
+    if 'cudf.core.dataframe' in Xt_:
         df=df.to_pandas()
     if isinstance(df, pd.DataFrame):
         df.astype(object).replace(STR_NA_VALUES + [None, "?", "..."], np.nan,inplace=True)
@@ -611,12 +614,10 @@ class TableVectorizer(ColumnTransformer):
         if self.verbose:
             print(f"[TableVectorizer] Assigned transformers: {self.transformers}")
             
-        if 'cudf.core.dataframe' in self.Xt_:
-            import cudf
-            X=cudf.from_pandas(X);
-            # print(str(getmodule(y)))
+        if 'cudf.core.dataframe' in self.Xt_ and self.high_card_cat_transformer_ == GapEncoder:
+            # import cudf
+            X=cudf.from_pandas(X)
             # y=cudf.from_pandas(y); should already be in cudf since not manipulated earlier
-            
         X_enc = super().fit_transform(X, y)
 
         # For the "remainder" columns, the `ColumnTransformer` `transformers_`
@@ -669,10 +670,9 @@ class TableVectorizer(ColumnTransformer):
         if self.auto_cast:
             X = self._apply_cast(X)
             
-        if 'cudf.core.dataframe' in self.Xt_:
-            import cudf
+        if 'cudf.core.dataframe' in self.Xt_ and self.high_card_cat_transformer_ == GapEncoder:
+            # import cudf
             X=cudf.from_pandas(X)
-            
         return super().transform(X)
 
     def get_feature_names_out(self, input_features=None) -> List[str]:
