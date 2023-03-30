@@ -190,13 +190,15 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
         # H_out = np.empty((len(X), self.n_components))
         # H_out=cudf.DataFrame(H_out)
         # H_out.index=X.to_numpy()
-        H_out = pd.DataFrame.from_dict(self.H_dict_)
-        H_out = cudf.from_pandas(H_out)
+        if X.shape[0]!=self.n_components:
+            H_out = pd.DataFrame.from_dict(self.H_dict_)
+            H_out = cudf.from_pandas(H_out).T
+        else:
         # print(X)
         # print(H_out)
-        # for x, h_out in zip(X.to_arrow(), H_out):
+            for x, h_out in zip(X.to_arrow(), H_out):
             # print([x,h_out])
-            # h_out[0,:] = self.H_dict_[x]
+                h_out[:] = self.H_dict_[x]
             # h_out[1,:] = self.X_dict_[x]
             
         return H_out
@@ -306,9 +308,9 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
         unq_X, unq_V, lookup = self._init_vars(X)
         n_batch = (len(X) - 1) // self.batch_size + 1
         # Get activations unq_H
-        print(unq_X)
+        # print(unq_X)
         unq_H = self._get_H(unq_X.to_pandas())
-        print(unq_H)
+        # print(unq_H)
         unq_V=csr_gpu(unq_V);unq_H=cp.array(unq_H);
 
         for n_iter_ in range(self.max_iter):
