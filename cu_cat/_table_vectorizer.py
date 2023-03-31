@@ -640,7 +640,7 @@ class TableVectorizer(ColumnTransformer):
                 f"columns, expected {len(self.columns_)}"
             )
 
-        if not isinstance(X, pd.DataFrame):
+        if not isinstance(X, pd.DataFrame) and not 'cudf.core.dataframe' in str(getmodule(X)):
             X = pd.DataFrame(X)
         else:
             # Create a copy to avoid altering the original data.
