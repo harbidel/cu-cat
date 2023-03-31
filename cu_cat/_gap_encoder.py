@@ -56,9 +56,9 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
     """See GapEncoder's docstring."""
 
     rho_: float
-    # H_dict_: Dict[cp.ndarray, cp.ndarray]
-    H_dict_: cudf.Series()
-    X_dict_: cudf.Series()
+    H_dict_: Dict[cp.ndarray, cp.ndarray]
+    # H_dict_: cudf.Series()
+    # X_dict_: cudf.Series()
 
     def __init__(
         self,
@@ -131,8 +131,8 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
                 self.word_count_ = CountVectorizer(dtype=np.float64)
 
         # Init H_dict_ with empty dict to train from scratch
-        self.H_dict_ = cudf.Series()
-        self.X_dict_ = cudf.Series()
+        self.H_dict_ = dict() #cudf.Series()
+        # self.X_dict_ = cudf.Series()
 
         # Build the n-grams counts matrix unq_V on unique elements of X
         if 'cudf.core.series' not in str(getmodule(X)):
@@ -170,10 +170,10 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
         unq_H = _rescale_h(self, unq_V, np.ones((len(unq_X), self.n_components)))
         # Update self.H_dict_ with unique input strings and their activations
         if self.engine == 'gpu' :
-            # self.H_dict_.update(zip(unq_X.to_arrow(), unq_H.to_arrow()))
+            self.H_dict_.update(zip(unq_X.to_arrow(), unq_H.values))
             # print(self.H_dict_.columns)
-            self.H_dict_ = self.H_dict_.append(unq_H)#.to_arrow())
-            self.X_dict_ = self.X_dict_.append(unq_X)#.to_arrow())
+            # self.H_dict_ = self.H_dict_.append(unq_H)#.to_arrow())
+            # self.X_dict_ = self.X_dict_.append(unq_X)#.to_arrow())
             # self.H_dict_ = cudf.concat(self.H_dict_,unq_H)
             # self.X_dict_ = cudf.concat(self.X_dict_,unq_X)
         else:
@@ -187,19 +187,23 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
         """
         Return the bag-of-n-grams representation of X.
         """
-        # H_out = np.empty((len(X), self.n_components))
         # H_out=cudf.DataFrame(H_out)
         # H_out.index=X.to_numpy()
-        if X.shape[0]!=self.n_components:
-            H_out = pd.DataFrame.from_dict(self.H_dict_)
-            H_out = cudf.from_pandas(H_out).T
-        else:
+        # if X.shape[0]!=self.n_components:
+        #     H_out = pd.DataFrame.from_dict(self.H_dict_)
+        #     H_out = cudf.from_pandas(H_out).T
+        # else:
         # print(X)
         # print(H_out)
-            for x, h_out in zip(X.to_arrow(), H_out):
-            # print([x,h_out])
+        if 'cudf' in str(getmodule(X)): #self.Xt:
+            H_out = cp.empty((len(X), self.n_components))
+
+            for x, h_out in zip(X.to_arrow(), H_out): ## from cupy back to cudf
+                h_out[:] = self.H_dict_[x]#.to_cupy()
+        else:
+            H_out = np.empty((len(X), self.n_components))
+            for x, h_out in zip(X, H_out):
                 h_out[:] = self.H_dict_[x]
-            # h_out[1,:] = self.X_dict_[x]
             
         return H_out
 
@@ -309,7 +313,7 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
         n_batch = (len(X) - 1) // self.batch_size + 1
         # Get activations unq_H
         # print(unq_X)
-        unq_H = self._get_H(unq_X.to_pandas())
+        unq_H = self._get_H(unq_X)#.to_pandas())
         # print(unq_H)
         unq_V=csr_gpu(unq_V);unq_H=cp.array(unq_H);
 
@@ -388,9 +392,9 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
             if (W_change < self.tol) and (n_iter_ >= self.min_iter - 1):
                 break  # Stop if the change in W is smaller than the tolerance
         if self.engine == 'gpu' :
-            # self.H_dict_.update(zip(unq_X.to_arrow(), unq_H.to_arrow()))
-            self.H_dict_ = self.H_dict_.append(cudf.Series(unq_H),ignore_index=True)#.to_arrow())
-            self.X_dict_ = self.X_dict_.append(unq_X)
+            self.H_dict_.update(zip(unq_X.to_arrow(), unq_H))
+            # self.H_dict_ = self.H_dict_.append(cudf.Series(unq_H),ignore_index=True)#.to_arrow())
+            # self.X_dict_ = self.X_dict_.append(unq_X)
             # self.H_dict_ = cudf.concat(self.H_dict_,unq_H)
             # self.X_dict_ = cudf.concat(self.X_dict_,unq_X)
         else:
@@ -470,9 +474,9 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
                 unseen_V, np.ones((unseen_V.shape[0], self.n_components))
             )
             if self.engine == 'gpu' :
-                # self.H_dict_.update(zip(unseen_X.to_arrow(), unseen_H.to_arrow()))
-                self.H_dict_ = self.H_dict_.append(unseen_H)#.to_arrow())
-                self.X_dict_ = self.X_dict_.append(unseen_X)
+                self.H_dict_.update(zip(unseen_X.to_arrow(), unseen_H.to_arrow()))
+                # self.H_dict_ = self.H_dict_.append(unseen_H)#.to_arrow())
+                # self.X_dict_ = self.X_dict_.append(unseen_X)
                 # self.H_dict_ = cudf.concat(self.H_dict_,unseen_H)
                 # self.X_dict_ = cudf.concat(self.X_dict_,unseen_X)
             else:
@@ -541,9 +545,9 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
                     gamma_scale_prior=self.gamma_scale_prior,
                 )
         if self.engine == 'gpu' :
-            # self.H_dict_.update(zip(unq_X.to_arrow(), unq_H.to_arrow()))
-            self.H_dict_ = self.H_dict_.append(unq_H)#.to_arrow())
-            self.X_dict_ = self.X_dict_.append(unq_X)
+            self.H_dict_.update(zip(unq_X.to_arrow(), unq_H.to_arrow()))
+            # self.H_dict_ = self.H_dict_.append(unq_H)#.to_arrow())
+            # self.X_dict_ = self.X_dict_.append(unq_X)
             # self.H_dict_ = cudf.concat(self.H_dict_,unq_H)
             # self.X_dict_ = cudf.concat(self.X_dict_,unq_X)
         else:
@@ -849,11 +853,13 @@ class GapEncoder(BaseEstimator, TransformerMixin):
         """
         check_is_fitted(self, "fitted_models_")
         # Check input data shape
-        X = check_input(X)
-        X = self._handle_missing(X)
+        # X = check_input(X)
+        # X = self._handle_missing(X)
         X_enc = []
         for k in range(X.shape[1]):
-            X_enc.append(self.fitted_models_[k].transform(X[:, k]))
+            j=(self.fitted_models_[k].transform(X[:, k]))
+            print(j)
+            X_enc.append(j)
         X_enc = np.hstack(X_enc)
         return X_enc
 

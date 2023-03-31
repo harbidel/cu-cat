@@ -32,7 +32,10 @@ def _df_type(df):
     """
     Returns df type
     """
-    return str(getmodule(df))
+    df_type=str(getmodule(df))
+    if 'cudf' in df_type:
+        import cudf
+    return df_type
 
 
 def _has_missing_values(df: Union[pd.DataFrame, pd.Series]) -> bool:
@@ -73,18 +76,30 @@ def _replace_false_missing(
         "NaN",
     ]  # taken from pandas.io.parsers (version 1.1.4)
     df_type= str(getmodule(df))
-    if 'cudf.core.dataframe' in df_type:
-        df=df.to_pandas()
+    
+        # df=df.to_pandas()
     # if isinstance(df, pd.DataFrame):
     # df=df.astype(object).replace(STR_NA_VALUES + [None, "?", "..."], np.nan)
     # df=df.astype(object).replace(r"^\s+$", '0', regex=True)  # Replace whitespaces
-    df = df.replace(STR_NA_VALUES + [None, "?", "..."], np.nan)
-    df = df.replace(r"^\s+$", np.nan, regex=True)  # Replace whitespaces
-    # if 'cudf.core.dataframe' in df_type: ## do this after munging -- before fit/transform
+    if 'cudf' not in df_type:
+        df = df.replace(STR_NA_VALUES + [None, "?", "..."], np.nan)
+        df = df.replace(r"^\s+$", np.nan, regex=True)  # Replace whitespaces
+        
+    else:
+        for i in df.columns:
+            if 'int' in str(df[i].dtype):
+                df[i] = df[i].astype('str')
+                df[i] = df[i].replace(STR_NA_VALUES + [None, "?", "..."], 'None')
+            try:
+                df[i]=df[i].str.normalize_spaces()
+                df[i]=df[i].str.normalize_characters()
+            except:
+                df[i]=df[i]
+    # if 'cudf' in df_type: ## do this after munging -- before fit/transform
     #     import cudf
     #     df=cudf.from_pandas(df)
         
-    # if 'cudf.core.dataframe' in str(getmodule(df)):
+    # if 'cudf' in str(getmodule(df)):
     #     df.astype(object).replace(STR_NA_VALUES + [None, "?", "..."], '0',inplace=True)
     #     df.astype(object).replace('0', np.nan,inplace=True)
     #     for i in df.columns:
@@ -418,7 +433,7 @@ class TableVectorizer(ColumnTransformer):
             # Convert pandas' NaN value (pd.NA) to numpy NaN value (np.nan)
             # because the former tends to raise all kind of issues when dealing
             # with scikit-learn (as of version 0.24).
-            if _has_missing_values(X[col]):
+            if _has_missing_values(X[col].to_pandas()):  ## cannot iterate on cudf.Series so any cannot count
                 # Some numerical dtypes like Int64 or Float64 only support
                 # pd.NA, so they must be converted to np.float64 before.
                 if pd.api.types.is_numeric_dtype(X[col]):
@@ -505,7 +520,7 @@ class TableVectorizer(ColumnTransformer):
         self._clone_transformers()
 
         # Convert to pandas DataFrame if not already.
-        if not isinstance(X, pd.DataFrame) and not 'cudf.core.dataframe' in str(getmodule(X)):
+        if not isinstance(X, pd.DataFrame) and not 'cudf' in str(getmodule(X)):
             X = pd.DataFrame(X)
         else:
             # Create a copy to avoid altering the original data.
@@ -515,8 +530,11 @@ class TableVectorizer(ColumnTransformer):
         # If auto_cast is True, we'll find and apply the best possible type
         # to each column.
         # We'll keep the results in order to apply the types in `transform`.
-        if self.auto_cast:
-            X = self._auto_cast(X)
+        
+        # if self.auto_cast and 'cudf' in str(getmodule(X)):
+        #     X = self._auto_cast(X.to_arrow())
+        # elif self.auto_cast:
+        X = self._auto_cast(X)
 
         # Select columns by dtype
         numeric_columns = X.select_dtypes(
@@ -616,7 +634,7 @@ class TableVectorizer(ColumnTransformer):
         if self.verbose:
             print(f"[TableVectorizer] Assigned transformers: {self.transformers}")
         
-        if 'cudf.core.dataframe' in self.Xt_:
+        if 'cudf' in self.Xt_ and 'cudf' not in str(getmodule(X)):
             import cudf
             X=cudf.from_pandas(X,nan_as_null=False)
             # print(str(getmodule(y)))
@@ -661,7 +679,7 @@ class TableVectorizer(ColumnTransformer):
                 f"columns, expected {len(self.columns_)}"
             )
 
-        if not isinstance(X, pd.DataFrame) and not 'cudf.core.dataframe' in str(getmodule(X)):
+        if not isinstance(X, pd.DataFrame) and not 'cudf' in str(getmodule(X)):
             X = pd.DataFrame(X)
         else:
             # Create a copy to avoid altering the original data.
@@ -673,7 +691,7 @@ class TableVectorizer(ColumnTransformer):
         if self.auto_cast:
             X = self._apply_cast(X)
             
-        if 'cudf.core.dataframe' in self.Xt_:
+        if 'cudf' in self.Xt_:
             import cudf
             X=cudf.from_pandas(X)
             
