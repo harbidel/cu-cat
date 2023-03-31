@@ -463,7 +463,10 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
         """
         Add activations of unseen string categories from X to H_dict.
         """
-        unseen_X = np.setdiff1d(X, np.array([*self.H_dict_]))
+        if 'cudf' in str(getmodule(X)):
+            unseen_X = cp.setdiff1d(X, np.array([*self.H_dict_]))
+        else:
+            unseen_X = np.setdiff1d(X, np.array([*self.H_dict_]))
         if unseen_X.size > 0:
             unseen_V = self.ngrams_count_.transform(unseen_X)
             if self.add_words:
@@ -474,7 +477,7 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
                 unseen_V, np.ones((unseen_V.shape[0], self.n_components))
             )
             if self.engine == 'gpu' :
-                self.H_dict_.update(zip(unseen_X.to_arrow(), unseen_H.to_arrow()))
+                self.H_dict_.update(zip(unseen_X.to_arrow(), unseen_H))
                 # self.H_dict_ = self.H_dict_.append(unseen_H)#.to_arrow())
                 # self.X_dict_ = self.X_dict_.append(unseen_X)
                 # self.H_dict_ = cudf.concat(self.H_dict_,unseen_H)
@@ -499,7 +502,7 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
         """
         check_is_fitted(self, "H_dict_")
         # Check if first item has str or np.str_ type
-        assert isinstance(X[0], str), "Input data is not string. "
+        # assert isinstance(X[0], str), "Input data is not string. "
         unq_X = np.unique(X)
         # Build the n-grams counts matrix V for the string data to encode
         unq_V = self.ngrams_count_.transform(unq_X)
@@ -545,7 +548,7 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
                     gamma_scale_prior=self.gamma_scale_prior,
                 )
         if self.engine == 'gpu' :
-            self.H_dict_.update(zip(unq_X.to_arrow(), unq_H.to_arrow()))
+            self.H_dict_.update(zip(unq_X.to_arrow(), unq_H))
             # self.H_dict_ = self.H_dict_.append(unq_H)#.to_arrow())
             # self.X_dict_ = self.X_dict_.append(unq_X)
             # self.H_dict_ = cudf.concat(self.H_dict_,unq_H)
@@ -856,10 +859,12 @@ class GapEncoder(BaseEstimator, TransformerMixin):
         # X = check_input(X)
         # X = self._handle_missing(X)
         X_enc = []
-        for k in range(X.shape[1]):
-            j=(self.fitted_models_[k].transform(X[:, k]))
-            print(j)
-            X_enc.append(j)
+        if 'cudf' in str(getmodule(X)):
+            for k in range(X.shape[1]):
+                X_enc.append(self.fitted_models_[k].transform(X.iloc[:, k]))
+        else:
+            for k in range(X.shape[1]):
+                X_enc.append(self.fitted_models_[k].transform(X[:, k]))
         X_enc = np.hstack(X_enc)
         return X_enc
 
