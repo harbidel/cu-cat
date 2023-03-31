@@ -439,10 +439,10 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
         """
 
         vectorizer = CountVectorizer()
-        if self.engine=='gpu':
-            vectorizer.fit(list(zip([C[col] for col in C])))
-        else:
-            vectorizer.fit(list(self.H_dict_.keys()))
+        # if self.engine=='gpu':
+            # vectorizer.fit(list(zip([C[col] for col in C])))
+        # else:
+        vectorizer.fit(list(self.H_dict_.keys()))
         if parse_version(sklearn_version) < parse_version("1.0"):
             vocabulary = np.array(vectorizer.get_feature_names())
         else:
@@ -459,14 +459,28 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
         topic_labels = [prefix + ", ".join(label) for label in topic_labels]
         return topic_labels
 
+
     def _add_unseen_keys_to_H_dict(self, X) -> None:
         """
         Add activations of unseen string categories from X to H_dict.
         """
+        
+#         def setdiff1d(ar1, ar2, assume_unique=False):
+#             if assume_unique:
+#                 ar1 = cp.ravel(ar1)
+#             else:
+#                 ar1 = cp.unique(ar1)
+#                 ar2 = cp.unique(ar2)
+#             return ar1[in1d(ar1, ar2, assume_unique=True, invert=True)]
+    
         if 'cudf' in str(getmodule(X)):
-            unseen_X = cp.setdiff1d(X, np.array([*self.H_dict_]))
+            # unseen_X = setdiff1d(X.to_cupy(), np.array([*self.H_dict_]))
+            # print(X.to_numpy())
+            print(np.array([*self.H_dict_]))
+            unseen_X = np.setdiff1d(X.to_numpy(), np.array([*self.H_dict_]))
+            unseen_X = cudf.DataFrame.from_pandas(pd.DataFrame(unseen_X))
         else:
-            unseen_X = np.setdiff1d(X, np.array([*self.H_dict_]))
+            unseen_X = np.setdiff1d(X.to_pandas, np.array([*self.H_dict_]))
         if unseen_X.size > 0:
             unseen_V = self.ngrams_count_.transform(unseen_X)
             if self.add_words:
@@ -476,6 +490,7 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
             unseen_H = _rescale_h(
                 unseen_V, np.ones((unseen_V.shape[0], self.n_components))
             )
+            
             if self.engine == 'gpu' :
                 self.H_dict_.update(zip(unseen_X.to_arrow(), unseen_H))
                 # self.H_dict_ = self.H_dict_.append(unseen_H)#.to_arrow())
@@ -510,7 +525,7 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
             unq_V2 = self.word_count_.transform(unq_X)
             unq_V = sparse.hstack((unq_V, unq_V2), format="csr")
         # Add unseen strings in X to H_dict
-        self._add_unseen_keys_to_H_dict(unq_X)
+        # self._add_unseen_keys_to_H_dict(unq_X) ### need to get this back for transforming obviously
         unq_H = self._get_H(unq_X)
         # Loop over batches
         logger.info(f"features and samples =  `{unq_V.shape}`, ie `{unq_V.shape[0]*unq_V.shape[1]}`")
