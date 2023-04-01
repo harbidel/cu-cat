@@ -36,7 +36,7 @@ from sklearn.utils.fixes import _object_dtype_isnan
 from sklearn.utils.validation import check_is_fitted
 
 from ._utils import check_input, parse_version, df_type
-import logging
+import logging, pyarrow
 
 if parse_version(sklearn_version) < parse_version("0.24"):
     from sklearn.cluster._kmeans import _k_init
@@ -55,7 +55,7 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
     """See GapEncoder's docstring."""
 
     rho_: float
-    H_dict_: Dict[cp.ndarray, cp.ndarray]
+    H_dict_: Dict[pyarrow.StringScalar, cp.ndarray]
     # H_dict_: cudf.Series()
     # X_dict_: cudf.Series()
 
@@ -440,32 +440,14 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
         """
 
         vectorizer = CountVectorizer()
-        # if self.engine=='gpu':
-            # vectorizer.fit(list(zip([C[col] for col in C])))
-        # else:
-        # print(self.H_dict_.keys())
-        # if 'cudf' in self.Xt_:
-        #     if float(cudf.__version__[:5]) < 22.12:
-        #         A=self.H_dict_#.get()
-        #         A=pd.DataFrame.from_dict(A)
-        #         vectorizer.fit(cudf.DataFrame.from_pandas(A))
-        #     elif float(cudf.__version__[:5]) >= 22.12:
-        #         vectorizer.fit(cudf.DataFrame.from_dict((self.H_dict_))) ## cudf 23.02 has direct from_dict
-        #         # https://github.com/rapidsai/cudf/blob/branch-22.10/python/cudf/cudf/core/dataframe.py
-        # else:
-        # A=self.H_dict_.keys()
-        import pickle
-        with open('H_dictKK.pkl', 'wb') as f:
-            pickle.dump(self.H_dict_,f)
-        # A=A.values
-        # print(A.shape)
-        # A = np.array([(item) for item in H_dict_.values()])
-        # A=pd.DataFrame.from_dict(res)
-        # A=cudf.DataFrame(A.T).index
-        # print(A)
-        vectorizer.fit(list(self.H_dict_.keys()))
+
+        if 'cudf'  in self.Xt_:
+            A=np.array([(item).as_py() for item in self.H_dict_.keys()])
+            vectorizer.fit(A)
+        else:
+            vectorizer.fit(list(self.H_dict_.keys()))
         # if parse_version(sklearn_version) < parse_version("1.0"):
-        vocabulary = (vectorizer.get_feature_names())
+        vocabulary = np.array(vectorizer.get_feature_names())
         # else:
             # vocabulary = np.array(vectorizer.get_feature_names_out())
         encoding = self.transform(np.array(vocabulary).reshape(-1))
