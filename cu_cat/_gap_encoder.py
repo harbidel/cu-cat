@@ -18,7 +18,7 @@ The principle is as follows:
 import warnings,sys
 from typing import Dict, Generator, List, Literal, Optional, Tuple, Union
 from inspect import getmodule
-import cupy as cp, cudf, pyarrow
+import cupy as cp, cudf, pyarrow, cuml
 import numpy as np
 import pandas as pd
 from cupyx.scipy.sparse import csr_matrix as csr_gpu
@@ -36,7 +36,7 @@ from sklearn.utils.fixes import _object_dtype_isnan
 from sklearn.utils.validation import check_is_fitted
 
 from ._utils import check_input, parse_version, df_type
-import logging, pyarrow
+import logging
 
 if parse_version(sklearn_version) < parse_version("0.24"):
     from sklearn.cluster._kmeans import _k_init
@@ -56,8 +56,6 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
 
     rho_: float
     H_dict_: Dict[pyarrow.StringScalar, cp.ndarray]
-    # H_dict_: cudf.Series()
-    # X_dict_: cudf.Series()
 
     def __init__(
         self,
@@ -107,6 +105,7 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
         the topics W.
         """
         self.Xt_ = df_type(X)
+        cuml.set_global_output_type('cupy')
         # Init n-grams counts vectorizer
         if self.hashing:
             self.ngrams_count_ = HashingVectorizer(
@@ -140,9 +139,6 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
         elif 'cudf.core.series' in str(getmodule(X)):
             unq_X = X.unique()
             tmp, lookup = np.unique(X.to_pandas(), return_inverse=True)
-        # elif 'cudf.core.series' in str(getmodule(X)):
-        #     unq_X, lookup = np.unique(X.to_pandas(), return_inverse=True)
-        #     unq_X=cudf.from_pandas(unq_X)
         unq_V = self.ngrams_count_.fit_transform(unq_X)
         if self.add_words:  # Add word counts to unq_V
             unq_V2 = self.word_count_.fit_transform(unq_X)
@@ -171,11 +167,6 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
         # Update self.H_dict_ with unique input strings and their activations
         if self.engine == 'gpu' :
             self.H_dict_.update(zip(unq_X.to_arrow(), unq_H.values))
-            # print(self.H_dict_.columns)
-            # self.H_dict_ = self.H_dict_.append(unq_H)#.to_arrow())
-            # self.X_dict_ = self.X_dict_.append(unq_X)#.to_arrow())
-            # self.H_dict_ = cudf.concat(self.H_dict_,unq_H)
-            # self.X_dict_ = cudf.concat(self.X_dict_,unq_X)
         else:
             self.H_dict_.update(zip(unq_X, unq_H))
         if self.rescale_rho:
@@ -195,11 +186,9 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
                     h_out[:] = self.H_dict_[x]
             elif fx == 1:
                 for x, h_out in zip(X.to_arrow(), H_out):
-                    # print([self.H_dict_[x]])
                     try:
                         h_out[:] = self.H_dict_[x]
                     except KeyError: ### keys coming thru NOT in arrow -- but dict is all arrow
-                        # print(x)
                         logger.debug(x)
 
                         # h_out[:] = self.H_dict_[['pyarrow.lib.StringScalar'+str(x.as_py())+'$']]
@@ -316,9 +305,7 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
         unq_X, unq_V, lookup = self._init_vars(X)
         n_batch = (len(X) - 1) // self.batch_size + 1
         # Get activations unq_H
-        # print(unq_X)
-        unq_H = self._get_H(unq_X, 0)#.to_pandas())
-        # print(unq_H)
+        unq_H = self._get_H(unq_X, 0)
         unq_V=csr_gpu(unq_V);unq_H=cp.array(unq_H);
 
         for n_iter_ in range(self.max_iter):
@@ -397,10 +384,6 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
                 break  # Stop if the change in W is smaller than the tolerance
         if self.engine == 'gpu' :
             self.H_dict_.update(zip(unq_X.to_arrow(), unq_H))
-            # self.H_dict_ = self.H_dict_.append(cudf.Series(unq_H),ignore_index=True)#.to_arrow())
-            # self.X_dict_ = self.X_dict_.append(unq_X)
-            # self.H_dict_ = cudf.concat(self.H_dict_,unq_H)
-            # self.X_dict_ = cudf.concat(self.X_dict_,unq_X)
         else:
             self.H_dict_.update(zip(unq_X, unq_H))
         logger.debug(f"fit complete")
@@ -484,9 +467,6 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
         if 'cudf' in str(getmodule(X)):
             A=np.array([(item).as_py() for item in self.H_dict_])
             unseen_X = np.setdiff1d(X.to_pandas(), A) 
-            # unseen_X = set(X.to_pandas()).difference(A)
-            # unseen_X = pd.DataFrame(unseen_X)
-            # unseen_X = cp.array([(item).as_py() for item in unseen_X])
             unseen_X = cudf.Series(unseen_X)
         else:
             unseen_X = np.setdiff1d(X, np.array([*self.H_dict_]))
@@ -500,10 +480,6 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
             
             if self.engine == 'gpu' :
                 self.H_dict_.update(zip(unseen_X.to_arrow(), unseen_H))
-                # self.H_dict_ = self.H_dict_.append(unseen_H)#.to_arrow())
-                # self.X_dict_ = self.X_dict_.append(unseen_X)
-                # self.H_dict_ = cudf.concat(self.H_dict_,unseen_H)
-                # self.X_dict_ = cudf.concat(self.X_dict_,unseen_X)
             else:
                 self.H_dict_.update(zip(unseen_X, unseen_H))
 
@@ -571,10 +547,6 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
                 )
         if self.engine == 'gpu' :
             self.H_dict_.update(zip(unq_X.to_arrow(), unq_H))
-            # self.H_dict_ = self.H_dict_.append(unq_H)#.to_arrow())
-            # self.X_dict_ = self.X_dict_.append(unq_X)
-            # self.H_dict_ = cudf.concat(self.H_dict_,unq_H)
-            # self.X_dict_ = cudf.concat(self.X_dict_,unq_X)
         else:
             self.H_dict_.update(zip(unq_X, unq_H))
         return self._get_H(X, 0)

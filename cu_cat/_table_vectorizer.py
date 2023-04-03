@@ -21,22 +21,12 @@ from sklearn.utils.deprecation import deprecated
 from sklearn.utils.validation import check_is_fitted
 
 from cu_cat import DatetimeEncoder, GapEncoder
-from cu_cat._utils import parse_version
-import cuml
-cuml.set_global_output_type('cudf')
+from cu_cat._utils import parse_version, df_type
+import cuml,cudf
+cuml.set_global_output_type('cupy')
 
 # Required for ignoring lines too long in the docstrings
 # flake8: noqa: E501
-
-def _df_type(df):
-    """
-    Returns df type
-    """
-    df_type=str(getmodule(df))
-    if 'cudf' in df_type:
-        import cudf
-    return df_type
-
 
 def _has_missing_values(df: Union[pd.DataFrame, pd.Series]) -> bool:
     """
@@ -75,13 +65,12 @@ def _replace_false_missing(
         "#N/A",
         "NaN",
     ]  # taken from pandas.io.parsers (version 1.1.4)
-    df_type= str(getmodule(df))
+    Xt_= df_type(df)
     
-        # df=df.to_pandas()
     # if isinstance(df, pd.DataFrame):
     # df=df.astype(object).replace(STR_NA_VALUES + [None, "?", "..."], np.nan)
     # df=df.astype(object).replace(r"^\s+$", '0', regex=True)  # Replace whitespaces
-    if 'cudf' not in df_type:
+    if 'cudf' not in Xt_:
         df = df.replace(STR_NA_VALUES + [None, "?", "..."], np.nan)
         df = df.replace(r"^\s+$", np.nan, regex=True)  # Replace whitespaces
         
@@ -90,9 +79,10 @@ def _replace_false_missing(
             if 'int' in str(df[i].dtype):
                 df[i] = df[i].astype('str')
                 df[i] = df[i].replace(STR_NA_VALUES + [None, "?", "..."], 'None')
+                # df[i] = int(df[i]) #.as_type('int')
             try:
                 df[i]=df[i].str.normalize_spaces()
-                df[i]=df[i].str.normalize_characters()
+                # df[i]=df[i].str.normalize_characters()
             except:
                 df[i]=df[i]
     # if 'cudf' in df_type: ## do this after munging -- before fit/transform
@@ -371,7 +361,7 @@ class TableVectorizer(ColumnTransformer):
         if isinstance(self.low_card_cat_transformer, sklearn.base.TransformerMixin):
             self.low_card_cat_transformer_ = clone(self.low_card_cat_transformer)
         elif self.low_card_cat_transformer is None:
-            self.low_card_cat_transformer_ = OneHotEncoder(output_type=self.output_type,handle_unknown='ignore')
+            self.low_card_cat_transformer_ = OneHotEncoder(output_type= self.output_type, handle_unknown='ignore')
         elif self.low_card_cat_transformer == "remainder":
             self.low_card_cat_transformer_ = self.remainder
         else:
@@ -380,7 +370,7 @@ class TableVectorizer(ColumnTransformer):
         if isinstance(self.high_card_cat_transformer, sklearn.base.TransformerMixin):
             self.high_card_cat_transformer_ = clone(self.high_card_cat_transformer)
         elif self.high_card_cat_transformer is None:
-            self.high_card_cat_transformer_ = GapEncoder(n_components=30,output_type=self.output_type)
+            self.high_card_cat_transformer_ = GapEncoder(n_components=30)
         elif self.high_card_cat_transformer == "remainder":
             self.high_card_cat_transformer_ = self.remainder
         else:
@@ -425,7 +415,7 @@ class TableVectorizer(ColumnTransformer):
         # We replace in all columns regardless of their type,
         # as we might have some false missing
         # in numerical columns for instance.
-        self.Xt_= _df_type(X)
+        self.Xt_= df_type(X)
         X = _replace_false_missing(X)
 
         # Handle missing values
@@ -633,13 +623,16 @@ class TableVectorizer(ColumnTransformer):
 
         if self.verbose:
             print(f"[TableVectorizer] Assigned transformers: {self.transformers}")
-        
         if 'cudf' in self.Xt_ and 'cudf' not in str(getmodule(X)):
-            import cudf
             X=cudf.from_pandas(X,nan_as_null=False)
             # print(str(getmodule(y)))
             # y=cudf.from_pandas(y); should already be in cudf since not manipulated earlier
         X_enc = super().fit_transform(X, y)
+        X_enc = cudf.DataFrame(X_enc)
+        X_enc.columns = X_enc.columns.astype('str')
+        X_enc = X_enc.to_arrow()
+        #cp.array([(item).as_py() for item in X_enc])
+
         
         # For the "remainder" columns, the `ColumnTransformer` `transformers_`
         # attribute contains the index instead of the column name,
@@ -708,10 +701,10 @@ class TableVectorizer(ColumnTransformer):
         typing.List[str]
             Feature names.
         """
-        if parse_version(sklearn_version) < parse_version("1.0"):
-            ct_feature_names = super().get_feature_names()
-        else:
-            ct_feature_names = super().get_feature_names_out()
+        # if parse_version(sklearn_version) < parse_version("1.0"):
+        ct_feature_names = super().get_feature_names()
+        # else:
+            # ct_feature_names = super().get_feature_names_out()
         all_trans_feature_names = []
 
         for name, trans, cols, _ in self._iter(fitted=True):
@@ -723,10 +716,10 @@ class TableVectorizer(ColumnTransformer):
                         cols = [self.columns_[i] for i in cols]
                     all_trans_feature_names.extend(cols)
                 continue
-            if parse_version(sklearn_version) < parse_version("1.0"):
-                trans_feature_names = trans.get_feature_names(cols)
-            else:
-                trans_feature_names = trans.get_feature_names_out(cols)
+            # if parse_version(sklearn_version) < parse_version("1.0"):
+            trans_feature_names = trans.get_feature_names(cols)
+            # else:
+                # trans_feature_names = trans.get_feature_names_out(cols)
             all_trans_feature_names.extend(trans_feature_names)
 
         if len(ct_feature_names) != len(all_trans_feature_names):
@@ -740,14 +733,14 @@ class TableVectorizer(ColumnTransformer):
         Ensures compatibility with sklearn < 1.0.
         Use `get_feature_names_out` instead.
         """
-        if parse_version(sklearn_version) >= parse_version("1.0"):
-            warn(
-                "Following the changes in scikit-learn 1.0, "
-                "get_feature_names is deprecated. "
-                "Use get_feature_names_out instead. ",
-                DeprecationWarning,
-                stacklevel=2,
-            )
+        # if parse_version(sklearn_version) >= parse_version("1.0"):
+        #     warn(
+        #         "Following the changes in scikit-learn 1.0, "
+        #         "get_feature_names is deprecated. "
+        #         "Use get_feature_names_out instead. ",
+        #         DeprecationWarning,
+        #         stacklevel=2,
+        #     )
         return self.get_feature_names_out(input_features)
 
 
