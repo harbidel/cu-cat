@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# cuCat documentation build configuration file, created by
+# cu_cat documentation build configuration file, created by
 # sphinx-quickstart on Tue Mar 13 14:34:47 2018.
 #
 # This file is execfile()d with the current directory set to its
@@ -80,16 +80,16 @@ source_suffix = ".rst"
 master_doc = "index"
 
 # General information about the project.
-project = "cuCat"
-copyright = f"2018-{datetime.now().year}, the cuCat developers"
-author = "cuCat developers"
+project = "cu_cat"
+copyright = f"2018-{datetime.now().year}, the cu_cat developers"
+author = "cu_cat developers"
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
 # built documents.
 #
 # The short X.Y version.
-version_file = os.path.join("..", "cuCat", "VERSION.txt")
+version_file = os.path.join("..", "cu_cat", "VERSION.txt")
 with open(version_file) as fh:
     version = fh.read().strip()
 # The full version, including alpha/beta/rc tags.
@@ -152,9 +152,9 @@ html_sidebars = {
 # documentation.
 #
 html_theme_options = {
-    "logo": "cuCat.svg",
-    "github_user": "dirty-cat",
-    "github_repo": "cuCat",
+    "logo": "cu_cat.svg",
+    "github_user": "cu-cat",
+    "github_repo": "cu_cat",
     "github_button": "true",
     "github_type": "star",
     "github_count": "true",
@@ -176,13 +176,13 @@ html_static_path = ["_static"]
 
 
 # Modify the title to get good social-media links
-html_title = "cuCat"
+html_title = "cu_cat"
 
 
 # -- Options for HTMLHelp output ------------------------------------------
 
 # Output file base name for HTML help builder.
-htmlhelp_basename = "cuCatdoc"
+htmlhelp_basename = "cu_catdoc"
 
 
 # -- Options for LaTeX output ---------------------------------------------
@@ -208,7 +208,7 @@ latex_elements = {
 latex_documents = [
     (
         master_doc,
-        "cuCat.tex",
+        "cu_cat.tex",
         "dirty\\_cat Documentation",
         "dirty\\_cat developers",
         "manual",
@@ -220,7 +220,7 @@ latex_documents = [
 
 # One entry per manual page. List of tuples
 # (source start file, name, description, authors, manual section).
-man_pages = [(master_doc, "cuCat", "cuCat Documentation", [author], 1)]
+man_pages = [(master_doc, "cu_cat", "cu_cat Documentation", [author], 1)]
 
 
 # -- Options for Texinfo output -------------------------------------------
@@ -231,10 +231,10 @@ man_pages = [(master_doc, "cuCat", "cuCat Documentation", [author], 1)]
 texinfo_documents = [
     (
         master_doc,
-        "cuCat",
-        "cuCat Documentation",
+        "cu_cat",
+        "cu_cat Documentation",
         author,
-        "cuCat",
+        "cu_cat",
         "Learning on non-curated categorical data.",
         "Data Science",
     ),
@@ -260,12 +260,12 @@ intersphinx_mapping = {
 from sphinx_gallery.sorting import FileNameSortKey  # noqa
 
 sphinx_gallery_conf = {
-    "doc_module": "cuCat",
+    "doc_module": "cu_cat",
     "filename_pattern": "",
     "backreferences_dir": os.path.join("generated"),
     "reference_url": {
-        # The module we locally document (so, cuCat) uses None
-        "cuCat": None,
+        # The module we locally document (so, cu_cat) uses None
+        "cu_cat": None,
         # We don't specify the other modules as we use the intershpinx ext.
         # See https://sphinx-gallery.github.io/stable/configuration.html#link-to-documentation  # noqa
     },
@@ -274,8 +274,8 @@ sphinx_gallery_conf = {
     "within_subsection_order": FileNameSortKey,
     "download_all_examples": False,
     "binder": {
-        "org": "dirty-cat",
-        "repo": "dirty-cat.github.io",
+        "org": "cu-cat",
+        "repo": "cu-cat.github.io",
         "binderhub_url": "https://mybinder.org",
         "branch": "main",
         "dependencies": ["./binder/requirements.txt"],
@@ -284,10 +284,10 @@ sphinx_gallery_conf = {
 }
 
 # -- sphinxext.opengraph configuration -------------------------------------
-ogp_site_url = "https://dirty-cat.github.io/stable/"
-ogp_image = "https://dirty-cat.github.io/stable/_static/cuCat.svg"
+ogp_site_url = "https://cu-cat.github.io/stable/"
+ogp_image = "https://cu-cat.github.io/stable/_static/cu_cat.svg"
 ogp_use_first_image = True
-ogp_site_name = "cuCat"
+ogp_site_name = "cu_cat"
 
 # -- numpydoc configuration --------------------------------------
 
@@ -309,10 +309,10 @@ html_js_files = ["scrolltoc.js"]
 # -- github links --------------------------------------
 
 # we use the issues path for PRs since the issues URL will forward
-issues_github_path = "dirty-cat/cuCat"
+issues_github_path = "cu-cat/cu_cat"
 
 # The following is used by sphinx.ext.linkcode to provide links to github
 linkcode_resolve = make_linkcode_resolve(
-    "cuCat",
-    "https://github.com/dirty-cat/dirty-cat/blob/{revision}/{package}/{path}#L{lineno}",
+    "cu_cat",
+    "https://github.com/cu-cat/cu-cat/blob/{revision}/{package}/{path}#L{lineno}",
 )

@@ -1,2 +1,2 @@
-Using cuCat
+Using cu_cat
 ===============

@@ -1,10 +1,10 @@
-Contributing to cuCat
+Contributing to cu_cat
 =========================
 
 First off, thanks for taking the time to contribute!
 
 The following is a set of guidelines for contributing to
-`cuCat <https://github.com/dirty-cat/cuCat>`__.
+`cu_cat <https://github.com/cu-cat/cu_cat>`__.
 
 |
 
@@ -17,13 +17,13 @@ I don’t want to read the whole thing I just have a question
 ------------------------------------------------------------
 
 We use GitHub Discussions for general chat and Q&As. `Check it
-out! <https://github.com/dirty-cat/cuCat/discussions>`__
+out! <https://github.com/cu-cat/cu_cat/discussions>`__
 
 What should I know before I get started?
 ----------------------------------------
 
 If you want to truly understand what are the incentives behind
-cuCat, and if scientific literature doesn’t scare you, we greatly
+cu_cat, and if scientific literature doesn’t scare you, we greatly
 encourage you to read the two papers `Similarity encoding for learning
 with dirty categorical variables <https://hal.inria.fr/hal-01806175>`__
 and `Encoding high-cardinality string categorical
@@ -39,7 +39,7 @@ Even if we unit-test our code, using the library is the best way to
 discover new bugs and limitations.
 
 If you stumble upon one, please `check if a similar or identical issue already
-exists <https://github.com/dirty-cat/cuCat/issues?q=is%3Aissue>`__
+exists <https://github.com/cu-cat/cu_cat/issues?q=is%3Aissue>`__
 
 - If yes:
 
@@ -47,10 +47,10 @@ exists <https://github.com/dirty-cat/cuCat/issues?q=is%3Aissue>`__
     which will let us know there are several users affected by this issue
   - **The issue has been closed**:
 
-    - **It has been closed by a merged pull request** (1) update your cuCat version,
+    - **It has been closed by a merged pull request** (1) update your cu_cat version,
       or (2) the fix has not been released in a version yet
     - **Otherwise**, there might be a ``wontfix`` label, and / or a reason at the bottom of the conversation
-- If not, `file a new issue <https://github.com/dirty-cat/cuCat/issues/new>`__ (see following section)
+- If not, `file a new issue <https://github.com/cu-cat/cu_cat/issues/new>`__ (see following section)
 
 How do I submit a (good) bug report?
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -64,7 +64,7 @@ additional details to help maintainers easily reproduce the problem:
    situations where the bug should have appeared but didn’t
 -  **Include a snippet of code that reproduces the error**, as it allows
    maintainers to reproduce it in a matter of seconds!
--  **Specify versions** of Python, cuCat, and other dependencies
+-  **Specify versions** of Python, cu_cat, and other dependencies
    which might be linked to the issue (e.g., scikit-learn, numpy,
    pandas, etc.). You can get these versions with ``pip3 freeze``
    (``pip freeze`` for Windows)
@@ -76,14 +76,14 @@ Suggesting enhancements
 ~~~~~~~~~~~~~~~~~~~~~~~
 
 This section will guide you through submitting a new enhancement for
-cuCat, whether it is a small fix or a new feature.
+cu_cat, whether it is a small fix or a new feature.
 
 First, you should `check if the feature has not already been proposed or
-implemented <https://github.com/dirty-cat/cuCat/pulls?q=is%3Apr>`__.
+implemented <https://github.com/cu-cat/cu_cat/pulls?q=is%3Apr>`__.
 
 If not, the next thing you should do, before writing any code, is to
 `submit a new
-issue <https://github.com/dirty-cat/cuCat/issues/new>`__ proposing
+issue <https://github.com/cu-cat/cu_cat/issues/new>`__ proposing
 the change.
 
 How do I submit a (good) enhancement proposal?
@@ -115,11 +115,11 @@ Let maintainers know whether :
 If the enhancement is refused
 '''''''''''''''''''''''''''''
 
-There are specific incentives behind cuCat. While most enhancement
+There are specific incentives behind cu_cat. While most enhancement
 ideas are good, they don’t always fit in the context of the library.
 
 If you’d like to implement your idea regardless, we’d be very glad if
-you create a new package that builds on top of cuCat! In some cases,
+you create a new package that builds on top of cu_cat! In some cases,
 we might even feature it on the official repository!
 
 Writing your first Pull Request
@@ -149,15 +149,15 @@ For this example, we’ll use conda:
 
 .. code:: console
 
-   conda create python=3.10 --name cuCat
-   conda activate cuCat
+   conda create python=3.10 --name cu_cat
+   conda activate cu_cat
 
 Secondly, clone the repository (you’ll need to have ``git`` installed -
 it is already on most linux distributions).
 
 .. code:: console
 
-   git clone https://github.com/dirty-cat/cuCat
+   git clone https://github.com/cu-cat/cu_cat
 
 Next, install the project dependencies. They are listed in ``setup.cfg``.
 
@@ -210,7 +210,7 @@ goals to keep in mind:
 Submitting your code
 ^^^^^^^^^^^^^^^^^^^^
 
-First, you’ll want to fork cuCat on Github.
+First, you’ll want to fork cu_cat on Github.
 
 That will enable you to push your commits to a branch *on your fork*.
 It is advised to create a new branch every time you work on a new issue,

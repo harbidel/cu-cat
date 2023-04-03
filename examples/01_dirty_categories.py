@@ -23,7 +23,7 @@ control.
 
 
  .. |TV| replace::
-     :class:`~cuCat.TableVectorizer`
+     :class:`~cu_cat.TableVectorizer`
 
  .. |Pipeline| replace::
      :class:`~sklearn.pipeline.Pipeline`
@@ -38,16 +38,16 @@ control.
      :class:`~sklearn.ensemble.RandomForestRegressor`
 
  .. |Gap| replace::
-     :class:`~cuCat.GapEncoder`
+     :class:`~cu_cat.GapEncoder`
 
  .. |MinHash| replace::
-     :class:`~cuCat.MinHashEncoder`
+     :class:`~cu_cat.MinHashEncoder`
 
  .. |HGBR| replace::
      :class:`~sklearn.ensemble.HistGradientBoostingRegressor`
 
  .. |SE| replace::
-     :class:`~cuCat.SimilarityEncoder`
+     :class:`~cu_cat.SimilarityEncoder`
 
  .. |permutation importances| replace::
      :func:`~sklearn.inspection.permutation_importance`
@@ -59,7 +59,7 @@ control.
 # --------
 #
 # We first retrieve the dataset:
-from cuCat.datasets import fetch_employee_salaries
+from cu_cat.datasets import fetch_employee_salaries
 
 employee_salaries = fetch_employee_salaries()
 
@@ -158,7 +158,7 @@ np.unique(y)
 # We will now experiment with encoders specially made for handling
 # dirty columns:
 
-from cuCat import (
+from cu_cat import (
     SimilarityEncoder,
     TargetEncoder,
     MinHashEncoder,
@@ -221,7 +221,7 @@ plt.tight_layout()
 # data than the |MinHash| and |Gap|. The most scalable encoder is
 # the |MinHash|. On the other hand, the |Gap| has the benefit of
 # providing interpretable features
-# (see :ref:`sphx_glr_auto_examples_02_investigating_cuCategories.py`)
+# (see :ref:`sphx_glr_auto_examples_02_investigating_cu_categories.py`)
 #
 # |
 #
@@ -261,10 +261,10 @@ X
 # such as gradient boosted trees, gives **a machine-learning method that
 # can be readily applied to the dataframe**.
 #
-# The |TV| requires at least cuCat 0.2.0.
+# The |TV| requires at least cu_cat 0.2.0.
 #
 
-from cuCat import TableVectorizer
+from cu_cat import TableVectorizer
 
 pipeline = make_pipeline(
     TableVectorizer(auto_cast=True), HistGradientBoostingRegressor()

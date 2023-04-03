@@ -10,8 +10,8 @@ from sklearn.ensemble import RandomForestRegressor, RandomForestClassifier
 from sklearn.model_selection import GridSearchCV
 from sklearn.pipeline import Pipeline
 
-from cuCat import TableVectorizer
-from cuCat.datasets import (
+from cu_cat import TableVectorizer
+from cu_cat.datasets import (
     fetch_open_payments,
     fetch_drug_directory,
     fetch_road_safety,

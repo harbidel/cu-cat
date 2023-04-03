@@ -1,13 +1,13 @@
-# cuCat benchmarks
+# cu_cat benchmarks
 
 ## Objectives
 
-This folder contains benchmarks used by the cuCat maintainers to:
+This folder contains benchmarks used by the cu_cat maintainers to:
 - Experiment on new algorithms
 - Validate decisions based on empirical evidence
 - Fine-tune (hyper)parameters in the library
 
-These benchmarks do not aim at replacing the tests within cuCat.
+These benchmarks do not aim at replacing the tests within cu_cat.
 
 ## Implementing a benchmark
 

@@ -14,9 +14,9 @@ the datetime features, the |DtE| allows to
 handle datetime features easily.
 
 
-.. |DtE| replace:: :class:`~cuCat.DatetimeEncoder`
+.. |DtE| replace:: :class:`~cu_cat.DatetimeEncoder`
 
-.. |TV| replace:: :class:`~cuCat.TableVectorizer`
+.. |TV| replace:: :class:`~cu_cat.TableVectorizer`
 """
 
 import warnings
@@ -47,7 +47,7 @@ X
 # Encoders for categorical and datetime features
 # ..............................................
 from sklearn.preprocessing import OneHotEncoder
-from cuCat import DatetimeEncoder
+from cu_cat import DatetimeEncoder
 
 cat_encoder = OneHotEncoder(handle_unknown="ignore")
 # We encode dates using the day of the week as it is probably relevant,
@@ -83,7 +83,7 @@ X_
 # .......................
 # The |DtE| is used by default in the |TV|, which
 # automatically detects datetime features.
-from cuCat import TableVectorizer
+from cu_cat import TableVectorizer
 from pprint import pprint
 
 sup_vec = TableVectorizer()

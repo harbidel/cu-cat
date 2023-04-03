@@ -10,7 +10,7 @@ assignees: ''
 
 <!--Please fill in the following information, to the best of your ability.-->
 
-cuCat version:
+cu_cat version:
 
 Expected behavior:
 

@@ -32,7 +32,7 @@ jobs:
         matrix:
             os: ["ubuntu-latest", "macos-latest"]
             python-version: ["3.8", "3.9", "3.10"]
-            # Install the min or latest dependencies for cuCat
+            # Install the min or latest dependencies for cu_cat
             # as defined in setup.cfg at [options.extra_require].
             #
             # Installing these extra dependencies will overwrite the already
@@ -61,7 +61,7 @@ jobs:
         name: 'Setup python'
       - shell: bash {0}
         run: ./build_tools/github/install.sh
-        name: 'Install cuCat'
+        name: 'Install cu_cat'
         env:
           DEPS_VERSION: ${{ matrix.dependencies-version }}
       - shell: bash {0}
