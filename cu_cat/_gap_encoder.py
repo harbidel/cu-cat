@@ -299,7 +299,7 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
         
         # Check if first item has str or np.str_ type
         
-        X = X.reset_index(drop=True)
+        # X = X.reset_index(drop=True)
         self.Xt_= df_type(X)
         # print(X.str.lower())#.reset_index(drop=True))
         # print(self.Xt_)
