@@ -600,7 +600,7 @@ class TableVectorizer(ColumnTransformer):
         if self.verbose:
             print(f"[TableVectorizer] Assigned transformers: {self.transformers}")
 
-        X_enc = super().fit_transform(X, y)
+        X_enc = super().fit_transform(X, y,njobs=-1)
 
         # For the "remainder" columns, the `ColumnTransformer` `transformers_`
         # attribute contains the index instead of the column name,

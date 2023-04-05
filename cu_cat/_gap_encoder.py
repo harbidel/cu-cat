@@ -18,8 +18,7 @@ The principle is as follows:
 import warnings,sys
 from typing import Dict, Generator, List, Literal, Optional, Tuple, Union
 from inspect import getmodule
-
-import cupy as cp
+import cupy as cp, cudf, pyarrow, cuml
 import numpy as np
 import pandas as pd
 from cupyx.scipy.sparse import csr_matrix as csr_gpu
@@ -28,15 +27,16 @@ from scipy import sparse
 from scipy.sparse import csr_matrix as csr_cpu
 from sklearn import __version__ as sklearn_version
 from sklearn.base import BaseEstimator, TransformerMixin
-from sklearn.cluster import KMeans
-from sklearn.feature_extraction.text import CountVectorizer, HashingVectorizer
+from cuml.cluster import KMeans
+# from vectorizers import CountVectorizer,HashingVectorizer
+from cuml.feature_extraction.text import CountVectorizer,HashingVectorizer
 from sklearn.neighbors import NearestNeighbors
 from sklearn.utils import check_random_state, gen_batches
 from sklearn.utils.extmath import row_norms, safe_sparse_dot
 from sklearn.utils.fixes import _object_dtype_isnan
 from sklearn.utils.validation import check_is_fitted
 
-from ._utils import check_input, parse_version
+from ._utils import check_input, parse_version, df_type
 import logging
 
 if parse_version(sklearn_version) < parse_version("0.24"):
@@ -56,7 +56,7 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
     """See GapEncoder's docstring."""
 
     rho_: float
-    H_dict_: Dict[np.ndarray, np.ndarray]
+    H_dict_: Dict[pyarrow.StringScalar, cp.ndarray]
 
     def __init__(
         self,
@@ -68,7 +68,7 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
         rescale_rho: bool = False,
         hashing: bool = False,
         hashing_n_features: int = 2**12,
-        init: Literal["k-means++", "random", "k-means"] = "k-means++",
+        init: Literal["k-means++", "random", "k-means"] = "random",
         tol: float = 1e-4,
         min_iter: int = 2,
         max_iter: int = 5,
@@ -105,6 +105,8 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
         Build the bag-of-n-grams representation V of X and initialize
         the topics W.
         """
+        self.Xt_ = df_type(X)
+        cuml.set_global_output_type('cupy')
         # Init n-grams counts vectorizer
         if self.hashing:
             self.ngrams_count_ = HashingVectorizer(
@@ -129,50 +131,73 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
                 self.word_count_ = CountVectorizer(dtype=np.float64)
 
         # Init H_dict_ with empty dict to train from scratch
-        self.H_dict_ = dict()
+        self.H_dict_ = dict() #cudf.Series()
+        # self.X_dict_ = cudf.Series()
+
         # Build the n-grams counts matrix unq_V on unique elements of X
         if 'cudf.core.series' not in str(getmodule(X)):
             unq_X, lookup = np.unique(X, return_inverse=True)
         elif 'cudf.core.series' in str(getmodule(X)):
-            unq_X,lookup = X.unique() #X, return_inverse=True)
+            unq_X = X.unique()
+            tmp, lookup = np.unique(X.to_pandas(), return_inverse=True)
         unq_V = self.ngrams_count_.fit_transform(unq_X)
         if self.add_words:  # Add word counts to unq_V
             unq_V2 = self.word_count_.fit_transform(unq_X)
             unq_V = sparse.hstack((unq_V, unq_V2), format="csr")
 
         if not self.hashing:  # Build n-grams/word vocabulary
-            if parse_version(sklearn_version) < parse_version("1.0"):
-                self.vocabulary = self.ngrams_count_.get_feature_names()
-            else:
-                self.vocabulary = self.ngrams_count_.get_feature_names_out()
+            # if parse_version(sklearn_version) < parse_version("1.0"):
+            #     self.vocabulary = self.ngrams_count_.get_feature_names()
+            # else:
+            self.vocabulary = self.ngrams_count_.get_feature_names()
             if self.add_words:
-                if parse_version(sklearn_version) < parse_version("1.0"):
-                    self.vocabulary = np.concatenate(
-                        (self.vocabulary, self.word_count_.get_feature_names())
-                    )
-                else:
-                    self.vocabulary = np.concatenate(
-                        (self.vocabulary, self.word_count_.get_feature_names_out())
-                    )
+                # if parse_version(sklearn_version) < parse_version("1.0"):
+                #     self.vocabulary = np.concatenate(
+                #         (self.vocabulary, self.word_count_.get_feature_names())
+                #     )
+                # else:
+                self.vocabulary = np.concatenate(
+                    (self.vocabulary, self.word_count_.get_feature_names())
+                )
         _, self.n_vocab = unq_V.shape
         # Init the topics W given the n-grams counts V
+
         self.W_, self.A_, self.B_ = self._init_w(unq_V[lookup], X)
         # Init the activations unq_H of each unique input string
-        unq_H = _rescale_h(unq_V, np.ones((len(unq_X), self.n_components)))
+        unq_H = _rescale_h(self, unq_V, np.ones((len(unq_X), self.n_components)))
         # Update self.H_dict_ with unique input strings and their activations
-        self.H_dict_.update(zip(unq_X, unq_H))
+        if self.engine == 'gpu' :
+            self.H_dict_.update(zip(unq_X.to_arrow(), unq_H.values))
+        else:
+            self.H_dict_.update(zip(unq_X, unq_H))
         if self.rescale_rho:
             # Make update rate per iteration independent of the batch_size
             self.rho_ = self.rho ** (self.batch_size / len(X))
         return unq_X, unq_V, lookup
 
-    def _get_H(self, X: np.array) -> np.array:
+    def _get_H(self, X: np.array, fx: int) -> np.array:
         """
         Return the bag-of-n-grams representation of X.
         """
-        H_out = np.empty((len(X), self.n_components))
-        for x, h_out in zip(X, H_out):
-            h_out[:] = self.H_dict_[x]
+        AA=str(getmodule(X))
+        if 'cudf' in AA:
+            H_out = cp.empty((len(X), self.n_components))
+            if fx == 0: #self.Xt:
+                for x, h_out in zip(X.to_arrow(), H_out): ## from cupy back to cudf
+                    h_out[:] = self.H_dict_[x]
+            elif fx == 1:
+                for x, h_out in zip(X.to_arrow(), H_out):
+                    try:
+                        h_out[:] = self.H_dict_[x]
+                    except KeyError: ### keys coming thru NOT in arrow -- but dict is all arrow
+                        logger.debug(x)
+
+                        # h_out[:] = self.H_dict_[['pyarrow.lib.StringScalar'+str(x.as_py())+'$']]
+        else:
+            H_out = np.empty((len(X), self.n_components))
+            for x, h_out in zip(X, H_out):
+                h_out[:] = self.H_dict_[x]
+            
         return H_out
 
     def _init_w(self, V: np.array, X) -> Tuple[np.array, np.array, np.array]:
@@ -271,13 +296,23 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
         """
         # Copy parameter rho
         self.rho_ = self.rho
+        
         # Check if first item has str or np.str_ type
-        assert isinstance(X[0], str), "Input data is not string. "
+        
+        X = X.reset_index(drop=True)
+        self.Xt_= df_type(X)
+        # print(X.str.lower())#.reset_index(drop=True))
+        # print(self.Xt_)
+        # # X.to_csv('X_test.txt',sep='\t')
+        # if 'series' not in self.Xt_ and X.shape[1]>1:
+        #     assert isinstance(X[0], str), "Input data is not string. "
+        # else:
+        #     assert isinstance(X.str.lower(), str), "Input data is not string. "
         # Make n-grams counts matrix unq_V
         unq_X, unq_V, lookup = self._init_vars(X)
         n_batch = (len(X) - 1) // self.batch_size + 1
         # Get activations unq_H
-        unq_H = self._get_H(unq_X)
+        unq_H = self._get_H(unq_X, 0)
         unq_V=csr_gpu(unq_V);unq_H=cp.array(unq_H);
 
         for n_iter_ in range(self.max_iter):
@@ -354,9 +389,8 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
 
             if (W_change < self.tol) and (n_iter_ >= self.min_iter - 1):
                 break  # Stop if the change in W is smaller than the tolerance
-        if hasattr(unq_H, 'device'):
-            self.H_dict_.update(zip(unq_X, unq_H.get()))
-
+        if self.engine == 'gpu' :
+            self.H_dict_.update(zip(unq_X.to_arrow(), unq_H))
         else:
             self.H_dict_.update(zip(unq_X, unq_H))
         logger.debug(f"fit complete")
@@ -398,14 +432,20 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
             The labels that best describe each topic.
         """
 
-        vectorizer = CountVectorizer()
-        vectorizer.fit(list(self.H_dict_.keys()))
-        if parse_version(sklearn_version) < parse_version("1.0"):
-            vocabulary = np.array(vectorizer.get_feature_names())
+        vectorizer = CountVectorizer()#lowercase=False,preprocessor=None)
+
+        if 'cudf'  in self.Xt_:
+            A=cudf.Series([(item).as_py() for item in self.H_dict_.keys()])
+            vectorizer.fit(A)
+            # vocabulary = cp.array_str(vectorizer.get_feature_names().to_arrow())
+            vocabulary = vectorizer.get_feature_names()
+            encoding = self.transform(cudf.Series(vocabulary))
+            encoding = abs(encoding)#.todense()
         else:
-            vocabulary = np.array(vectorizer.get_feature_names_out())
-        encoding = self.transform(np.array(vocabulary).reshape(-1))
-        encoding = abs(encoding)
+            vectorizer.fit(list(self.H_dict_.keys()))
+            vocabulary = np.array(vectorizer.get_feature_names())
+            encoding = self.transform(cudf.Series(vocabulary).reshape(-1))
+            encoding = abs(encoding)
         encoding = encoding / np.sum(encoding, axis=1, keepdims=True)
         n_components = encoding.shape[1]
         topic_labels = []
@@ -413,24 +453,42 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
             x = encoding[:, i]
             labels = vocabulary[np.argsort(-x)[:n_labels]]
             topic_labels.append(labels)
-        topic_labels = [prefix + ", ".join(label) for label in topic_labels]
+        if 'cudf' not in self.Xt_:
+            topic_labels = [prefix + ", ".join(label) for label in topic_labels]
         return topic_labels
+
 
     def _add_unseen_keys_to_H_dict(self, X) -> None:
         """
         Add activations of unseen string categories from X to H_dict.
         """
-        unseen_X = np.setdiff1d(X, np.array([*self.H_dict_]))
+        
+        # def setdiff1d(ar1, ar2, assume_unique=False):
+        #     if assume_unique:
+        #         ar1 = cp.ravel(ar1)
+        #     else:
+        #         ar1 = cudf.Series(ar1).unique
+        #         ar2 = cudf.Series(ar2).unique
+        #     return ar1[in1d(ar1, ar2, assume_unique=True, invert=True)]
+    
+        if 'cudf' in str(getmodule(X)):
+            A=np.array([(item).as_py() for item in self.H_dict_])
+            unseen_X = np.setdiff1d(X.to_pandas(), A) 
+            unseen_X = cudf.Series(unseen_X)
+        else:
+            unseen_X = np.setdiff1d(X, np.array([*self.H_dict_]))
         if unseen_X.size > 0:
             unseen_V = self.ngrams_count_.transform(unseen_X)
             if self.add_words:
                 unseen_V2 = self.word_count_.transform(unseen_X)
                 unseen_V = sparse.hstack((unseen_V, unseen_V2), format="csr")
 
-            unseen_H = _rescale_h(
-                unseen_V, np.ones((unseen_V.shape[0], self.n_components))
-            )
-            self.H_dict_.update(zip(unseen_X, unseen_H))
+            unseen_H = _rescale_h(self,unseen_V, np.ones((unseen_V.shape[0], self.n_components)))
+            
+            if self.engine == 'gpu' :
+                self.H_dict_.update(zip(unseen_X.to_arrow(), unseen_H))
+            else:
+                self.H_dict_.update(zip(unseen_X, unseen_H))
 
     def transform(self, X) -> np.array:
         """
@@ -449,7 +507,7 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
         """
         check_is_fitted(self, "H_dict_")
         # Check if first item has str or np.str_ type
-        assert isinstance(X[0], str), "Input data is not string. "
+        # assert isinstance(X[0], str), "Input data is not string. "
         unq_X = np.unique(X)
         # Build the n-grams counts matrix V for the string data to encode
         unq_V = self.ngrams_count_.transform(unq_X)
@@ -457,8 +515,8 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
             unq_V2 = self.word_count_.transform(unq_X)
             unq_V = sparse.hstack((unq_V, unq_V2), format="csr")
         # Add unseen strings in X to H_dict
-        self._add_unseen_keys_to_H_dict(unq_X)
-        unq_H = self._get_H(unq_X)
+        self._add_unseen_keys_to_H_dict(unq_X) ### need to get this back for transforming obviously
+        unq_H = self._get_H(unq_X, 1)
         # Loop over batches
         logger.info(f"features and samples =  `{unq_V.shape}`, ie `{unq_V.shape[0]*unq_V.shape[1]}`")
         if unq_V.shape[0]*unq_V.shape[1]<1e9:
@@ -494,12 +552,11 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
                     gamma_shape_prior=self.gamma_shape_prior,
                     gamma_scale_prior=self.gamma_scale_prior,
                 )
-        if hasattr(unq_H, 'device'):
-            self.H_dict_.update(zip(unq_X, unq_H.get()))
-            # self.W_=self.W_.get()
+        if self.engine == 'gpu' :
+            self.H_dict_.update(zip(unq_X.to_arrow(), unq_H))
         else:
             self.H_dict_.update(zip(unq_X, unq_H))
-        return self._get_H(X)
+        return self._get_H(X, 0)
 
 
 class GapEncoder(BaseEstimator, TransformerMixin):
@@ -612,7 +669,7 @@ class GapEncoder(BaseEstimator, TransformerMixin):
 
     The :class:`~cu_cat.GapEncoder` has found the following two topics:
 
-    >>> enc.get_feature_names()
+    >>> enc.get_feature_names_out()
     ['england, london, uk', 'france, paris, pqris']
 
     It got it right, reccuring topics are "London" and "England" on the
@@ -648,7 +705,7 @@ class GapEncoder(BaseEstimator, TransformerMixin):
         rescale_rho: bool = False,
         hashing: bool = False,
         hashing_n_features: int = 2**12,
-        init: Literal["k-means++", "random", "k-means"] = "k-means++",
+        init: Literal["k-means++", "random", "k-means"] = "random",
         tol: float = 1e-4,
         min_iter: int = 2,
         max_iter: int = 5,
@@ -800,11 +857,15 @@ class GapEncoder(BaseEstimator, TransformerMixin):
         """
         check_is_fitted(self, "fitted_models_")
         # Check input data shape
-        X = check_input(X)
-        X = self._handle_missing(X)
+        # X = check_input(X)
+        # X = self._handle_missing(X)
         X_enc = []
-        for k in range(X.shape[1]):
-            X_enc.append(self.fitted_models_[k].transform(X[:, k]))
+        if 'cudf' in str(getmodule(X)):
+            for k in range(X.shape[1]):
+                X_enc.append(self.fitted_models_[k].transform(X.iloc[:, k]))
+        else:
+            for k in range(X.shape[1]):
+                X_enc.append(self.fitted_models_[k].transform(X[:, k]))
         X_enc = np.hstack(X_enc)
         return X_enc
 
@@ -858,18 +919,18 @@ class GapEncoder(BaseEstimator, TransformerMixin):
     def get_feature_names(
         self, input_features=None, col_names: List[str] = None, n_labels: int = 3
     ) -> List[str]:
-        """
-        Ensures compatibility with sklearn < 1.0.
-        Use `get_feature_names_out` instead.
-        """
-        if parse_version(sklearn_version) >= parse_version("1.0"):
-            warnings.warn(
-                "Following the changes in scikit-learn 1.0, "
-                "get_feature_names is deprecated. "
-                "Use get_feature_names_out instead. ",
-                DeprecationWarning,
-                stacklevel=2,
-            )
+    #     """
+    #     Ensures compatibility with sklearn < 1.0.
+    #     Use `get_feature_names_out` instead.
+    #     """
+    #     # if parse_version(sklearn_version) >= parse_version("1.0"):
+    #     #     warnings.warn(
+    #     #         "Following the changes in scikit-learn 1.0, "
+    #     #         "get_feature_names is deprecated. "
+    #     #         "Use get_feature_names_out instead. ",
+    #     #         DeprecationWarning,
+    #     #         stacklevel=2,
+    #     #     )
         return self.get_feature_names_out(col_names, n_labels)
 
 def _rescale_W(W: np.array, A: np.array) -> None:
@@ -947,14 +1008,19 @@ def _multiplicative_update_w_smallfast(
     cp._default_memory_pool.free_all_blocks()
     return W,A,B
 
-def _rescale_h(V: np.array, H: np.array) -> np.array:
+def _rescale_h(self, V: np.array, H: np.array) -> np.array:
     """
     Rescale the activations H.
     """
     epsilon = 1e-10  # in case of a document having length=0
-    H *= np.maximum(epsilon, V.sum(axis=1).A)
+    if self.engine=='gpu':
+        H = cp.array(H)
+        H *= cp.maximum(epsilon, V.sum(axis=1))
+    else:
+        H *= np.maximum(epsilon, V.sum(axis=1).A)
     H /= H.sum(axis=1, keepdims=True)
-    return H
+
+    return cudf.DataFrame(H)
 
 
 def _multiplicative_update_h(
