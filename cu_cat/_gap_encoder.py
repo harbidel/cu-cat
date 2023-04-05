@@ -28,7 +28,8 @@ from scipy.sparse import csr_matrix as csr_cpu
 from sklearn import __version__ as sklearn_version
 from sklearn.base import BaseEstimator, TransformerMixin
 from cuml.cluster import KMeans
-from vectorizers import CountVectorizer,HashingVectorizer
+# from vectorizers import CountVectorizer,HashingVectorizer
+from cuml.feature_extraction.text import CountVectorizer,HashingVectorizer
 from sklearn.neighbors import NearestNeighbors
 from sklearn.utils import check_random_state, gen_batches
 from sklearn.utils.extmath import row_norms, safe_sparse_dot
@@ -297,10 +298,16 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
         self.rho_ = self.rho
         self.Xt_= df_type(X)
         # Check if first item has str or np.str_ type
-        # if X.shape[1]>1:
-            # assert isinstance(X[0], str), "Input data is not string. "
+        
+        X = X.reset_index(drop=True)
+        self.Xt_= df_type(X)
+        # print(X.str.lower())#.reset_index(drop=True))
+        # print(self.Xt_)
+        # # X.to_csv('X_test.txt',sep='\t')
+        # if 'series' not in self.Xt_ and X.shape[1]>1:
+        #     assert isinstance(X[0], str), "Input data is not string. "
         # else:
-        # assert isinstance(X, str), "Input data is not string. "
+        #     assert isinstance(X.str.lower(), str), "Input data is not string. "
         # Make n-grams counts matrix unq_V
         unq_X, unq_V, lookup = self._init_vars(X)
         n_batch = (len(X) - 1) // self.batch_size + 1
