@@ -1,6 +1,6 @@
 import collections
 from typing import Any, Hashable
-
+from inspect import getmodule
 import numpy as np
 from sklearn.utils import check_array
 
@@ -66,3 +66,12 @@ def check_input(X) -> np.ndarray:
             )
 
     return X_
+
+def df_type(df):
+    """
+    Returns df type
+    """
+    df_type=str(getmodule(df))
+    if 'cudf' in df_type:
+        import cudf
+    return df_type
