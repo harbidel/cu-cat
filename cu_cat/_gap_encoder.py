@@ -299,11 +299,7 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
         
         # Check if first item has str or np.str_ type
         
-        # X = X.reset_index(drop=True)
         self.Xt_= df_type(X)
-        # print(X.str.lower())#.reset_index(drop=True))
-        # print(self.Xt_)
-        # # X.to_csv('X_test.txt',sep='\t')
         # if 'series' not in self.Xt_ and X.shape[1]>1:
         #     assert isinstance(X[0], str), "Input data is not string. "
         # else:
@@ -437,15 +433,18 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
         if 'cudf'  in self.Xt_:
             A=cudf.Series([(item).as_py() for item in self.H_dict_.keys()])
             vectorizer.fit(A)
-            # vocabulary = cp.array_str(vectorizer.get_feature_names().to_arrow())
-            vocabulary = vectorizer.get_feature_names()
+            vocabulary = (vectorizer.get_feature_names().to_arrow())
             encoding = self.transform(cudf.Series(vocabulary))
-            encoding = abs(encoding)#.todense()
+            encoding = abs(encoding)
+            vocabulary = (cp.asnumpy(vocabulary).reshape(-1)) ## after fit to build labels below
+            encoding = (cp.asnumpy(encoding))
+
         else:
             vectorizer.fit(list(self.H_dict_.keys()))
             vocabulary = np.array(vectorizer.get_feature_names())
-            encoding = self.transform(cudf.Series(vocabulary).reshape(-1))
+            encoding = self.transform(pd.Series(vocabulary).reshape(-1))
             encoding = abs(encoding)
+
         encoding = encoding / np.sum(encoding, axis=1, keepdims=True)
         n_components = encoding.shape[1]
         topic_labels = []
@@ -453,8 +452,9 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
             x = encoding[:, i]
             labels = vocabulary[np.argsort(-x)[:n_labels]]
             topic_labels.append(labels)
-        if 'cudf' not in self.Xt_:
-            topic_labels = [prefix + ", ".join(label) for label in topic_labels]
+
+        topic_labels = [prefix + ", ".join(label) for label in topic_labels]
+        # print(topic_labels)
         return topic_labels
 
 

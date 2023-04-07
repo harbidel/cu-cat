@@ -370,7 +370,7 @@ class TableVectorizer(ColumnTransformer):
         if isinstance(self.high_card_cat_transformer, sklearn.base.TransformerMixin):
             self.high_card_cat_transformer_ = clone(self.high_card_cat_transformer)
         elif self.high_card_cat_transformer is None:
-            self.high_card_cat_transformer_ = GapEncoder(n_components=30, njobs=-1)
+            self.high_card_cat_transformer_ = GapEncoder(n_components=30, njobs=4)
         elif self.high_card_cat_transformer == "remainder":
             self.high_card_cat_transformer_ = self.remainder
         else:
