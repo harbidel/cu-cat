@@ -472,7 +472,16 @@ class TableVectorizer(ColumnTransformer):
         for col in self.imputed_columns_:
             X[col] = _replace_missing_in_cat_col(X[col])
         for col, dtype in self.types_.items():
-            X[col] = X[col].astype(dtype)
+            # if categorical, add the new categories to prevent	
+            # them to be encoded as nan	
+            if pd.api.types.is_categorical_dtype(dtype):	
+                known_categories = dtype.categories	
+                new_categories = pd.unique(X[col])	
+                dtype = pd.CategoricalDtype(	
+                    categories=known_categories.union(new_categories)	
+                )	
+                self.types_[col] = dtype	
+            X.loc[:, col] = X[col].astype(dtype)
         return X
 
     def fit_transform(self, X, y=None):
@@ -520,11 +529,9 @@ class TableVectorizer(ColumnTransformer):
         # If auto_cast is True, we'll find and apply the best possible type
         # to each column.
         # We'll keep the results in order to apply the types in `transform`.
-        
-        # if self.auto_cast and 'cudf' in str(getmodule(X)):
-        #     X = self._auto_cast(X.to_arrow())
-        # elif self.auto_cast:
-        X = self._auto_cast(X)
+
+        if self.auto_cast:
+            X = self._auto_cast(X)
 
         # Select columns by dtype
         numeric_columns = X.select_dtypes(
@@ -624,13 +631,15 @@ class TableVectorizer(ColumnTransformer):
         if self.verbose:
             print(f"[TableVectorizer] Assigned transformers: {self.transformers}")
         if 'cudf' in self.Xt_ and 'cudf' not in str(getmodule(X)):
-            X=cudf.from_pandas(X,nan_as_null=False)
+            X=cudf.from_pandas(X)#,nan_as_null=False)
             # print(str(getmodule(y)))
             # y=cudf.from_pandas(y); should already be in cudf since not manipulated earlier
         X_enc = super().fit_transform(X, y)
-        X_enc = cudf.DataFrame(X_enc)
-        X_enc.columns = X_enc.columns.astype('str')
-        X_enc = X_enc.to_arrow()
+        
+        X_enc = cudf.DataFrame(X_enc) #from cuml.arraydata
+        # print(str(getmodule(X_enc)))
+        # X_enc.columns = X_enc.columns.astype('str')
+        # X_enc = X_enc.to_arrow()
         #cp.array([(item).as_py() for item in X_enc])
 
         

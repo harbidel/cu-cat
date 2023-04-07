@@ -135,11 +135,12 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
         # self.X_dict_ = cudf.Series()
 
         # Build the n-grams counts matrix unq_V on unique elements of X
-        if 'cudf.core.series' not in str(getmodule(X)):
+        if 'cudf' not in str(getmodule(X)):
             unq_X, lookup = np.unique(X, return_inverse=True)
-        elif 'cudf.core.series' in str(getmodule(X)):
-            unq_X = X.unique()
-            tmp, lookup = np.unique(X.to_pandas(), return_inverse=True)
+        elif 'cudf' in str(getmodule(X)):
+            # unq_X = X.unique()
+            unq_X, lookup = np.unique(X.to_arrow(), return_inverse=True)
+            unq_X = cudf.Series(unq_X)
         unq_V = self.ngrams_count_.fit_transform(unq_X)
         if self.add_words:  # Add word counts to unq_V
             unq_V2 = self.word_count_.fit_transform(unq_X)
@@ -179,24 +180,24 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
         """
         Return the bag-of-n-grams representation of X.
         """
-        AA=str(getmodule(X))
-        if 'cudf' in AA:
-            H_out = cp.empty((len(X), self.n_components))
-            if fx == 0: #self.Xt:
-                for x, h_out in zip(X.to_arrow(), H_out): ## from cupy back to cudf
-                    h_out[:] = self.H_dict_[x]
-            elif fx == 1:
-                for x, h_out in zip(X.to_arrow(), H_out):
-                    try:
-                        h_out[:] = self.H_dict_[x]
-                    except KeyError: ### keys coming thru NOT in arrow -- but dict is all arrow
-                        logger.debug(x)
+        # AA=str(getmodule(X))
+        # if 'cudf' in AA:
+        H_out = cp.empty((len(X), self.n_components))
+            # if fx == 0: #self.Xt:
+        for x, h_out in zip(X.to_arrow(), H_out): ## from cupy back to cudf
+            h_out[:] = self.H_dict_[x]
+            # elif fx == 1:
+            #     for x, h_out in zip(X.to_arrow(), H_out):
+            #         try:
+            #             h_out[:] = self.H_dict_[x]
+            #         except KeyError: ### keys coming thru NOT in arrow -- but dict is all arrow
+            #             logger.debug(x)
 
                         # h_out[:] = self.H_dict_[['pyarrow.lib.StringScalar'+str(x.as_py())+'$']]
-        else:
-            H_out = np.empty((len(X), self.n_components))
-            for x, h_out in zip(X, H_out):
-                h_out[:] = self.H_dict_[x]
+        # else:
+        #     H_out = np.empty((len(X), self.n_components))
+        #     for x, h_out in zip(X, H_out):
+        #         h_out[:] = self.H_dict_[x]
             
         return H_out
 
@@ -454,7 +455,6 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
             topic_labels.append(labels)
 
         topic_labels = [prefix + ", ".join(label) for label in topic_labels]
-        # print(topic_labels)
         return topic_labels
 
 
@@ -486,9 +486,10 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
             unseen_H = _rescale_h(self,unseen_V, np.ones((unseen_V.shape[0], self.n_components)))
             
             if self.engine == 'gpu' :
-                self.H_dict_.update(zip(unseen_X.to_arrow(), unseen_H))
+                self.H_dict_.update(zip(unseen_X.to_arrow(), unseen_H.values))
             else:
                 self.H_dict_.update(zip(unseen_X, unseen_H))
+            # print(self.H_dict_)
 
     def transform(self, X) -> np.array:
         """
