@@ -176,7 +176,7 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
             self.rho_ = self.rho ** (self.batch_size / len(X))
         return unq_X, unq_V, lookup
 
-    def _get_H(self, X: np.array, fx: int) -> np.array:
+    def _get_H(self, X: np.array) -> np.array:
         """
         Return the bag-of-n-grams representation of X.
         """
@@ -302,23 +302,24 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
         
         self.Xt_= df_type(X)
         # if 'series' not in self.Xt_ and X.shape[1]>1:
-        #     assert isinstance(X[0], str), "Input data is not string. "
+        # assert isinstance(X, str), "Input data is not string. "
         # else:
         #     assert isinstance(X.str.lower(), str), "Input data is not string. "
         # Make n-grams counts matrix unq_V
         unq_X, unq_V, lookup = self._init_vars(X)
         n_batch = (len(X) - 1) // self.batch_size + 1
         # Get activations unq_H
-        unq_H = self._get_H(unq_X, 0)
+        del X
+        unq_H = self._get_H(unq_X)
         unq_V=csr_gpu(unq_V);unq_H=cp.array(unq_H);
 
         for n_iter_ in range(self.max_iter):
             if (unq_V.shape[0]*unq_V.shape[1])<1e9 and self.engine=='gpu':
                 logger.debug(f"fitting smallfast-wise")
-                if 'cudf.core.dataframe' not in str(getmodule(X)):
+                if 'cudf.core.dataframe' not in self.Xt_:
                     logger.debug(f"moving to gpu")
                     self.W_=cp.array(self.W_);self.B_=cp.array(self.B_);self.A_=cp.array(self.A_)
-                elif 'cudf.core.dataframe' in str(getmodule(X)):
+                elif 'cudf.core.dataframe' in self.Xt_:
                     logger.debug(f"keeping on gpu")
                     self.W_=self.W_.to_cupy();self.B_=self.B_.to_cupy();self.A_=self.A_.to_cupy()
                 W_last = self.W_.copy()
@@ -343,14 +344,14 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
                 )
             else:
                 if self.engine=='gpu':
-                    if 'cudf.core.dataframe' not in str(getmodule(X)):
+                    if 'cudf.core.dataframe' not in self.Xt_:
                         self.W_=cp.array(self.W_);self.B_=cp.array(self.B_);self.A_=cp.array(self.A_); # unq_V=cp.array(unq_V);unq_H=cp.array(unq_H);
-                    elif 'cudf.core.dataframe' in str(getmodule(X)):
+                    elif 'cudf.core.dataframe' in self.Xt_:
                         self.W_=self.W_.to_cupy();self.B_=self.B_.to_cupy();self.A_=self.A_.to_cupy(); # unq_V=unq_V.to_cupy();unq_H=unq_H.to_cupy();
                     logger.debug(f"sent to cupy")
                     # Loop over batches
                 elif self.engine!='gpu': 
-                    if hasattr(unq_H, 'device') or 'cudf.core.dataframe' in str(getmodule(X)):
+                    if hasattr(unq_H, 'device') or 'cudf.core.dataframe' in self.Xt_:
                         unq_V=unq_V.get();unq_H=unq_H.get();
                     logger.debug(f"kept in numpy")
                 for i, (unq_idx, idx) in enumerate(batch_lookup(lookup, n=self.batch_size)):
@@ -471,7 +472,7 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
         #         ar2 = cudf.Series(ar2).unique
         #     return ar1[in1d(ar1, ar2, assume_unique=True, invert=True)]
     
-        if 'cudf' in str(getmodule(X)):
+        if 'cudf' in self.Xt_:
             A=np.array([(item).as_py() for item in self.H_dict_])
             unseen_X = np.setdiff1d(X.to_pandas(), A) 
             unseen_X = cudf.Series(unseen_X)
@@ -517,7 +518,7 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
             unq_V = sparse.hstack((unq_V, unq_V2), format="csr")
         # Add unseen strings in X to H_dict
         self._add_unseen_keys_to_H_dict(unq_X) ### need to get this back for transforming obviously
-        unq_H = self._get_H(unq_X, 1)
+        unq_H = self._get_H(unq_X)
         # Loop over batches
         logger.info(f"features and samples =  `{unq_V.shape}`, ie `{unq_V.shape[0]*unq_V.shape[1]}`")
         if unq_V.shape[0]*unq_V.shape[1]<1e9:
@@ -557,7 +558,7 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
             self.H_dict_.update(zip(unq_X.to_arrow(), unq_H))
         else:
             self.H_dict_.update(zip(unq_X, unq_H))
-        return self._get_H(X, 0)
+        return self._get_H(X)
 
 
 class GapEncoder(BaseEstimator, TransformerMixin):
