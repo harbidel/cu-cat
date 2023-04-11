@@ -248,9 +248,9 @@ def test_multiplicative_update_h_smallfast():
     from numpy.testing import assert_array_almost_equal
 
     np.random.seed(123)
-    Vt = np.random.rand(100, 20)
-    W = np.random.rand(20, 30)
-    Ht = np.random.rand(30, 100)
+    Vt = cp.random.rand(100, 20)
+    W = cp.random.rand(20, 30)
+    Ht = cp.random.rand(30, 100)
     # Convert Vt to CSR sparse matrix
     Vt_sparse = csr_matrix(Vt)
     # Call the function with different arguments
@@ -261,9 +261,9 @@ def test_multiplicative_update_h_smallfast():
     assert res_1.shape == (30, 100)
     assert res_2.shape == (30, 100)
     assert res_3.shape == (30, 100)
-    assert res_1.dtype == np.float32
-    assert res_2.dtype == np.float32
-    assert res_3.dtype == np.float32
+    assert res_1.dtype == cp.float32
+    assert res_2.dtype == cp.float32
+    assert res_3.dtype == cp.float32
     # Check that the output arrays are equal (within a small tolerance)
     assert_array_almost_equal(res_1, res_2, decimal=4)
     assert_array_almost_equal(res_1, res_3, decimal=4)
@@ -277,14 +277,14 @@ def test_multiplicative_update_w_smallfast():
 
     # Generate random input arrays
     np.random.seed(123)
-    Vt = np.random.rand(100, 20)
-    W = np.random.rand(20, 30)
-    A = np.random.rand(20, 30)
-    B = np.random.rand(1, 30)
-    Ht = np.random.rand(30, 100)
+    Vt = cp.random.rand(100, 20)
+    W = cp.random.rand(20, 30)
+    A = cp.random.rand(20, 30)
+    B = cp.random.rand(1, 30)
+    Ht = cp.random.rand(30, 100)
     rescale = bool(np.random.randint(2, size=1))
-    rho = float(np.random.randn())
-    
+    rho = float(cp.random.randn())
+
     # Convert Vt to CSR sparse matrix
     Vt_sparse = csr_matrix(Vt)
 
@@ -296,16 +296,16 @@ def test_multiplicative_update_w_smallfast():
     assert res_1[0].shape == W.shape
     assert res_1[1].shape == A.shape
     assert res_1[2].shape == B.shape
-    assert res_1[0].dtype == np.float32
-    assert res_1[1].dtype == np.float32
+    assert res_1[0].dtype == cp.float32
+    assert res_1[1].dtype == cp.float32
     assert res_1[2].dtype == np.float32
 
     assert res_2[0].shape == W.shape
     assert res_2[1].shape == A.shape
     assert res_2[2].shape == B.shape
-    assert res_2[0].dtype == np.float32
-    assert res_2[1].dtype == np.float32
-    assert res_2[2].dtype == np.float32
+    assert res_2[0].dtype == cp.float32
+    assert res_2[1].dtype == cp.float32
+    assert res_2[2].dtype == cp.float32
 
     # Check that the output arrays are equal (within a small tolerance)
     assert_array_almost_equal(res_1[0], res_2[0], decimal=4) # assert for W
