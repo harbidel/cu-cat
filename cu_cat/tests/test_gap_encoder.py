@@ -240,3 +240,74 @@ def test_perf():
     intersect=np.sum(np.sum(pd.DataFrame(CW)==pd.DataFrame(GW)))
     union=pd.DataFrame(CW).shape[0]*pd.DataFrame(CW).shape[1]
     assert(intersect==union)
+
+
+def test_multiplicative_update_h_smallfast():
+    # Generate random input arrays
+    from scipy.sparse import csr_matrix
+    from numpy.testing import assert_array_almost_equal
+
+    np.random.seed(123)
+    Vt = np.random.rand(100, 20)
+    W = np.random.rand(20, 30)
+    Ht = np.random.rand(30, 100)
+    # Convert Vt to CSR sparse matrix
+    Vt_sparse = csr_matrix(Vt)
+    # Call the function with different arguments
+    res_1 = _multiplicative_update_h_smallfast(Vt, W, Ht, max_iter=100)
+    res_2 = _multiplicative_update_h_smallfast(Vt_sparse, W, Ht, max_iter=100)
+    res_3 = _multiplicative_update_h_smallfast(Vt, W, Ht, rescale_W=True, gamma_scale_prior=5.0, max_iter=200)
+    # Check that the output arrays have the expected shape and type
+    assert res_1.shape == (30, 100)
+    assert res_2.shape == (30, 100)
+    assert res_3.shape == (30, 100)
+    assert res_1.dtype == np.float32
+    assert res_2.dtype == np.float32
+    assert res_3.dtype == np.float32
+    # Check that the output arrays are equal (within a small tolerance)
+    assert_array_almost_equal(res_1, res_2, decimal=4)
+    assert_array_almost_equal(res_1, res_3, decimal=4)
+
+
+def test_multiplicative_update_w_smallfast():
+    from scipy.sparse import csr_matrix
+    from typing import Tuple
+    from numpy.testing import assert_array_almost_equal
+
+
+    # Generate random input arrays
+    np.random.seed(123)
+    Vt = np.random.rand(100, 20)
+    W = np.random.rand(20, 30)
+    A = np.random.rand(20, 30)
+    B = np.random.rand(1, 30)
+    Ht = np.random.rand(30, 100)
+    rescale = bool(np.random.randint(2, size=1))
+    rho = float(np.random.randn())
+    
+    # Convert Vt to CSR sparse matrix
+    Vt_sparse = csr_matrix(Vt)
+
+    # Call the function with different arguments
+    res_1 = _multiplicative_update_w_smallfast(Vt, W, A, B, Ht, rescale_W=rescale, rho=rho)
+    res_2 = _multiplicative_update_w_smallfast(Vt_sparse, W, A, B, Ht, rescale_W=rescale, rho=rho)
+
+    # Check that the output arrays have the expected shape and type
+    assert res_1[0].shape == W.shape
+    assert res_1[1].shape == A.shape
+    assert res_1[2].shape == B.shape
+    assert res_1[0].dtype == np.float32
+    assert res_1[1].dtype == np.float32
+    assert res_1[2].dtype == np.float32
+
+    assert res_2[0].shape == W.shape
+    assert res_2[1].shape == A.shape
+    assert res_2[2].shape == B.shape
+    assert res_2[0].dtype == np.float32
+    assert res_2[1].dtype == np.float32
+    assert res_2[2].dtype == np.float32
+
+    # Check that the output arrays are equal (within a small tolerance)
+    assert_array_almost_equal(res_1[0], res_2[0], decimal=4) # assert for W
+    assert_array_almost_equal(res_1[1], res_2[1], decimal=4) # assert for A
+    assert_array_almost_equal(res_1[2], res_2[2
