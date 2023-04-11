@@ -474,7 +474,7 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
     
         if 'cudf' in self.Xt_:
             A=np.array([(item).as_py() for item in self.H_dict_])
-            unseen_X = np.setdiff1d(X.to_pandas(), A) 
+            unseen_X = cp.setdiff1d(X.to_array(), A,assume_unique=True) 
             unseen_X = cudf.Series(unseen_X)
         else:
             unseen_X = np.setdiff1d(X, np.array([*self.H_dict_]))
@@ -1065,19 +1065,34 @@ def _multiplicative_update_h(
         del Vt,W_,W_WT1,ht,ht_out,vt,vt_
         cp._default_memory_pool.free_all_blocks()
     elif self.engine!='gpu':
+        # for vt, ht in zip(Vt, Ht):
+        #     vt_ = vt.data
+        #     idx = vt.indices
+        #     W_WT1_ = W_WT1[:, idx]
+        #     W_ = W[:, idx]
+        #     squared_norm = 1
+        #     for n_iter_ in range(max_iter):
+        #         if squared_norm <= squared_epsilon:
+        #             break
+        #         aux = np.dot(W_WT1_, np.multiply(vt_,np.reciprocal(np.dot(ht, W_) + 1e-10)))
+        #         ht_out = np.multiply(ht, aux) + const
+        #         squared_norm = np.multiply(np.dot(ht_out - ht, ht_out - ht), np.reciprocal(np.dot(ht, ht)))
+        #         ht[:] = ht_out
+
         for vt, ht in zip(Vt, Ht):
             vt_ = vt.data
             idx = vt.indices
             W_WT1_ = W_WT1[:, idx]
             W_ = W[:, idx]
-            squared_norm = 1
             for n_iter_ in range(max_iter):
-                if squared_norm <= squared_epsilon:
-                    break
                 aux = np.dot(W_WT1_, np.multiply(vt_,np.reciprocal(np.dot(ht, W_) + 1e-10)))
                 ht_out = np.multiply(ht, aux) + const
                 squared_norm = np.multiply(np.dot(ht_out - ht, ht_out - ht), np.reciprocal(np.dot(ht, ht)))
-                ht[:] = ht_out
+                squared_norm_mask = squared_norm > squared_epsilon
+                ht[squared_norm_mask] = ht_out[squared_norm_mask]
+                if not np.any(squared_norm_mask):
+                    break
+
     return Ht
 
 def _multiplicative_update_h_smallfast(
@@ -1103,20 +1118,19 @@ def _multiplicative_update_h_smallfast(
     squared_epsilon = epsilon #**2
 
     squared_norm = 1
-    Vt=csr_gpu(Vt);Ht=cp.array(Ht);W=cp.array(W);W_WT1=cp.array(W_WT1.T)#;Vt=cp.array(Vt)
+    Vt=csr_gpu(Vt);Ht=cp.array(Ht);W=cp.array(W);W_WT1=cp.array(W_WT1.T) #;Vt=cp.array(Vt)
     for n_iter_ in range(max_iter):
         if squared_norm <= squared_epsilon:
             break
         C=Vt.multiply( cp.reciprocal(cp.matmul(Ht, W) + 1e-10)) ##sparse now
-        # aux = cp.matmul(W_WT1, 
         aux=C.dot(W_WT1)
-        # aux = cp.matmul(W_WT1, Vt.multiply( 1/ (cp.matmul(Ht, W) + 1e-10)).T)
         ht_out = cp.multiply(Ht,aux) + const
-        squared_norm = cp.sum(cp.multiply(ht_out - Ht, ht_out - Ht) / cp.multiply(Ht, Ht))
-        # Ht[:] = ht_out#.get()
-        Ht = ht_out#.get()
+        # squared_norm = cp.sum(cp.multiply(ht_out - Ht, ht_out - Ht) / cp.multiply(Ht, Ht))
+        squared_norm = cp.sum((ht_out - Ht)**2 / (Ht**2))
 
-    return Ht#.get()
+        Ht = ht_out
+
+    return Ht
 
 def batch_lookup(
     lookup: np.array,
