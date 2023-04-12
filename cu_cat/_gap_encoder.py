@@ -138,9 +138,9 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
         if 'cudf' not in str(getmodule(X)):
             unq_X, lookup = np.unique(X, return_inverse=True)
         elif 'cudf' in str(getmodule(X)):
-            # unq_X = X.unique()
-            unq_X, lookup = np.unique(X.to_arrow(), return_inverse=True)
-            unq_X = cudf.Series(unq_X)
+            unq_X = X.unique()
+            tmp, lookup = np.unique(X.to_arrow(), return_inverse=True)
+            # unq_X = cudf.Series(unq_X)
         unq_V = self.ngrams_count_.fit_transform(unq_X)
         if self.add_words:  # Add word counts to unq_V
             unq_V2 = self.word_count_.fit_transform(unq_X)
@@ -295,6 +295,7 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
         self
             Fitting GapEncoderColumn instance.
         """
+        t = time()
         # Copy parameter rho
         self.rho_ = self.rho
         
@@ -391,7 +392,9 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
             self.H_dict_.update(zip(unq_X.to_arrow(), unq_H))
         else:
             self.H_dict_.update(zip(unq_X, unq_H))
-        logger.debug(f"fit complete")
+        logger.debug(
+            f"--GapEncoder Fitting took {(time() - t) / 60:.2f} minutes\n"
+        )
         return self
 
     def get_feature_names(self, n_labels=3, prefix=""):
@@ -474,7 +477,7 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
     
         if 'cudf' in self.Xt_:
             A=np.array([(item).as_py() for item in self.H_dict_])
-            unseen_X = cp.setdiff1d(X.to_array(), A,assume_unique=True) 
+            unseen_X = np.setdiff1d(X.to_arrow(), A, assume_unique=True) 
             unseen_X = cudf.Series(unseen_X)
         else:
             unseen_X = np.setdiff1d(X, np.array([*self.H_dict_]))
@@ -507,6 +510,7 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
         H : 2-d array, shape (n_samples, n_topics)
             Transformed input.
         """
+        t = time()
         check_is_fitted(self, "H_dict_")
         # Check if first item has str or np.str_ type
         # assert isinstance(X[0], str), "Input data is not string. "
@@ -558,6 +562,9 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
             self.H_dict_.update(zip(unq_X.to_arrow(), unq_H))
         else:
             self.H_dict_.update(zip(unq_X, unq_H))
+        logger.debug(
+            f"--GapEncoder Tranforming took {(time() - t) / 60:.2f} minutes\n"
+        )
         return self._get_H(X)
 
 
@@ -1049,19 +1056,32 @@ def _multiplicative_update_h(
     squared_epsilon = epsilon**2
     
     if self.engine=='gpu':
+        # for vt, ht in zip(Vt, Ht):
+        #     vt_ = vt.data
+        #     idx = vt.indices
+        #     W_WT1_ = W_WT1[:, idx]
+        #     W_ = W[:, idx]
+        #     squared_norm = 1
+        #     for n_iter_ in range(max_iter):
+        #         if squared_norm <= squared_epsilon:
+        #             break
+        #         aux = cp.dot(W_WT1_, cp.multiply(vt_,cp.reciprocal(cp.dot(ht, W_) + 1e-10)))
+        #         ht_out = cp.multiply(ht, aux) + const
+        #         squared_norm = cp.multiply(cp.dot(ht_out - ht, ht_out - ht), cp.reciprocal(cp.dot(ht, ht)))
+        #         ht[:] = ht_out
         for vt, ht in zip(Vt, Ht):
             vt_ = vt.data
             idx = vt.indices
             W_WT1_ = W_WT1[:, idx]
             W_ = W[:, idx]
-            squared_norm = 1
             for n_iter_ in range(max_iter):
-                if squared_norm <= squared_epsilon:
-                    break
                 aux = cp.dot(W_WT1_, cp.multiply(vt_,cp.reciprocal(cp.dot(ht, W_) + 1e-10)))
                 ht_out = cp.multiply(ht, aux) + const
                 squared_norm = cp.multiply(cp.dot(ht_out - ht, ht_out - ht), cp.reciprocal(cp.dot(ht, ht)))
-                ht[:] = ht_out
+                squared_norm_mask = squared_norm > squared_epsilon
+                ht[squared_norm_mask] = ht_out[squared_norm_mask]
+                if not np.any(squared_norm_mask):
+                    break
         del Vt,W_,W_WT1,ht,ht_out,vt,vt_
         cp._default_memory_pool.free_all_blocks()
     elif self.engine!='gpu':
@@ -1078,7 +1098,7 @@ def _multiplicative_update_h(
         #         ht_out = np.multiply(ht, aux) + const
         #         squared_norm = np.multiply(np.dot(ht_out - ht, ht_out - ht), np.reciprocal(np.dot(ht, ht)))
         #         ht[:] = ht_out
-
+        
         for vt, ht in zip(Vt, Ht):
             vt_ = vt.data
             idx = vt.indices
@@ -1092,7 +1112,6 @@ def _multiplicative_update_h(
                 ht[squared_norm_mask] = ht_out[squared_norm_mask]
                 if not np.any(squared_norm_mask):
                     break
-
     return Ht
 
 def _multiplicative_update_h_smallfast(
@@ -1118,7 +1137,7 @@ def _multiplicative_update_h_smallfast(
     squared_epsilon = epsilon #**2
 
     squared_norm = 1
-    Vt=csr_gpu(Vt);Ht=cp.array(Ht);W=cp.array(W);W_WT1=cp.array(W_WT1.T) #;Vt=cp.array(Vt)
+    Vt=csr_gpu(Vt);Ht=cp.array(Ht);W=cp.array(W);W_WT1=cp.array(W_WT1.T)#;Vt=cp.array(Vt)
     for n_iter_ in range(max_iter):
         if squared_norm <= squared_epsilon:
             break
@@ -1127,10 +1146,9 @@ def _multiplicative_update_h_smallfast(
         ht_out = cp.multiply(Ht,aux) + const
         # squared_norm = cp.sum(cp.multiply(ht_out - Ht, ht_out - Ht) / cp.multiply(Ht, Ht))
         squared_norm = cp.sum((ht_out - Ht)**2 / (Ht**2))
-
         Ht = ht_out
 
-    return Ht
+    return Ht#.get()
 
 def batch_lookup(
     lookup: np.array,
