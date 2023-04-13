@@ -185,9 +185,9 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
         if 'cudf' in df_type(X) or 'arrow' in df_type(self.H_dict_):
             H_out = cp.empty((len(X), self.n_components))
             for x, h_out in zip(X.to_arrow(), H_out): ## from cupy back to cudf
-                h_out[:] = self.H_dict_[x]
+                h_out[:] = cp.asarray(self.H_dict_[x])
         else:
-            H_out = np.empty((len(X), self.n_components))
+            H_out = cp.empty((len(X), self.n_components))
             for x, h_out in zip(X, H_out): ## from cupy back to cudf
                 h_out[:] = self.H_dict_[x]
         return H_out
@@ -533,16 +533,16 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
                     gamma_scale_prior=self.gamma_scale_prior,
                 )
         else:
+            W_type = df_type(self.W_)
             if self.engine=='gpu' and unq_V.shape[0]*unq_V.shape[1] > 2e9:
                 logger.debug(f"cupy transform")
-                W_type = df_type(self.W_)
                 if 'cudf' not in W_type and 'cupy' not in W_type:
                     self.W_=cp.array(self.W_);unq_V=csr_gpu(unq_V);unq_H=cp.array(unq_H);
                     logger.debug(f"moving to cupy")
                 if 'cudf' in W_type:
                     self.W_=self.W_.to_cupy(); unq_V=unq_V.to_cupy();unq_H=unq_H.to_cupy();
                     logger.debug(f"kept on gpu via cupy")
-            else:
+            elif 'numpy' not in W_type:
                 self.W_=self.W_.get();
                 if 'cupy' in df_type(unq_V):
                     unq_V=unq_V.get(); unq_H=unq_H.get()
@@ -1062,7 +1062,7 @@ def _multiplicative_update_h(
     const = (gamma_shape_prior - 1) / WT1
     squared_epsilon = epsilon #**2
     
-    if 'cudf' in df_type(W):
+    if 'cudf' in df_type(W): # or 'cupy' in df_type(W):
         for vt, ht in zip(Vt, Ht):
             vt_ = vt.data
             idx = vt.indices
@@ -1096,10 +1096,25 @@ def _multiplicative_update_h(
         for vt, ht in zip(Vt, Ht):
             vt_ = vt.data
             idx = vt.indices
+            try:
+                idx=idx.get()
+                W_WT1=W_WT1.get()
+                W=cp.array(W)
+
+            except:
+                pass
+            try:
+                ht=ht.get()
+                vt_=vt_.get()
+            except:
+                pass
             W_WT1_ = W_WT1[:, idx]
             W_ = W[:, idx]
+
             for n_iter_ in range(max_iter):
-                aux = np.dot(W_WT1_, np.multiply(vt_,np.reciprocal(np.dot(ht, W_) + 1e-10)))
+                R=np.dot(ht, W_)
+                S=np.multiply(vt_,np.reciprocal(R + 1e-10))
+                aux = np.dot(W_WT1_, S)
                 ht_out = np.multiply(ht, aux) + const
                 squared_norm = np.multiply(np.dot(ht_out - ht, ht_out - ht), np.reciprocal(np.dot(ht, ht)))
                 squared_norm_mask = squared_norm > squared_epsilon
