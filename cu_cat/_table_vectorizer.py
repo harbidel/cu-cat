@@ -631,9 +631,8 @@ class TableVectorizer(ColumnTransformer):
         if self.verbose:
             print(f"[TableVectorizer] Assigned transformers: {self.transformers}")
         if 'cudf' in self.Xt_ and 'cudf' not in str(getmodule(X)):
-            X=cudf.from_pandas(X)#,nan_as_null=False)
-            # print(str(getmodule(y)))
-            # y=cudf.from_pandas(y); should already be in cudf since not manipulated earlier
+            X=cudf.from_pandas(X)#,nan_as_null=True) ### see how flag acts
+        X = X.fillna(0)
         X_enc = super().fit_transform(X, y)
         
         X_enc = cudf.DataFrame(X_enc) #from cuml.arraydata
