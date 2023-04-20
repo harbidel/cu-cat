@@ -370,7 +370,7 @@ class TableVectorizer(ColumnTransformer):
         if isinstance(self.high_card_cat_transformer, sklearn.base.TransformerMixin):
             self.high_card_cat_transformer_ = clone(self.high_card_cat_transformer)
         elif self.high_card_cat_transformer is None:
-            self.high_card_cat_transformer_ = GapEncoder(n_components=30, njobs=4)
+            self.high_card_cat_transformer_ = GapEncoder(n_components=30)
         elif self.high_card_cat_transformer == "remainder":
             self.high_card_cat_transformer_ = self.remainder
         else:
@@ -639,15 +639,6 @@ class TableVectorizer(ColumnTransformer):
         if self.verbose:
             print(f"[TableVectorizer] Assigned transformers: {self.transformers}")
         if 'cudf' in self.Xt_ and 'cudf' not in str(getmodule(X)):
-<<<<<<< HEAD
-            X=cudf.from_pandas(X,nan_as_null=False)
-            # print(str(getmodule(y)))
-            # y=cudf.from_pandas(y); should already be in cudf since not manipulated earlier
-        X_enc = super().fit_transform(X, y)
-        X_enc = cudf.DataFrame(X_enc)
-        X_enc.columns = X_enc.columns.astype('str')
-        X_enc = X_enc.to_arrow()
-=======
             X=cudf.from_pandas(X)#,nan_as_null=True) ### see how flag acts
         X = X.fillna(0)
         X_enc = super().fit_transform(X, y)
@@ -656,7 +647,6 @@ class TableVectorizer(ColumnTransformer):
         # print(str(getmodule(X_enc)))
         # X_enc.columns = X_enc.columns.astype('str')
         # X_enc = X_enc.to_arrow()
->>>>>>> cu_cat_regpt
         #cp.array([(item).as_py() for item in X_enc])
 
         
