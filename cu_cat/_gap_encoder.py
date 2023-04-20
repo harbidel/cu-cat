@@ -178,7 +178,7 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
             self.rho_ = self.rho ** (self.batch_size / len(X))
         return unq_X, unq_V, lookup
 
-    def _get_H(self, X: np.array, fx: int) -> np.array:
+    def _get_H(self, X: np.array) -> np.array:
         """
         Return the bag-of-n-grams representation of X.
         """
