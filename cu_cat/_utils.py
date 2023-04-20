@@ -67,3 +67,17 @@ def check_input(X) -> np.ndarray:
             )
 
     return X_
+
+def df_type(df):
+    """
+    Returns df type
+    """
+
+    # try: 
+    X = str(getmodule(df))
+    # except:
+    if X == 'None':
+    # try:
+        X = str(cp.get_array_module(df))
+    # except:
+    return X
