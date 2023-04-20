@@ -1,8 +1,9 @@
 import collections
 from typing import Any, Hashable
-
+from inspect import getmodule
 import numpy as np
 from sklearn.utils import check_array
+import cupy as cp
 
 try:
     # Works for sklearn >= 1.0
@@ -66,3 +67,17 @@ def check_input(X) -> np.ndarray:
             )
 
     return X_
+
+def df_type(df):
+    """
+    Returns df type
+    """
+
+    # try: 
+    X = str(getmodule(df))
+    # except:
+    if X == 'None':
+    # try:
+        X = str(cp.get_array_module(df))
+    # except:
+    return X
