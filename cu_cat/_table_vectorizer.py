@@ -28,10 +28,12 @@ cuml.set_global_output_type('cupy')
 # Required for ignoring lines too long in the docstrings
 # flake8: noqa: E501
 
-def _has_missing_values(df: Union[pd.DataFrame, pd.Series]) -> bool:
+def _has_missing_values(self, df: Union[pd.DataFrame, pd.Series]) -> bool:
     """
     Returns True if `array` contains missing values, False otherwise.
     """
+    if 'cudf' in self.Xt_:
+        df=df.to_pandas()
     return any(df.isnull())
 
 def _replace_false_missing(
@@ -423,7 +425,7 @@ class TableVectorizer(ColumnTransformer):
             # Convert pandas' NaN value (pd.NA) to numpy NaN value (np.nan)
             # because the former tends to raise all kind of issues when dealing
             # with scikit-learn (as of version 0.24).
-            if _has_missing_values(X[col].to_pandas()):  ## cannot iterate on cudf.Series so any cannot count
+            if _has_missing_values(self,X[col]):  ## cannot iterate on cudf.Series so any cannot count
                 # Some numerical dtypes like Int64 or Float64 only support
                 # pd.NA, so they must be converted to np.float64 before.
                 if pd.api.types.is_numeric_dtype(X[col]):
@@ -465,7 +467,7 @@ class TableVectorizer(ColumnTransformer):
         """
         for col in X.columns:
             X[col] = _replace_false_missing(X[col])
-            if _has_missing_values(X[col]):
+            if _has_missing_values(self,X[col]):
                 if pd.api.types.is_numeric_dtype(X[col]):
                     X[col] = X[col].astype(np.float64)
                 X[col].fillna(value=np.nan, inplace=True)
@@ -598,7 +600,7 @@ class TableVectorizer(ColumnTransformer):
             X = _replace_false_missing(X)
 
             # Then, impute if suiting
-            if _has_missing_values(X):
+            if _has_missing_values(self,X):
                 if self.impute_missing == "force":
                     for col in X.columns:
                         # Only impute categorical columns
