@@ -542,11 +542,11 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
                 if 'cudf' in W_type:
                     self.W_=self.W_.to_cupy(); unq_V=unq_V.to_cupy();unq_H=unq_H.to_cupy();
                     logger.debug(f"kept on gpu via cupy")
-            elif 'numpy' not in W_type:
-                self.W_=self.W_.get();
-                if 'cupy' in df_type(unq_V):
-                    unq_V=unq_V.get(); unq_H=unq_H.get()
-                logger.debug(f"force numpy transform")
+            else:
+                # self.W_=self.W_.get();
+                if hasattr(unq_H, 'device') or 'cupy' in W_type:
+                    # unq_V=unq_V.get(); unq_H=unq_H.get()
+                    logger.debug(f"force numpy transform")
             for slc in gen_batches(n=unq_H.shape[0], batch_size=self.batch_size):
                 # Given the learnt topics W, optimize H to fit V = HW
                 unq_H[slc] = _multiplicative_update_h(
