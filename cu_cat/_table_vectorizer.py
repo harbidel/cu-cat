@@ -529,17 +529,9 @@ class TableVectorizer(ColumnTransformer):
         # If auto_cast is True, we'll find and apply the best possible type
         # to each column.
         # We'll keep the results in order to apply the types in `transform`.
-<<<<<<< HEAD
-        
-        # if self.auto_cast and 'cudf' in str(getmodule(X)):
-        #     X = self._auto_cast(X.to_arrow())
-        # elif self.auto_cast:
-        X = self._auto_cast(X)
-=======
 
         if self.auto_cast:
             X = self._auto_cast(X)
->>>>>>> cu_cat_regpt
 
         # Select columns by dtype
         numeric_columns = X.select_dtypes(
