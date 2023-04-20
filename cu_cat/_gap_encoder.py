@@ -348,34 +348,34 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
                     # Loop over batches
                 else:
                     if hasattr(unq_H, 'device') or 'cupy' in W_type:
-                        unq_V=unq_V.get();unq_H=unq_H.get();
+                        # unq_V=unq_V.get();unq_H=unq_H.get();
                         logger.debug(f"force numpy fit")
                 for i, (unq_idx, idx) in enumerate(batch_lookup(lookup, n=self.batch_size)):
                     if i == n_batch - 1:
                         W_last = self.W_.copy()
                     # Update activations unq_H
-                        unq_H[unq_idx] = _multiplicative_update_h(
-                            self,
-                            unq_V[unq_idx],
-                            self.W_,
-                            unq_H[unq_idx],
-                            epsilon=1e-3,
-                            max_iter=self.max_iter_e_step,
-                            rescale_W=self.rescale_W,
-                            gamma_shape_prior=self.gamma_shape_prior,
-                            gamma_scale_prior=self.gamma_scale_prior,
-                        )
-                        # Update the topics self.W_
-                        _multiplicative_update_w(
-                            self,
-                            unq_V[idx],
-                            self.W_,
-                            self.A_,
-                            self.B_,
-                            unq_H[idx],
-                            self.rescale_W,
-                            self.rho_,
-                        )
+                    unq_H[unq_idx] = _multiplicative_update_h(
+                        self,
+                        unq_V[unq_idx],
+                        self.W_,
+                        unq_H[unq_idx],
+                        epsilon=1e-3,
+                        max_iter=self.max_iter_e_step,
+                        rescale_W=self.rescale_W,
+                        gamma_shape_prior=self.gamma_shape_prior,
+                        gamma_scale_prior=self.gamma_scale_prior,
+                    )
+                    # Update the topics self.W_
+                    _multiplicative_update_w(
+                        self,
+                        unq_V[idx],
+                        self.W_,
+                        self.A_,
+                        self.B_,
+                        unq_H[idx],
+                        self.rescale_W,
+                        self.rho_,
+                    )
 
             # if i == n_batch - 1:
                 # Compute the norm of the update of W in the last batch
@@ -971,7 +971,7 @@ def _multiplicative_update_w(
     """
     Multiplicative update step for the topics W.
     """
-    if 'cudf' in df_type(W):
+    if 'cudf' in df_type(Vt) or 'cupy' in df_type(Vt):
         A *= rho
         A += cp.multiply(W, safe_sparse_dot(Ht.T, Vt.multiply(1 / (cp.dot(Ht, W) + 1e-10))))
         B *= rho
@@ -982,6 +982,26 @@ def _multiplicative_update_w(
         cp._default_memory_pool.free_all_blocks()
         
     else: # self.engine!='gpu':
+        try:
+            W=W.get()
+        except:
+            pass
+        try:
+            Ht=Ht.get()
+        except:
+            pass
+        try:
+            Vt=Vt.get()
+        except:
+            pass
+        try:
+            A=A.get()
+        except:
+            pass
+        try:
+            B=B.get()
+        except:
+            pass
         A *= rho
         A += np.multiply(W, safe_sparse_dot(Ht.T, Vt.multiply(1 / (np.dot(Ht, W) + 1e-10))))
         B *= rho
@@ -989,7 +1009,7 @@ def _multiplicative_update_w(
         W=np.multiply(A, np.reciprocal(B))#, out=W)
         if rescale_W:
             _rescale_W(W, A)
-    return W, A, B
+    return W,A,B #cp.array(W), cp.array(A), cp.array(B)
 
 def _multiplicative_update_w_smallfast(
     Vt: np.array,
@@ -1062,7 +1082,7 @@ def _multiplicative_update_h(
     const = (gamma_shape_prior - 1) / WT1
     squared_epsilon = epsilon #**2
     
-    if 'cudf' in df_type(W): # or 'cupy' in df_type(W):
+    if 'cudf' in df_type(Vt) or 'cupy' in df_type(Vt):
         for vt, ht in zip(Vt, Ht):
             vt_ = vt.data
             idx = vt.indices
@@ -1079,6 +1099,7 @@ def _multiplicative_update_h(
         del Vt,W_,W_WT1,ht,ht_out,vt,vt_
         cp._default_memory_pool.free_all_blocks()
     else:
+        
         # for vt, ht in zip(Vt, Ht):
         #     vt_ = vt.data
         #     idx = vt.indices
@@ -1094,22 +1115,33 @@ def _multiplicative_update_h(
         #         ht[:] = ht_out
         
         for vt, ht in zip(Vt, Ht):
-            vt_ = vt.data
-            idx = vt.indices
+            
             try:
                 idx=idx.get()
+            except:
+                pass
+            try:
                 W_WT1=W_WT1.get()
-                W=cp.array(W)
-
+            except:
+                pass
+            try:
+                W=W.get()
             except:
                 pass
             try:
                 ht=ht.get()
+            except:
+                pass
+            try:
                 vt_=vt_.get()
             except:
                 pass
+            
+            vt_ = vt.data
+            idx = vt.indices
             W_WT1_ = W_WT1[:, idx]
             W_ = W[:, idx]
+            
 
             for n_iter_ in range(max_iter):
                 R=np.dot(ht, W_)
@@ -1121,7 +1153,7 @@ def _multiplicative_update_h(
                 ht[squared_norm_mask] = ht_out[squared_norm_mask]
                 if not np.any(squared_norm_mask):
                     break
-    return Ht
+    return cp.array(Ht)
 
 def _multiplicative_update_h_smallfast(
     Vt: np.array,
