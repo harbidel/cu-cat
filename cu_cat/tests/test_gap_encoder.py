@@ -231,22 +231,23 @@ def test_small_sample():
 def test_perf():
     """Test gpu speed boost and correctness"""
     n_samples = 2000
-    X = generate_cudata(n_samples, random_state=0)
-    Y = generate_cudata(n_samples, random_state=0)
-    Z = generate_cudata(n_samples, random_state=0)
-    XYZ=pd.concat([pd.DataFrame(X),pd.DataFrame(Y),pd.DataFrame(Z)],axis=1)
-
+    X = generate_data(n_samples, random_state=0)
+    # Y = generate_data(n_samples, random_state=0)
+    # Z = generate_data(n_samples, random_state=0)
+    # XYZ=pd.concat([pd.DataFrame(X),pd.DataFrame(Y),pd.DataFrame(Z)],axis=1)
+    XX = X.to_pandas()
     t0 = time()
-    cpu_enc = GapEncoder(random_state=42, engine='cpu')
-    CW=cpu_enc.fit_transform(XYZ)
+    cpu_enc = GapEncoder(random_state=42, engine='sklearn')
+    CW=cpu_enc.fit_transform(XX)
     t01=time()-t0
     t1 = time()
-    gpu_enc = GapEncoder(random_state=42, engine='gpu')
-    GW=gpu_enc.fit_transform(XYZ)
+    gpu_enc = GapEncoder(random_state=42, engine='cuml')
+    GW=gpu_enc.fit_transform(X)
     t02=time()-t1
+    GW=GW.get()
 
     assert(t01 > t02)
-    intersect=np.sum(np.sum(pd.DataFrame(CW)==pd.DataFrame(GW)))
+    intersect=np.sum(np.sum(pd.DataFrame(CW)==(GW)))
     union=pd.DataFrame(CW).shape[0]*pd.DataFrame(CW).shape[1]
     assert(intersect==union)
 
