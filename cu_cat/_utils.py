@@ -49,22 +49,29 @@ def check_input(X) -> np.ndarray:
     """
     # TODO check for weird type of input to pass scikit learn tests
     #  without messing with the original type too much
-
-    X_ = check_array(
-        X,
-        dtype=None,
-        ensure_2d=True,
-        force_all_finite=False,
-    )
-    # If the array contains both NaNs and strings, convert to object type
-    if X_.dtype.kind in {"U", "S"}:  # contains strings
-        if np.any(X_ == "nan"):  # missing value converted to string
-            return check_array(
-                np.array(X, dtype=object),
-                dtype=None,
-                ensure_2d=True,
-                force_all_finite=False,
-            )
+    if 'numpy' in str(getmodule(X)):
+        X_ = check_array(
+            X,
+            dtype=None,
+            ensure_2d=True,
+            force_all_finite=False,
+        )
+        # If the array contains both NaNs and strings, convert to object type
+        if X_.dtype.kind in {"U", "S"}:  # contains strings
+            if np.any(X_ == "nan"):  # missing value converted to string
+                return check_array(
+                    cp.array(X, dtype=object),
+                    dtype=None,
+                    ensure_2d=True,
+                    force_all_finite=False,
+                )
+    if 'numpy' not in str(getmodule(X)):
+        # for k in range(X.shape[1]):
+        try:
+            X.iloc[:,k]=cudf.to_cupy().to_numeric(X.iloc[:,k], downcast='float')
+        except:
+            pass
+        X_ = X
 
     return X_
 
