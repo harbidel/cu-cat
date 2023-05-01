@@ -178,7 +178,6 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
         self.max_iter_e_step = max_iter_e_step
         self._CV = CountVectorizer
         self._HV = HashingVectorizer
-        print('A:'+str(engine))
         self.engine = engine_resolved
 
     def _init_vars(self, X) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
@@ -852,7 +851,6 @@ class GapEncoder(BaseEstimator, TransformerMixin):
         self.handle_missing = handle_missing
         self._CV = CountVectorizer
         self._HV = HashingVectorizer
-        print('B:'+str(engine))
         self.engine = engine_resolved
 
 
