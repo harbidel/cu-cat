@@ -178,7 +178,7 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
         self.max_iter_e_step = max_iter_e_step
         self._CV = CountVectorizer
         self._HV = HashingVectorizer
-        print(engine)
+        print('A:'+str(engine))
         self.engine = engine_resolved
 
     def _init_vars(self, X) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
@@ -266,6 +266,15 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
             H_out = cp.empty((len(X), self.n_components))
             for x, h_out in zip(X.to_arrow(), H_out): ## from cupy back to cudf
                 h_out[:] = cp.asarray(self.H_dict_[x])
+        elif self.engine != 'cuml':
+            H_out = np.empty((len(X), self.n_components))
+
+            for x, h_out in zip(X, H_out):
+                try:
+                    self.H_dict_[x]=self.H_dict_[x].get()
+                except:
+                    pass
+                h_out[:] = self.H_dict_[x]
         else:
             H_out = cp.empty((len(X), self.n_components))
             for x, h_out in zip(X, H_out): ## from cupy back to cudf
@@ -625,8 +634,7 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
                     logger.debug(f"kept on gpu via cupy")
             else:
                 # self.W_=self.W_.get();
-                if hasattr(unq_H, 'device') or 'cupy' in W_type:
-                    # unq_V=unq_V.get(); unq_H=unq_H.get()
+                if hasattr(unq_H, 'device') or 'cupy' in W_type or self.engine !='cuml':
                     logger.debug(f"force numpy transform")
             for slc in gen_batches(n=unq_H.shape[0], batch_size=self.batch_size):
                 # Given the learnt topics W, optimize H to fit V = HW
@@ -811,9 +819,18 @@ class GapEncoder(BaseEstimator, TransformerMixin):
         rescale_W: bool = True,
         max_iter_e_step: int = 20,
         handle_missing: Literal["error", "empty_impute"] = "zero_impute",
-        engine: Literal["cpu", "cuml", "tpu"] = 'cuml',
+        engine: Engine = "auto",
 
     ):
+        engine_resolved = resolve_engine(engine)
+        # FIXME remove as set_new_kwargs will always replace?
+        if engine_resolved == 'sklearn':
+            _, _, engine = lazy_sklearn_import_has_dependancy()
+            from sklearn.feature_extraction.text import CountVectorizer,HashingVectorizer
+        elif engine_resolved == 'cuml':
+            _, _, engine = lazy_cuml_import_has_dependancy()
+            from cuml.feature_extraction.text import CountVectorizer,HashingVectorizer
+        
         self.ngram_range = ngram_range
         self.n_components = n_components
         self.gamma_shape_prior = gamma_shape_prior  # 'a' parameter
@@ -833,7 +850,10 @@ class GapEncoder(BaseEstimator, TransformerMixin):
         self.rescale_W = rescale_W
         self.max_iter_e_step = max_iter_e_step
         self.handle_missing = handle_missing
-        self.engine = engine
+        self._CV = CountVectorizer
+        self._HV = HashingVectorizer
+        print('B:'+str(engine))
+        self.engine = engine_resolved
 
 
     def _more_tags(self) -> Dict[str, List[str]]:
@@ -861,6 +881,7 @@ class GapEncoder(BaseEstimator, TransformerMixin):
             random_state=self.random_state,
             rescale_W=self.rescale_W,
             max_iter_e_step=self.max_iter_e_step,
+            engine=self.engine
         )
 
     def _handle_missing(self, X):
@@ -972,10 +993,6 @@ class GapEncoder(BaseEstimator, TransformerMixin):
             for k in range(X.shape[1]):
                 X_enc.append(self.fitted_models_[k].transform(X.iloc[:, k]))
         else:
-            try:
-                X = X.to_pandas()
-            except:
-                pass
             for k in range(X.shape[1]):
                 X_enc.append(self.fitted_models_[k].transform(X.iloc[:, k]))
         X_enc = np.hstack(X_enc)
@@ -1250,7 +1267,7 @@ def _multiplicative_update_h(
                 ht[squared_norm_mask] = ht_out[squared_norm_mask]
                 if not np.any(squared_norm_mask):
                     break
-    return cp.array(Ht)
+    return Ht
 
 def _multiplicative_update_h_smallfast(
     Vt: np.array,
