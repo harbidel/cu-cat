@@ -26,8 +26,8 @@ def generate_data(
     if as_list is True:
         X = str_list
     else:
-        X = np.array(str_list).reshape(n_samples, 1)
-    return X
+        X = np.array(str_list)
+    return cudf.DataFrame(cudf.Series.from_pandas(pd.Series(X),nan_as_null=False))
 
 def id_generator(size=12, chars=string.ascii_uppercase + string.digits + ' '):
     return ''.join(random.choice(chars) for _ in range(size))
@@ -36,32 +36,33 @@ def generate_cudata(
     n_samples,
     random_state: Optional[Union[int, float, str, bytes, bytearray]] = None,
 ):
-    start_u = pd.to_datetime('2012-01-01').value//10**9
-    end_u = pd.to_datetime('2023-01-01').value//10**9
+    # start_u = pd.to_datetime('2012-01-01').value//10**9
+    # end_u = pd.to_datetime('2023-01-01').value//10**9
 
-    aa = np.random.randint(18,75,size=(n_samples)).astype(float)
-    mask = np.random.choice([1, 0], aa.shape, p=[.1, .9]).astype(bool)
-    aa[mask] = np.nan
-    bb = np.random.randint(0,200,size=(n_samples)).astype(float)
-    mask = np.random.choice([1, 0], bb.shape, p=[.1, .9]).astype(bool)
-    bb[mask] = np.nan
-    cc = np.random.randint(0,1000,size=(n_samples)).astype(float)
-    mask = np.random.choice([1, 0], cc.shape, p=[.1, .9]).astype(bool)
-    cc[mask] = np.nan
-    ff=pd.to_datetime(np.random.randint(start_u, end_u, n_samples), unit='s').date
+#     aa = np.random.randint(18,75,size=(n_samples)).astype(float)
+#     mask = np.random.choice([1, 0], aa.shape, p=[.1, .9]).astype(bool)
+#     aa[mask] = np.nan
+#     bb = np.random.randint(0,200,size=(n_samples)).astype(float)
+#     mask = np.random.choice([1, 0], bb.shape, p=[.1, .9]).astype(bool)
+#     bb[mask] = np.nan
+#     cc = np.random.randint(0,1000,size=(n_samples)).astype(float)
+#     mask = np.random.choice([1, 0], cc.shape, p=[.1, .9]).astype(bool)
+#     cc[mask] = np.nan
+#     ff=pd.to_datetime(np.random.randint(start_u, end_u, n_samples), unit='s').date
 
-    dd = np.round(np.random.uniform(20, 24,size=(n_samples)), 2)
-    ee = np.round(np.random.uniform(110, 120,size=(n_samples)), 2)
+#     dd = np.round(np.random.uniform(20, 24,size=(n_samples)), 2)
+#     ee = np.round(np.random.uniform(110, 120,size=(n_samples)), 2)
 
-    df = pd.DataFrame({
-        'age': aa,
-        'user_id': bb,
-        'profile': cc,
-        'lon':dd,
-        'date':ff,
-        'lat':ee}
+    df = pd.DataFrame()#{
+        # 'age': aa,
+        # 'user_id': bb,
+        # 'profile': cc,
+        # 'lon':dd,
+        # 'date':ff,
+        # 'lat':ee
+    # }
 
-    )
+    # )
 
     id_generator()
     df['str0'] = np.array([id_generator(5) for i in range(n_samples)])#.reshape(-1,2)
