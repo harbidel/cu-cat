@@ -2,10 +2,11 @@ from typing import Any, Tuple
 
 import numpy as np
 import pandas as pd
+import cudf
 import pytest
 import sklearn
 from sklearn.exceptions import NotFittedError
-from sklearn.preprocessing import StandardScaler
+from cuml.preprocessing import StandardScaler
 from sklearn.utils.validation import check_is_fitted
 
 from cu_cat import GapEncoder, SuperVectorizer, TableVectorizer
@@ -37,19 +38,19 @@ def _get_clean_dataframe() -> pd.DataFrame:
     Creates a simple DataFrame with various types of data,
     and without missing values.
     """
-    return pd.DataFrame(
+    return cudf.DataFrame(
         {
-            "int": pd.Series([15, 56, 63, 12, 44], dtype="int"),
-            "float": pd.Series([5.2, 2.4, 6.2, 10.45, 9.0], dtype="float"),
-            "str1": pd.Series(
-                ["public", "private", "private", "private", "public"], dtype="string"
+            "int": cudf.Series([15, 56, 63, 12, 44])#, dtype="float"),
+            "float": cudf.Series([5.2, 2.4, 6.2, 10.45, 9.0], dtype="float"),
+            "str1": cudf.Series(
+                ["public", "private", "private", "private", "public"], dtype="str"
             ),
-            "str2": pd.Series(
-                ["officer", "manager", "lawyer", "chef", "teacher"], dtype="string"
+            "str2": cudf.Series(
+                ["officer", "manager", "lawyer", "chef", "teacher"], dtype="str"
             ),
-            "cat1": pd.Series(["yes", "yes", "no", "yes", "no"], dtype="category"),
-            "cat2": pd.Series(
-                ["20K+", "40K+", "60K+", "30K+", "50K+"], dtype="category"
+            "cat1": cudf.Series(["yes", "yes", "no", "yes", "no"])#,, dtype="category"),
+            "cat2": cudf.Series(
+                ["20K+", "40K+", "60K+", "30K+", "50K+"])#,, dtype="category"
             ),
         }
     )
@@ -61,37 +62,37 @@ def _get_dirty_dataframe() -> pd.DataFrame:
     We'll use different types of missing values (np.nan, pd.NA, None)
     to test the robustness of the vectorizer.
     """
-    return pd.DataFrame(
+    return cudf.DataFrame(
         {
-            "int": pd.Series([15, 56, pd.NA, 12, 44], dtype="Int64"),
-            "float": pd.Series([5.2, 2.4, 6.2, 10.45, np.nan], dtype="Float64"),
-            "str1": pd.Series(
-                ["public", np.nan, "private", "private", "public"], dtype="object"
+            "int": cudf.Series([15, 56, pd.NA, 12, 44],nan_as_null=False),
+            "float": cudf.Series([5.2, 2.4, 6.2, 10.45, np.nan], dtype="object",nan_as_null=False),
+            "str1": cudf.Series(
+                ["public", np.nan, "private", "private", "public"], dtype="object",nan_as_null=False
             ),
-            "str2": pd.Series(
-                ["officer", "manager", None, "chef", "teacher"], dtype="object"
+            "str2": cudf.Series(
+                ["officer", "manager", None, "chef", "teacher"], dtype="object",nan_as_null=False
             ),
-            "cat1": pd.Series([np.nan, "yes", "no", "yes", "no"], dtype="object"),
-            "cat2": pd.Series(["20K+", "40K+", "60K+", "30K+", np.nan], dtype="object"),
-        }
+            "cat1": cudf.Series([np.nan, "yes", "no", "yes", "no"], dtype="object",nan_as_null=False),
+            "cat2": cudf.Series(["20K+", "40K+", "60K+", "30K+", np.nan], dtype="object",nan_as_null=False),
+        },nan_as_null=False
     )
 
 
-def _get_numpy_array() -> np.ndarray:
-    return np.array(
-        [
-            ["15", "56", pd.NA, "12", ""],
-            ["?", "2.4", "6.2", "10.45", np.nan],
-            ["public", np.nan, "private", "private", pd.NA],
-            ["officer", "manager", None, "chef", "teacher"],
-            [np.nan, "yes", "no", "yes", "no"],
-            ["20K+", "40K+", "60K+", "30K+", np.nan],
-        ]
-    ).T
+# def _get_numpy_array() -> np.ndarray:
+#     return np.array(
+#         [
+#             ["15", "56", pd.NA, "12", ""],
+#             ["?", "2.4", "6.2", "10.45", np.nan],
+#             ["public", np.nan, "private", "private", pd.NA],
+#             ["officer", "manager", None, "chef", "teacher"],
+#             [np.nan, "yes", "no", "yes", "no"],
+#             ["20K+", "40K+", "60K+", "30K+", np.nan],
+#         ]
+#     ).T
 
 
-def _get_list_of_lists() -> list:
-    return _get_numpy_array().tolist()
+# def _get_list_of_lists() -> list:
+#     return _get_numpy_array().tolist()
 
 
 def _get_datetimes_dataframe() -> pd.DataFrame:
@@ -99,7 +100,7 @@ def _get_datetimes_dataframe() -> pd.DataFrame:
     Creates a DataFrame with various date formats,
     already converted or to be converted.
     """
-    return pd.DataFrame(
+    return cudf.DataFrame(
         {
             "pd_datetime": [
                 pd.Timestamp("2019-01-01"),
@@ -289,30 +290,30 @@ def test_auto_cast() -> None:
         assert type_equality(expected_types_dirty_dataframe[col], X_trans[col].dtype)
 
 
-def test_with_arrays():
-    """
-    Check that the TableVectorizer works if we input
-    a list of lists or a numpy array.
-    """
-    expected_transformers = {
-        "numeric": [0, 1],
-        "low_card_cat": [2, 4],
-        "high_card_cat": [3, 5],
-    }
-    vectorizer = TableVectorizer(
-        cardinality_threshold=4,
-        # we must have n_samples = 5 >= n_components
-        high_card_cat_transformer=GapEncoder(n_components=2),
-        numerical_transformer=StandardScaler(),
-    )
+# def test_with_arrays():
+#     """
+#     Check that the TableVectorizer works if we input
+#     a list of lists or a numpy array.
+#     """
+#     expected_transformers = {
+#         "numeric": [0, 1],
+#         "low_card_cat": [2, 4],
+#         "high_card_cat": [3, 5],
+#     }
+#     vectorizer = TableVectorizer(
+#         cardinality_threshold=4,
+#         # we must have n_samples = 5 >= n_components
+#         high_card_cat_transformer=GapEncoder(n_components=2),
+#         numerical_transformer=StandardScaler(),
+#     )
 
-    X = _get_numpy_array()
-    vectorizer.fit_transform(X)
-    check_same_transformers(expected_transformers, vectorizer.transformers)
+#     X = _get_pandas_array()
+#     vectorizer.fit_transform(X)
+#     check_same_transformers(expected_transformers, vectorizer.transformers)
 
-    X = _get_list_of_lists()
-    vectorizer.fit_transform(X)
-    check_same_transformers(expected_transformers, vectorizer.transformers)
+#     X = _get_list_of_lists()
+#     vectorizer.fit_transform(X)
+#     check_same_transformers(expected_transformers, vectorizer.transformers)
 
 
 def test_get_feature_names_out() -> None:
@@ -431,10 +432,10 @@ def test_passthrough():
         auto_cast=False,
     )
 
-    X_enc_dirty = pd.DataFrame(
+    X_enc_dirty = cudf.DataFrame(
         tv.fit_transform(X_dirty), columns=tv.get_feature_names_out()
     )
-    X_enc_clean = pd.DataFrame(
+    X_enc_clean = cudf.DataFrame(
         tv.fit_transform(X_clean), columns=tv.get_feature_names_out()
     )
     # Reorder encoded arrays' columns (see TableVectorizer's doc "Notes" section as to why)

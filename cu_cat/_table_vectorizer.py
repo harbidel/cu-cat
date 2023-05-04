@@ -87,6 +87,18 @@ def _replace_false_missing(
                 # df[i]=df[i].str.normalize_characters()
             except:
                 df[i]=df[i]
+            try:
+                df[i] = df[i].replace({pd.NA: np.nan})
+            except:
+                pass
+            try:
+                df[i] = df[i].replace({None: np.nan})
+            except:
+                pass
+            try:
+                df[i]=cudf.from_pandas(df[i],nan_as_null=False)
+            except:
+                pass
     # if 'cudf' in df_type: ## do this after munging -- before fit/transform
     #     import cudf
     #     df=cudf.from_pandas(df)
@@ -443,7 +455,7 @@ class TableVectorizer(ColumnTransformer):
                     # Only try to convert to datetime
                     # if the variable isn't numeric.
                     try:
-                        X[col] = pd.to_datetime(
+                        X[col] = cudf.to_datetime(
                             X[col], errors="raise", infer_datetime_format=True
                         )
                     except (ValueError, TypeError):

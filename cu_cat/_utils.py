@@ -66,13 +66,14 @@ def check_input(X) -> np.ndarray:
                     force_all_finite=False,
                 )
     if 'numpy' not in str(getmodule(X)):
-        # for k in range(X.shape[1]):
-        try:
-            X.iloc[:,k]=cudf.to_cupy().to_numeric(X.iloc[:,k], downcast='float')
-        except:
-            pass
+        for k in range(X.shape[1]):
+            try:
+                X.iloc[:,k]=cudf.to_numeric(X.iloc[:,k], downcast='float').to_cupy()
+                print('passing from cudf to cupy')
+            except:
+                pass
         X_ = X
-
+    
     return X_
 
 def df_type(df):
