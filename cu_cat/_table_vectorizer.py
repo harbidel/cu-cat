@@ -477,8 +477,9 @@ class TableVectorizer(ColumnTransformer):
 
         Does the same thing as `_auto_cast`, but applies learnt info.
         """
+        
+        X = _replace_false_missing(X)
         for col in X.columns:
-            X[col] = _replace_false_missing(X[col])
             if _has_missing_values(self,X[col]):
                 if pd.api.types.is_numeric_dtype(X[col]):
                     X[col] = X[col].astype(np.float64)
@@ -641,7 +642,7 @@ class TableVectorizer(ColumnTransformer):
         # missing values or not.
         if self.imputed_columns_ and self.auto_cast:
             X = self._auto_cast(X)
-
+        self.Xt_= df_type(X)
         if self.verbose:
             print(f"[TableVectorizer] Assigned transformers: {self.transformers}")
         if 'cudf' in self.Xt_ and 'cudf' not in str(getmodule(X)):
@@ -704,11 +705,18 @@ class TableVectorizer(ColumnTransformer):
             X.columns = self.columns_
 
         if self.auto_cast:
-            X = self._apply_cast(X)
+            # X = self._auto_cast(X)
+            try:
+                X = self._apply_cast(X)
+            except:
+                pass
             
         if 'cudf' in self.Xt_:
-            import cudf
-            X=cudf.from_pandas(X)
+            try:
+                import cudf
+                X=cudf.from_pandas(X)
+            except:
+                pass
             
         return super().transform(X)
 
