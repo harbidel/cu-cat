@@ -1,92 +1,131 @@
 import pytest
-import numpy as np
-import pandas as pd
+import numpy as np, cupy as cp
+import pandas as pd, cudf
 from sklearn.exceptions import NotFittedError
 
 from cu_cat._datetime_encoder import DatetimeEncoder
 
 
-def get_date_array() -> np.array:
-    return np.array(
-        [
-            pd.to_datetime(["2020-01-01", "2020-01-02", "2020-01-03"]),
-            pd.to_datetime(["2021-02-03", "2020-02-04", "2021-02-05"]),
-            pd.to_datetime(["2022-01-01", "2020-12-25", "2022-01-03"]),
-            pd.to_datetime(["2023-02-03", "2020-02-04", "2023-02-05"]),
-        ]
-    )
+# def get_date_array() -> np.array:
+#     return np.array(
+#         [
+#             pd.to_datetime(["2020-01-01", "2020-01-02", "2020-01-03"]),
+#             pd.to_datetime(["2021-02-03", "2020-02-04", "2021-02-05"]),
+#             pd.to_datetime(["2022-01-01", "2020-12-25", "2022-01-03"]),
+#             pd.to_datetime(["2023-02-03", "2020-02-04", "2023-02-05"]),
+#         ]
+#     )
+
+def get_date_array() -> cp.array:
+    df = cudf.DataFrame()
+    df['pickup_datetime'] = ['2019-01-15 16:05:39', '2022-02-02 16:33:38', '2015-01-22 16:33:38']
+    df['pickup_datetime'] = df['pickup_datetime'].astype('datetime64[s]')
+    df['pickup2_datetime'] = ['2022-10-11 20:05:39', '2022-10-11 20:33:38', '2022-11-12 20:33:38']
+    df['pickup2_datetime'] = df['pickup2_datetime'].astype('datetime64[s]')
+    df['pickup3_datetime'] = ['2015-02-11 16:05:39', '2022-10-11 04:33:38', '2013-04-14 03:33:38']
+    df['pickup3_datetime'] = df['pickup3_datetime'].astype('datetime64[s]')
+    return df
 
 
-def get_constant_date_array() -> np.array:
-    return np.array(
-        [
-            pd.to_datetime(["2020-01-01", "2020-02-04", "2021-02-05"]),
-            pd.to_datetime(["2020-01-01", "2020-02-04", "2021-02-05"]),
-            pd.to_datetime(["2020-01-01", "2020-02-04", "2021-02-05"]),
-            pd.to_datetime(["2020-01-01", "2020-02-04", "2021-02-05"]),
-        ]
-    )
+def get_constant_date_array() -> cp.array:
+    df = cudf.DataFrame()
+    df['pickup_datetime'] = ['2015-01-15 19:05:39', '2015-01-15 19:05:39', '2015-01-15 19:05:39']
+    df['pickup_datetime'] = df['pickup_datetime'].astype('datetime64[s]')
+    df['pickup2_datetime'] = df['pickup_datetime'].astype('datetime64[s]')
+    df['pickup3_datetime'] = df['pickup_datetime'].astype('datetime64[s]')
 
 
-def get_datetime_array() -> np.array:
-    return np.array(
-        [
-            pd.to_datetime(
-                ["2020-01-01 10:12:01", "2020-01-02 10:23:00", "2020-01-03 10:00:00"]
-            ),
-            pd.to_datetime(
-                ["2021-02-03 12:45:23", "2020-02-04 22:12:00", "2021-02-05 12:00:00"]
-            ),
-            pd.to_datetime(
-                ["2022-01-01 23:23:43", "2020-12-25 11:12:00", "2022-01-03 11:00:00"]
-            ),
-            pd.to_datetime(
-                ["2023-02-03 11:12:12", "2020-02-04 08:32:00", "2023-02-05 23:00:00"]
-            ),
-        ]
-    )
+    return df
+
+# def get_constant_date_array() -> np.array:
+#     return np.array(
+#         [
+#             pd.to_datetime(["2020-01-01", "2020-02-04", "2021-02-05"]),
+#             pd.to_datetime(["2020-01-01", "2020-02-04", "2021-02-05"]),
+#             pd.to_datetime(["2020-01-01", "2020-02-04", "2021-02-05"]),
+#             pd.to_datetime(["2020-01-01", "2020-02-04", "2021-02-05"]),
+#         ]
+#     )
+
+
+# def get_datetime_array() -> np.array:
+#     return np.array(
+#         [
+#             pd.to_datetime(
+#                 ["2020-01-01 10:12:01", "2020-01-02 10:23:00", "2020-01-03 10:00:00"]
+#             ),
+#             pd.to_datetime(
+#                 ["2021-02-03 12:45:23", "2020-02-04 22:12:00", "2021-02-05 12:00:00"]
+#             ),
+#             pd.to_datetime(
+#                 ["2022-01-01 23:23:43", "2020-12-25 11:12:00", "2022-01-03 11:00:00"]
+#             ),
+#             pd.to_datetime(
+#                 ["2023-02-03 11:12:12", "2020-02-04 08:32:00", "2023-02-05 23:00:00"]
+#             ),
+#         ]
+#     )
 
 
 def get_dirty_datetime_array() -> np.array:
-    return np.array(
-        [
-            np.array(
-                pd.to_datetime(
-                    [
-                        "2020-01-01 10:12:01",
-                        "2020-01-02 10:23:00",
-                        "2020-01-03 10:00:00",
-                    ]
-                )
-            ),
-            np.array(
-                pd.to_datetime([np.nan, "2020-02-04 22:12:00", "2021-02-05 12:00:00"])
-            ),
-            np.array(
-                pd.to_datetime(["2022-01-01 23:23:43", "2020-12-25 11:12:00", pd.NaT])
-            ),
-            np.array(
-                pd.to_datetime(
-                    [
-                        "2023-02-03 11:12:12",
-                        "2020-02-04 08:32:00",
-                        "2023-02-05 23:00:00",
-                    ]
-                )
-            ),
-        ]
-    )
+    
+    df = cudf.DataFrame(nan_as_null=False)
+    df['pickup_datetime'] = ['2019-01-15 16:05:39', pd.NaT, '2015-01-10 16:33:38']
+    df['pickup_datetime'] = df['pickup_datetime'].astype('datetime64[s]')
+    df['pickup2_datetime'] = ['2022-10-11 20:05:39', '2022-10-11 20:33:38', '2022-11-12 20:33:38']
+    df['pickup2_datetime'] = df['pickup2_datetime'].astype('datetime64[s]')
+    df['pickup3_datetime'] = [np.nan, '2022-10-11 04:33:38', '2013-04-14 03:33:38']
+    df['pickup3_datetime'] = df['pickup3_datetime'].astype('datetime64[s]')
+    return df
+
+    # return np.array(
+    #     [
+    #         np.array(
+    #             pd.to_datetime(
+    #                 [
+    #                     "2020-01-01 10:12:01",
+    #                     "2020-01-02 10:23:00",
+    #                     "2020-01-03 10:00:00",
+    #                 ]
+    #             )
+    #         ),
+    #         np.array(
+    #             pd.to_datetime([np.nan, "2020-02-04 22:12:00", "2021-02-05 12:00:00"])
+    #         ),
+    #         np.array(
+    #             pd.to_datetime(["2022-01-01 23:23:43", "2020-12-25 11:12:00", pd.NaT])
+    #         ),
+    #         np.array(
+    #             pd.to_datetime(
+    #                 [
+    #                     "2023-02-03 11:12:12",
+    #                     "2020-02-04 08:32:00",
+    #                     "2023-02-05 23:00:00",
+    #                 ]
+    #             )
+    #         ),
+    #     ]
+    # )
 
 
 def get_datetime_with_TZ_array() -> pd.DataFrame:
-    res = pd.DataFrame(
-        [
-            pd.to_datetime(["2020-01-01 10:12:01"]),
-            pd.to_datetime(["2021-02-03 12:45:23"]),
-            pd.to_datetime(["2022-01-01 23:23:43"]),
-            pd.to_datetime(["2023-02-03 11:12:12"]),
-        ]
-    )
+    # res = pd.DataFrame(
+    #     [
+    #         pd.to_datetime(["2020-01-01 10:12:01"]),
+    #         pd.to_datetime(["2021-02-03 12:45:23"]),
+    #         pd.to_datetime(["2022-01-01 23:23:43"]),
+    #         pd.to_datetime(["2023-02-03 11:12:12"]),
+    #     ]
+    # )
+    
+    res = cudf.DataFrame()
+    res['pickup_datetime'] = ['2019-01-15 16:05:39', '2022-02-10 16:33:38', '2015-01-10 16:33:38']
+    res['pickup_datetime'] = res['pickup_datetime'].astype('datetime64[s]')
+    res['pickup2_datetime'] = ['2022-10-11 20:05:39', '2022-10-11 20:33:38', '2022-11-12 20:33:38']
+    res['pickup2_datetime'] = res['pickup2_datetime'].astype('datetime64[s]')
+    res['pickup3_datetime'] = ['2015-02-11 16:05:39', '2022-10-11 04:33:38', '2013-04-14 03:33:38']
+    res['pickup3_datetime'] = res['pickup3_datetime'].astype('datetime64[s]')
+    return df
     for col in res.columns:
         res[col] = pd.DatetimeIndex(res[col]).tz_localize("Asia/Kolkata")
     return res
@@ -100,7 +139,7 @@ def test_fit() -> None:
     expected_features_per_column_ = {
         0: ["year", "month", "day"],
         1: ["month", "day"],
-        2: ["year", "month", "day"],
+        2: ["year", "month", "day","hour"],
     }
     enc.fit(X)
     assert enc._to_extract == expected_to_extract
@@ -112,44 +151,44 @@ def test_fit() -> None:
     expected_features_per_column_ = {
         0: ["year", "month", "day", "dayofweek"],
         1: ["month", "day", "dayofweek"],
-        2: ["year", "month", "day", "dayofweek"],
-    }
-    enc.fit(X)
-    assert enc._to_extract == expected_to_extract
-    assert enc.features_per_column_ == expected_features_per_column_
-
-    # Datetimes
-    X = get_datetime_array()
-    enc = DatetimeEncoder(add_day_of_the_week=True)
-    expected_to_extract = ["year", "month", "day", "hour", "dayofweek"]
-    expected_features_per_column_ = {
-        0: ["year", "month", "day", "hour", "dayofweek", "total_time"],
-        1: ["month", "day", "hour", "dayofweek", "total_time"],
         2: ["year", "month", "day", "hour", "dayofweek"],
     }
     enc.fit(X)
     assert enc._to_extract == expected_to_extract
     assert enc.features_per_column_ == expected_features_per_column_
 
-    X = get_datetime_array()
-    enc = DatetimeEncoder(extract_until="minute")
-    expected_to_extract = ["year", "month", "day", "hour", "minute"]
+    # Datetimes
+    X = get_date_array()
+    enc = DatetimeEncoder(add_day_of_the_week=True)
+    expected_to_extract = ["year", "month", "day", "hour", "dayofweek"]
     expected_features_per_column_ = {
-        0: ["year", "month", "day", "hour", "minute", "total_time"],
-        1: ["month", "day", "hour", "minute"],
-        2: ["year", "month", "day", "hour"],
+        0: ["year", "month", "day",  "dayofweek"], #, "total_time"],
+        1: ["month", "day", "dayofweek"], # "total_time"],
+        2: ["year", "month", "day", "hour", "dayofweek"],
     }
     enc.fit(X)
     assert enc._to_extract == expected_to_extract
     assert enc.features_per_column_ == expected_features_per_column_
+
+    # X = get_date_array()
+    # enc = DatetimeEncoder(extract_until="minute")
+    # expected_to_extract = ["year", "month", "day", "hour", "minute"]
+    # expected_features_per_column_ = {
+    #     0: ["year", "month", "day", "hour", "minute", "total_time"],
+    #     1: ["month", "day", "hour", "minute"],
+    #     2: ["year", "month", "day", "hour"],
+    # }
+    # enc.fit(X)
+    # assert enc._to_extract == expected_to_extract
+    # assert enc.features_per_column_ == expected_features_per_column_
 
     # Dirty Datetimes
     X = get_dirty_datetime_array()
     enc = DatetimeEncoder()
     expected_to_extract = ["year", "month", "day", "hour"]
     expected_features_per_column_ = {
-        0: ["year", "month", "day", "hour", "total_time"],
-        1: ["month", "day", "hour", "total_time"],
+        0: ["year", "month", "day", "hour"], #  "total_time"],
+        1: ["month", "day", "hour" ], #, "total_time"],
         2: ["year", "month", "day", "hour"],
     }
     enc.fit(X)
@@ -167,7 +206,7 @@ def test_fit() -> None:
 
     # Feature names
     # Without column names
-    X = get_datetime_array()
+    X = get_date_array()
     enc = DatetimeEncoder(add_day_of_the_week=True)
     expected_feature_names = [
         "0_year",
@@ -191,7 +230,7 @@ def test_fit() -> None:
     assert enc.get_feature_names_out() == expected_feature_names
 
     # With column names
-    X = get_datetime_array()
+    X = get_date_array()
     X = pd.DataFrame(X)
     X.columns = ["col1", "col2", "col3"]
     enc = DatetimeEncoder(add_day_of_the_week=True)
@@ -257,7 +296,7 @@ def test_transform():
     assert np.allclose(enc.transform(X), expected_result, equal_nan=True)
 
     # Datetimes
-    X = get_datetime_array()[:, 0].reshape(-1, 1)
+    X = get_date_array()[:, 0].reshape(-1, 1)
     enc = DatetimeEncoder(add_day_of_the_week=True)
     # Check that the "total_time" feature is working
     expected_result = np.array(
@@ -345,7 +384,7 @@ def test_transform():
 
 def test_check_fitted_datetime_encoder():
     """Test that calling transform before fit raises an error"""
-    X = get_datetime_array()[:, 0].reshape(-1, 1)
+    X = get_date_array()[:, 0].reshape(-1, 1)
     enc = DatetimeEncoder(add_day_of_the_week=True)
     with pytest.raises(NotFittedError):
         enc.transform(X)

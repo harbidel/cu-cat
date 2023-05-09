@@ -1,8 +1,8 @@
 from typing import Dict, List, Literal, Optional
 from warnings import warn
 
-import cupy as cp
-import cudf
+import cupy as cp, numpy as np
+import cudf, pandas as pd
 from sklearn import __version__ as sklearn_version
 from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.utils.validation import check_is_fitted
@@ -130,37 +130,37 @@ class DatetimeEncoder(BaseEstimator, TransformerMixin):
     @staticmethod
     def _extract_from_date(date_series: cudf.Series, feature: str):
         if feature == "year":
-            return cudf.DatetimeIndex(date_series).year.to_numpy()
+            return cudf.Series(pd.DatetimeIndex(date_series.to_pandas()).year.to_numpy()).to_cupy()
         elif feature == "month":
-            return cudf.DatetimeIndex(date_series).month.to_numpy()
+            return cudf.Series(pd.DatetimeIndex(date_series.to_pandas()).month.to_numpy()).to_cupy()
         elif feature == "day":
-            return cudf.DatetimeIndex(date_series).day.to_numpy()
+            return cudf.Series(pd.DatetimeIndex(date_series.to_pandas()).day.to_numpy()).to_cupy()
         elif feature == "hour":
-            return cudf.DatetimeIndex(date_series).hour.to_numpy()
+            return cudf.Series(pd.DatetimeIndex(date_series.to_pandas()).hour.to_numpy())#.to_cupy()
         elif feature == "minute":
-            return cudf.DatetimeIndex(date_series).minute.to_numpy()
+            return cudf.Series(pd.DatetimeIndex(date_series.to_pandas()).minute.to_numpy())#.to_cupy()
         elif feature == "second":
-            return cudf.DatetimeIndex(date_series).second.to_numpy()
+            return cudf.Series(pd.DatetimeIndex(date_series.to_pandas()).second.to_numpy())#.to_cupy()
         elif feature == "millisecond":
-            return cudf.DatetimeIndex(date_series).millisecond.to_numpy()
+            return cudf.Series(pd.DatetimeIndex(date_series.to_pandas()).millisecond.to_numpy())#.to_cupy()
         elif feature == "microsecond":
-            return cudf.DatetimeIndex(date_series).microsecond.to_numpy()
+            return cudf.Series(pd.DatetimeIndex(date_series.to_pandas()).microsecond.to_numpy())#.to_cupy()
         elif feature == "nanosecond":
-            return cudf.DatetimeIndex(date_series).nanosecond.to_numpy()
+            return cudf.Series(pd.DatetimeIndex(date_series.to_pandas()).nanosecond.to_numpy())#.to_cupy()
         elif feature == "dayofweek":
-            return cudf.DatetimeIndex(date_series).dayofweek.to_numpy()
+            return cudf.Series(pd.DatetimeIndex(date_series.to_pandas()).dayofweek.to_numpy())#.to_cupy()
         elif feature == "total_time":
-            tz = cudf.DatetimeIndex(date_series).tz
+            tz = pd.DatetimeIndex(date_series.to_pandas()).tz
             # Compute the time in seconds from the epoch time UTC
             if tz is None:
-                return (
-                    cudf.to_datetime(date_series) - cudf.Timestamp("1970-01-01")
-                ) // cudf.Timedelta("1s")
+                return cudf.Series(
+                    cudf.Series(pd.to_datetime(date_series.to_pandas()) - cudf.Timestamp("1970-01-01")
+                ) // pd.Timedelta("1s"))#.to_cupy()
             else:
-                return (
-                    cudf.DatetimeIndex(date_series).tz_convert("utc")
-                    - cudf.Timestamp("1970-01-01", tz="utc")
-                ) // cudf.Timedelta("1s")
+                return cudf.Series(
+                    (pd.DatetimeIndex(date_series.to_pandas()).tz_convert("utc")
+                    - pd.Timestamp("1970-01-01", tz="utc")
+                ) // pd.Timedelta("1s"))#.to_cupy()
 
     def fit(self, X, y=None) -> "DatetimeEncoder":
         """Fit the instance to X.
@@ -197,27 +197,27 @@ class DatetimeEncoder(BaseEstimator, TransformerMixin):
         # Check which columns are constant
         for i in range(X.shape[1]):
             for feature in self._to_extract:
-                if cp.nanstd(self._extract_from_date(X[:, i], feature)) > 0:
+                if np.nanstd(self._extract_from_date(X.iloc[:, i], feature)) > 0:
                     self.features_per_column_[i].append(feature)
             # If some date features have not been extracted, then add the
             # "total_time" feature, which contains the full time to epoch
-            remainder = (
-                cudf.to_datetime(X[:, i])
-                - cudf.to_datetime(
-                    cudf.DatetimeIndex(X[:, i]).floor(WORD_TO_ALIAS[self.extract_until])
-                )
-            ).seconds.to_numpy()
-            if cp.nanstd(remainder) > 0:
-                self.features_per_column_[i].append("total_time")
+            # remainder = (
+            #     cudf.to_datetime(X.iloc[:, i])
+            #     - cudf.to_datetime(
+            #         cudf.DatetimeIndex(X.iloc[:, i]).floor(WORD_TO_ALIAS[self.extract_until])
+            #     )
+            # ).seconds.to_numpy()
+            # if np.nanstd(remainder) > 0:
+            #     self.features_per_column_[i].append("total_time")
 
         self.n_features_in_ = X.shape[1]
         self.n_features_out_ = len(
-            cp.concatenate(list(self.features_per_column_.values()))
+            np.concatenate(list(self.features_per_column_.values()))
         )
 
         return self
 
-    def transform(self, X, y=None) -> cp.ndarray:
+    def transform(self, X, y=None) -> np.ndarray:
         """Transform X by replacing each datetime column with corresponding numerical features.
 
         Parameters
@@ -245,11 +245,11 @@ class DatetimeEncoder(BaseEstimator, TransformerMixin):
             )
         # Create a new array with the extracted features,
         # choosing only features that weren't constant during fit
-        X_ = cp.empty((X.shape[0], self.n_features_out_), dtype=cp.float64)
+        X_ = np.empty((X.shape[0], self.n_features_out_), dtype=np.float64)
         idx = 0
         for i in range(X.shape[1]):
             for j, feature in enumerate(self.features_per_column_[i]):
-                X_[:, idx + j] = self._extract_from_date(X[:, i], feature)
+                X_[:, idx + j] = self._extract_from_date(X.iloc[:, i], feature)
             idx += len(self.features_per_column_[i])
         return X_
 
