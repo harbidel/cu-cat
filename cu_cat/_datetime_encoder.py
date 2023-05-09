@@ -130,11 +130,11 @@ class DatetimeEncoder(BaseEstimator, TransformerMixin):
     @staticmethod
     def _extract_from_date(date_series: cudf.Series, feature: str):
         if feature == "year":
-            return cudf.Series(pd.DatetimeIndex(date_series.to_pandas()).year.to_numpy()).to_cupy()
+            return cudf.Series(pd.DatetimeIndex(date_series.to_pandas()).year.to_numpy())#.to_cupy()
         elif feature == "month":
-            return cudf.Series(pd.DatetimeIndex(date_series.to_pandas()).month.to_numpy()).to_cupy()
+            return cudf.Series(pd.DatetimeIndex(date_series.to_pandas()).month.to_numpy())#.to_cupy()
         elif feature == "day":
-            return cudf.Series(pd.DatetimeIndex(date_series.to_pandas()).day.to_numpy()).to_cupy()
+            return cudf.Series(pd.DatetimeIndex(date_series.to_pandas()).day.to_numpy())#.to_cupy()
         elif feature == "hour":
             return cudf.Series(pd.DatetimeIndex(date_series.to_pandas()).hour.to_numpy())#.to_cupy()
         elif feature == "minute":
@@ -197,7 +197,7 @@ class DatetimeEncoder(BaseEstimator, TransformerMixin):
         # Check which columns are constant
         for i in range(X.shape[1]):
             for feature in self._to_extract:
-                if np.nanstd(self._extract_from_date(X.iloc[:, i], feature)) > 0:
+                if np.nanstd(self._extract_from_date(X.iloc[:, i], feature).to_pandas()) > 0:
                     self.features_per_column_[i].append(feature)
             # If some date features have not been extracted, then add the
             # "total_time" feature, which contains the full time to epoch

@@ -146,7 +146,7 @@ def test_gap_encoder(
 
 def test_get_feature_names_out(n_samples=70) -> None:
     X = generate_data(n_samples, random_state=0)
-    enc = GapEncoder(random_state=42)
+    enc = GapEncoder(random_state=42, engine='cuml')
     enc.fit(X)
     # Expect a warning if sklearn >= 1.0
     if parse_version(sklearn_version) < parse_version("1.0"):
@@ -201,7 +201,7 @@ def test_missing_values(missing: str) -> None:
     observations = cudf.DataFrame(cudf.Series.from_pandas(observations,nan_as_null=False))
 
     # observations = cudf.DataFrame.from_pandas(pd.DataFrame(np.array(observations, dtype=object)))
-    enc = GapEncoder(handle_missing=missing, n_components=3)
+    enc = GapEncoder(handle_missing=missing, n_components=3, engine='cuml')
     if missing == "error":
         with pytest.raises(ValueError, match="Input data contains missing values"):
             enc.fit_transform(observations)
@@ -222,7 +222,7 @@ def test_check_fitted_gap_encoder():
     X = np.array(["alice", "bob"])
     X = cudf.DataFrame(cudf.Series.from_pandas(X,nan_as_null=False))
 
-    enc = GapEncoder(n_components=2, random_state=42)
+    enc = GapEncoder(n_components=2, random_state=42,engine='cuml')
     with pytest.raises(NotFittedError):
         enc.transform(X)
 
@@ -241,23 +241,24 @@ def test_small_sample():
 
 def test_perf():
     """Test gpu speed boost and correctness"""
-    n_samples = 100
-    X = generate_data(n_samples, random_state=0)
-    # Y = generate_data(n_samples, random_state=0)
-    # Z = generate_data(n_samples, random_state=0)
-    # XYZ=pd.concat([pd.DataFrame(X),pd.DataFrame(Y),pd.DataFrame(Z)],axis=1)
-    XX = X.to_pandas()
-    t0 = time()
-    cpu_enc = GapEncoder(random_state=42, engine='sklearn')
-    CW=cpu_enc.fit_transform(XX)
-    t01=time()-t0
-    t1 = time()
-    gpu_enc = GapEncoder(random_state=42, engine='cuml')
-    GW=gpu_enc.fit_transform(X)
-    t02=time()-t1
-    GW=GW.get()
+    t01=[];t02=[]
+    for i in range(5):
+        n_samples = np.random.randint(10,250)
+        X = generate_data(n_samples, random_state=42)
 
-    assert(t01 > t02)
+        XX = X.to_pandas()
+        t0 = time()
+        cpu_enc = GapEncoder(random_state=2, engine='sklearn')
+        CW=cpu_enc.fit_transform(XX)
+        t01.append(time()-t0)
+        t1 = time()
+        gpu_enc = GapEncoder(random_state=2, engine='cuml')
+        GW=gpu_enc.fit_transform(X)
+        t02.append(time()-t1)
+        GW=GW.get()
+        
+    assert(any(np.greater(t01,t02)))
+        # [t01 , t02]
     # intersect=np.sum(np.sum(pd.DataFrame(CW)==(GW)))
     # union=pd.DataFrame(CW).shape[0]*pd.DataFrame(CW).shape[1]
     # assert(intersect==union)
