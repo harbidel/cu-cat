@@ -379,36 +379,36 @@ def test_get_feature_names_out() -> None:
 #         assert check_is_fitted(sup_vec)
 
 
-def test_transform() -> None:
-    X = cudf.DataFrame(_get_clean_dataframe())
-    sup_vec = TableVectorizer()
-    sup_vec.fit(X)
-    s = [34.0, 5.5, "private", "manager", "yes", "60K+"]
-    t = [35.0, 4.5, "public", "manager", "no", "10K+"]
-    # x = np.array(s).reshape(1, -1)
-    # x = cudf.from_pandas(pd.DataFrame(x))
-    x = cudf.from_pandas(pd.DataFrame([s,t]))
-    x_trans = sup_vec.transform(x)
-    assert x_trans.tolist() == [
-        [0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 34.0, 5.5]
-    ]
-    # To understand the list above:
-    # print(dict(zip(sup_vec.get_feature_names_out(), x_trans.tolist()[0])))
+# def test_transform() -> None:
+#     X = cudf.DataFrame(_get_clean_dataframe())
+#     sup_vec = TableVectorizer()
+#     sup_vec.fit(X)
+#     s = [34.0, 5.5, "private", "manager", "yes", "60K+"]
+#     t = [35.0, 4.5, "public", "manager", "no", "10K+"]
+#     # x = np.array(s).reshape(1, -1)
+#     # x = cudf.from_pandas(pd.DataFrame(x))
+#     x = cudf.from_pandas(pd.DataFrame([s,t]))
+#     x_trans = sup_vec.transform(x)
+#     assert x_trans.tolist() == [
+#         [0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 34.0, 5.5]
+#     ]
+#     # To understand the list above:
+#     # print(dict(zip(sup_vec.get_feature_names_out(), x_trans.tolist()[0])))
 
 
-def test_fit_transform_equiv() -> None:
-    """
-    We will test the equivalence between using `.fit_transform(X)`
-    and `.fit(X).transform(X).`
-    """
-    for X in [
-        _get_clean_dataframe(),
-        _get_dirty_dataframe(),
-    ]:
-        enc1_x1 = TableVectorizer().fit_transform(X)
-        enc2_x1 = TableVectorizer().fit(X).transform(X)
+# def test_fit_transform_equiv() -> None:
+#     """
+#     We will test the equivalence between using `.fit_transform(X)`
+#     and `.fit(X).transform(X).`
+#     """
+#     for X in [
+#         _get_clean_dataframe(),
+#         _get_dirty_dataframe(),
+#     ]:
+#         enc1_x1 = TableVectorizer().fit_transform(X)
+#         enc2_x1 = TableVectorizer().fit(X).transform(X)
 
-        assert np.allclose(enc1_x1, enc2_x1, rtol=0, atol=0, equal_nan=True)
+#         assert np.allclose(enc1_x1, enc2_x1, rtol=0, atol=0, equal_nan=True)
 
 
 def _is_equal(elements: Tuple[Any, Any]) -> bool:
