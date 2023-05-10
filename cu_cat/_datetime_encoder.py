@@ -245,11 +245,12 @@ class DatetimeEncoder(BaseEstimator, TransformerMixin):
             )
         # Create a new array with the extracted features,
         # choosing only features that weren't constant during fit
-        X_ = np.empty((X.shape[0], self.n_features_out_), dtype=np.float64)
+        X_ = cudf.DataFrame(np.empty((X.shape[0], self.n_features_out_), dtype=np.float64))
+        X=X.fillna(1500000) ## since cupy cannot handle NaT or inf masks
         idx = 0
         for i in range(X.shape[1]):
             for j, feature in enumerate(self.features_per_column_[i]):
-                X_[:, idx + j] = self._extract_from_date(X.iloc[:, i], feature)
+                X_.iloc[:, idx + j] = self._extract_from_date(X.iloc[:, i], feature)#.to_pandas()
             idx += len(self.features_per_column_[i])
         return X_
 
