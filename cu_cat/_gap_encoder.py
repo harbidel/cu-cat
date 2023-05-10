@@ -221,7 +221,6 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
             unq_X = X.unique()
             tmp, lookup = np.unique(X.to_arrow(), return_inverse=True)
             # unq_X = cudf.Series(unq_X)
-        print(self.ngrams_count_)
         unq_V = self.ngrams_count_.fit_transform(unq_X)
         if self.add_words:  # Add word counts to unq_V
             unq_V2 = self.word_count_.fit_transform(unq_X)
