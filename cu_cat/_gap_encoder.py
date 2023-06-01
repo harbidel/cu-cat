@@ -30,7 +30,6 @@ from scipy.sparse import csr_matrix as csr_cpu
 from sklearn import __version__ as sklearn_version
 from sklearn.base import BaseEstimator, TransformerMixin
 from cuml.cluster import KMeans
-# from cuml.feature_extraction.text import CountVectorizer,HashingVectorizer
 from sklearn.neighbors import NearestNeighbors
 from sklearn.utils import check_random_state, gen_batches
 from sklearn.utils.extmath import row_norms, safe_sparse_dot
@@ -60,10 +59,7 @@ def lazy_cuml_import_has_dependancy():
         with warnings.catch_warnings():
             warnings.filterwarnings("ignore")
             import cuml  # type: ignore
-            # from cuml.feature_extraction.text import CountVectorizer,HashingVectorizer
-
-
-        return True, "ok", cuml #,CountVectorizer,HashingVectorizer
+        return True, "ok", cuml
     except ModuleNotFoundError as e:
         return False, e, None
     
@@ -73,10 +69,7 @@ def lazy_sklearn_import_has_dependancy():
 
         warnings.filterwarnings("ignore")
         import sklearn  # noqa
-        # from sklearn.feature_extraction.text import CountVectorizer,HashingVectorizer
-
-
-        return True, "ok", sklearn #,CountVectorizer,HashingVectorizer
+        return True, "ok", sklearn 
     except ModuleNotFoundError as e:
         return False, e, None
 
@@ -211,8 +204,7 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
                 self.word_count_ = self._CV(dtype=np.float64)
 
         # Init H_dict_ with empty dict to train from scratch
-        self.H_dict_ = dict() #cudf.Series()
-        # self.X_dict_ = cudf.Series()
+        self.H_dict_ = dict()
 
         # Build the n-grams counts matrix unq_V on unique elements of X
         if 'cudf' not in str(getmodule(X)):
@@ -227,16 +219,8 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
             unq_V = sparse.hstack((unq_V, unq_V2), format="csr")
 
         if not self.hashing:  # Build n-grams/word vocabulary
-            # if parse_version(sklearn_version) < parse_version("1.0"):
-            #     self.vocabulary = self.ngrams_count_.get_feature_names()
-            # else:
             self.vocabulary = self.ngrams_count_.get_feature_names()
             if self.add_words:
-                # if parse_version(sklearn_version) < parse_version("1.0"):
-                #     self.vocabulary = np.concatenate(
-                #         (self.vocabulary, self.word_count_.get_feature_names())
-                #     )
-                # else:
                 self.vocabulary = np.concatenate(
                     (self.vocabulary, self.word_count_.get_feature_names())
                 )
@@ -262,7 +246,7 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
         """
         if 'cudf' in df_type(X) or 'arrow' in df_type(self.H_dict_):
             H_out = cp.empty((len(X), self.n_components))
-            for x, h_out in zip(X.to_arrow(), H_out): ## from cupy back to cudf
+            for x, h_out in zip(X.to_arrow(), H_out):
                 h_out[:] = cp.asarray(self.H_dict_[x])
         elif self.engine != 'cuml':
             H_out = np.empty((len(X), self.n_components))
@@ -275,7 +259,7 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
                 h_out[:] = self.H_dict_[x]
         else:
             H_out = cp.empty((len(X), self.n_components))
-            for x, h_out in zip(X, H_out): ## from cupy back to cudf
+            for x, h_out in zip(X, H_out): 
                 h_out[:] = self.H_dict_[x]
         return H_out
 
@@ -381,10 +365,6 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
         # Check if first item has str or np.str_ type
         
         self.Xt_= df_type(X)
-        # if 'series' not in self.Xt_ and X.shape[1]>1:
-        # assert isinstance(X, str), "Input data is not string. "
-        # else:
-        #     assert isinstance(X.str.lower(), str), "Input data is not string. "
         # Make n-grams counts matrix unq_V
         unq_X, unq_V, lookup = self._init_vars(X)
         n_batch = (len(X) - 1) // self.batch_size + 1
@@ -465,7 +445,6 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
                         self.rho_,
                     )
 
-            # if i == n_batch - 1:
                 # Compute the norm of the update of W in the last batch
             W_change = cp.multiply(cp.linalg.norm(self.W_ - W_last), cp.reciprocal(cp.linalg.norm(W_last)))
 
@@ -516,7 +495,7 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
             The labels that best describe each topic.
         """
 
-        vectorizer = self._CV()#lowercase=False,preprocessor=None)
+        vectorizer = self._CV()
 
         if 'cudf'  in self.Xt_:
             A=cudf.Series([(item).as_py() for item in self.H_dict_.keys()])
@@ -524,7 +503,7 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
             vocabulary = (vectorizer.get_feature_names().to_arrow())
             encoding = self.transform(cudf.Series(vocabulary))
             encoding = abs(encoding)
-            vocabulary = (cp.asnumpy(vocabulary).reshape(-1)) ## after fit to build labels below
+            vocabulary = (cp.asnumpy(vocabulary).reshape(-1))
             encoding = (cp.asnumpy(encoding))
 
         else:
@@ -549,15 +528,6 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
         """
         Add activations of unseen string categories from X to H_dict.
         """
-        
-        # def setdiff1d(ar1, ar2, assume_unique=False):
-        #     if assume_unique:
-        #         ar1 = cp.ravel(ar1)
-        #     else:
-        #         ar1 = cudf.Series(ar1).unique
-        #         ar2 = cudf.Series(ar2).unique
-        #     return ar1[in1d(ar1, ar2, assume_unique=True, invert=True)]
-    
         if 'cudf' in self.Xt_:
             A=np.array([(item).as_py() for item in self.H_dict_])
             unseen_X = np.setdiff1d(X.to_arrow(), A, assume_unique=True) 
@@ -631,7 +601,6 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
                     self.W_=self.W_.to_cupy(); unq_V=unq_V.to_cupy();unq_H=unq_H.to_cupy();
                     logger.debug(f"kept on gpu via cupy")
             else:
-                # self.W_=self.W_.get();
                 if hasattr(unq_H, 'device') or 'cupy' in W_type or self.engine !='cuml':
                     logger.debug(f"force numpy transform")
             for slc in gen_batches(n=unq_H.shape[0], batch_size=self.batch_size):
@@ -649,10 +618,8 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
                 )
         if 'cudf' in df_type(unq_X) :
             self.H_dict_.update(zip(unq_X.to_arrow(), unq_H))
-            # self._get_H(X)
         else:
             self.H_dict_.update(zip(unq_X, unq_H))
-            # cudf.DataFrame.from_dict(self._get_H(X))
         logger.debug(
             f"--GapEncoder Tranforming took {(time() - t) / 60:.2f} minutes\n"
         )
@@ -943,7 +910,6 @@ class GapEncoder(BaseEstimator, TransformerMixin):
                 X = X.to_pandas()
             except:
                 pass
-            # X = self._handle_missing(X)
             self.fitted_models_ = []
             
             for k in range(X.shape[1]):
@@ -951,7 +917,6 @@ class GapEncoder(BaseEstimator, TransformerMixin):
                 self.fitted_models_.append(col_enc.fit(X.iloc[:, k]))
         else :
             X = check_input(X)
-            # X = self._handle_missing(X)
             self.fitted_models_ = []
             for k in range(X.shape[1]):
                 col_enc = self._create_column_gap_encoder()
@@ -984,7 +949,6 @@ class GapEncoder(BaseEstimator, TransformerMixin):
         # Check input data shape
         X = check_input(X)
         
-        # X = self._handle_missing(X)
         X_enc = []
         if 'cudf' in str(getmodule(X)) or 'cuml' == self.engine:
             for k in range(X.shape[1]):
@@ -1045,18 +1009,6 @@ class GapEncoder(BaseEstimator, TransformerMixin):
     def get_feature_names(
         self, input_features=None, col_names: List[str] = None, n_labels: int = 3
     ) -> List[str]:
-    #     """
-    #     Ensures compatibility with sklearn < 1.0.
-    #     Use `get_feature_names_out` instead.
-    #     """
-    #     # if parse_version(sklearn_version) >= parse_version("1.0"):
-    #     #     warnings.warn(
-    #     #         "Following the changes in scikit-learn 1.0, "
-    #     #         "get_feature_names is deprecated. "
-    #     #         "Use get_feature_names_out instead. ",
-    #     #         DeprecationWarning,
-    #     #         stacklevel=2,
-    #     #     )
         return self.get_feature_names_out(col_names, n_labels)
 
 def _rescale_W(W: np.array, A: np.array) -> None:
@@ -1134,22 +1086,17 @@ def _multiplicative_update_w_smallfast(
     """
     Multiplicative update step for the topics W.
     """
-    # A=cp.array(A)
-    # B=cp.array(B)
-    # Ht=cp.array(Ht) ## not needed if we figure way to .get() outside function
-    # W=cp.array(W)
-    # Vt=csr_gpu(Vt)
+
     A *= rho
     C = cp.matmul(Ht, W)
     R = Vt.multiply(cp.reciprocal(C) + 1e-10)
-    T = R.T.dot(Ht).T ## drop .T on sparse Vt
+    T = R.T.dot(Ht).T
     A += cp.multiply(W, T)
     B *= rho
     B += Ht.sum(axis=0).reshape(-1, 1)
     cp.multiply(A, 1/B, out=W)
     if rescale_W:
         _rescale_W(W, A)
-    # W=W.get();A=A.get();B=B.get()
     del C,R,T,Ht,Vt
     cp._default_memory_pool.free_all_blocks()
     return W,A,B
@@ -1159,7 +1106,6 @@ def _rescale_h(self, V: np.array, H: np.array) -> np.array:
     Rescale the activations H.
     """
     epsilon = 1e-10  # in case of a document having length=0
-    # if self.engine=='cuml':
     if 'cupy' in df_type(V):
         H = cp.array(H)
         H *= cp.maximum(epsilon, V.sum(axis=1))
@@ -1210,21 +1156,7 @@ def _multiplicative_update_h(
         del Vt,W_,W_WT1,ht,ht_out,vt,vt_
         cp._default_memory_pool.free_all_blocks()
     else:
-        
-        # for vt, ht in zip(Vt, Ht):
-        #     vt_ = vt.data
-        #     idx = vt.indices
-        #     W_WT1_ = W_WT1[:, idx]
-        #     W_ = W[:, idx]
-        #     squared_norm = 1
-        #     for n_iter_ in range(max_iter):
-        #         if squared_norm <= squared_epsilon:
-        #             break
-        #         aux = np.dot(W_WT1_, np.multiply(vt_,np.reciprocal(np.dot(ht, W_) + 1e-10)))
-        #         ht_out = np.multiply(ht, aux) + const
-        #         squared_norm = np.multiply(np.dot(ht_out - ht, ht_out - ht), np.reciprocal(np.dot(ht, ht)))
-        #         ht[:] = ht_out
-        
+
         for vt, ht in zip(Vt, Ht):
             
             try:
@@ -1289,14 +1221,13 @@ def _multiplicative_update_h_smallfast(
     squared_epsilon = epsilon #**2
 
     squared_norm = 1
-    Vt=csr_gpu(Vt);Ht=cp.array(Ht);W=cp.array(W);W_WT1=cp.array(W_WT1.T)#;Vt=cp.array(Vt)
+    Vt=csr_gpu(Vt);Ht=cp.array(Ht);W=cp.array(W);W_WT1=cp.array(W_WT1.T)
     for n_iter_ in range(max_iter):
         if squared_norm <= squared_epsilon:
             break
         C=Vt.multiply( cp.reciprocal(cp.matmul(Ht, W) + 1e-10)) ##sparse now
         aux=C.dot(W_WT1)
         ht_out = cp.multiply(Ht,aux) + const
-        # squared_norm = cp.sum(cp.multiply(ht_out - Ht, ht_out - Ht) / cp.multiply(Ht, Ht))
         squared_norm = cp.sum((ht_out - Ht)**2 / (Ht**2))
         Ht = ht_out
 
