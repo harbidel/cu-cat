@@ -78,23 +78,6 @@ def _get_dirty_dataframe() -> pd.DataFrame:
     )
 
 
-# def _get_numpy_array() -> np.ndarray:
-#     return np.array(
-#         [
-#             ["15", "56", pd.NA, "12", ""],
-#             ["?", "2.4", "6.2", "10.45", np.nan],
-#             ["public", np.nan, "private", "private", pd.NA],
-#             ["officer", "manager", None, "chef", "teacher"],
-#             [np.nan, "yes", "no", "yes", "no"],
-#             ["20K+", "40K+", "60K+", "30K+", np.nan],
-#         ]
-#     ).T
-
-
-# def _get_list_of_lists() -> list:
-#     return _get_numpy_array().tolist()
-
-
 def _get_datetimes_dataframe() -> pd.DataFrame:
     """
     Creates a DataFrame with various date formats,
@@ -123,11 +106,7 @@ def _get_datetimes_dataframe() -> pd.DataFrame:
                 "13-02-2000",
                 "10-11-2001",
             ],
-            # "mdy-": ['11-13-2013',
-            #          '02-12-2012',
-            #          '11-31-2012',
-            #          '05-02-2000',
-            #          '10-11-2001'],
+
             "ymd/": [
                 "2014/12/31",
                 "2001/11/23",
@@ -176,26 +155,6 @@ def _test_possibilities(X):
     vectorizer_default.fit_transform(X)
     check_same_transformers(expected_transformers_2, vectorizer_default.transformers)
 
-#     # Test with a numpy array
-#     arr = X.to_numpy()
-#     # Instead of the columns names, we'll have the column indices.
-#     expected_transformers_np_no_cast = {
-#         "low_card_cat": [2, 4],
-#         "high_card_cat": [3, 5],
-#         "numeric": [0, 1],
-#     }
-#     vectorizer_base.fit_transform(arr)
-#     check_same_transformers(
-#         expected_transformers_np_no_cast, vectorizer_base.transformers
-#     )
-
-#     # Test with pandas series
-#     expected_transformers_series = {
-#         "low_card_cat": ["cat1"],
-#     }
-#     vectorizer_base.fit_transform(X["cat1"])
-#     check_same_transformers(expected_transformers_series, vectorizer_base.transformers)
-
     # Test casting values
     vectorizer_cast = TableVectorizer(
         cardinality_threshold=4,
@@ -212,14 +171,6 @@ def _test_possibilities(X):
     }
     vectorizer_cast.fit_transform(X)
     check_same_transformers(expected_transformers_plain, vectorizer_cast.transformers)
-#     # With numpy
-#     expected_transformers_np_cast = {
-#         "numeric": [0, 1],
-#         "low_card_cat": [2, 4],
-#         "high_card_cat": [3, 5],
-#     }
-#     vectorizer_cast.fit_transform(X_str.to_numpy())
-#     check_same_transformers(expected_transformers_np_cast, vectorizer_cast.transformers)
 
 
 def test_with_clean_data():
@@ -290,31 +241,6 @@ def test_auto_cast() -> None:
         assert type_equality(expected_types_dirty_dataframe[col], X_trans[col].dtype)
 
 
-# def test_with_arrays():
-#     """
-#     Check that the TableVectorizer works if we input
-#     a list of lists or a numpy array.
-#     """
-#     expected_transformers = {
-#         "numeric": [0, 1],
-#         "low_card_cat": [2, 4],
-#         "high_card_cat": [3, 5],
-#     }
-#     vectorizer = TableVectorizer(
-#         cardinality_threshold=4,
-#         # we must have n_samples = 5 >= n_components
-#         high_card_cat_transformer=GapEncoder(n_components=2),
-#         numerical_transformer=StandardScaler(),
-#     )
-
-#     X = _get_pandas_array()
-#     vectorizer.fit_transform(X)
-#     check_same_transformers(expected_transformers, vectorizer.transformers)
-
-#     X = _get_list_of_lists()
-#     vectorizer.fit_transform(X)
-#     check_same_transformers(expected_transformers, vectorizer.transformers)
-
 
 def test_get_feature_names_out() -> None:
     X = _get_clean_dataframe()
@@ -343,73 +269,7 @@ def test_get_feature_names_out() -> None:
     ]
     # if parse_version(sklearn.__version__) < parse_version("1.0"):
     assert vec_w_pass.get_feature_names() == expected_feature_names_pass
-    # else:
-    # assert vec_w_pass.get_feature_names_out() == expected_feature_names_pass
-
-#     vec_w_drop = TableVectorizer(remainder="drop")
-#     vec_w_drop.fit(X)
-
-#     # In this test, order matters. If it doesn't, convert to set.
-#     expected_feature_names_drop = [
-#         "str1_public",
-#         "str2_chef",
-#         "str2_lawyer",
-#         "str2_manager",
-#         "str2_officer",
-#         "str2_teacher",
-#         "cat1_yes",
-#         "cat2_20K+",
-#         "cat2_30K+",
-#         "cat2_40K+",
-#         "cat2_50K+",
-#         "cat2_60K+",
-#     ]
-#     # if parse_version(sklearn.__version__) < parse_version("1.0"):
-#     assert vec_w_drop.get_feature_names() == expected_feature_names_drop
-    # else:
-    # assert vec_w_drop.get_feature_names_out() == expected_feature_names_drop
-
-
-# def test_fit() -> None:
-#     # Simply checks sklearn's `check_is_fitted` function raises an error if
-#     # the TableVectorizer is instantiated but not fitted.
-#     # See GH#193
-#     sup_vec = TableVectorizer()
-#     with pytest.raises(NotFittedError):
-#         assert check_is_fitted(sup_vec)
-
-
-# def test_transform() -> None:
-#     X = cudf.DataFrame(_get_clean_dataframe())
-#     sup_vec = TableVectorizer()
-#     sup_vec.fit(X)
-#     s = [34.0, 5.5, "private", "manager", "yes", "60K+"]
-#     t = [35.0, 4.5, "public", "manager", "no", "10K+"]
-#     # x = np.array(s).reshape(1, -1)
-#     # x = cudf.from_pandas(pd.DataFrame(x))
-#     x = cudf.from_pandas(pd.DataFrame([s,t]))
-#     x_trans = sup_vec.transform(x)
-#     assert x_trans.tolist() == [
-#         [0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 34.0, 5.5]
-#     ]
-#     # To understand the list above:
-#     # print(dict(zip(sup_vec.get_feature_names_out(), x_trans.tolist()[0])))
-
-
-# def test_fit_transform_equiv() -> None:
-#     """
-#     We will test the equivalence between using `.fit_transform(X)`
-#     and `.fit(X).transform(X).`
-#     """
-#     for X in [
-#         _get_clean_dataframe(),
-#         _get_dirty_dataframe(),
-#     ]:
-#         enc1_x1 = TableVectorizer().fit_transform(X)
-#         enc2_x1 = TableVectorizer().fit(X).transform(X)
-
-#         assert np.allclose(enc1_x1, enc2_x1, rtol=0, atol=0, equal_nan=True)
-
+   
 
 def _is_equal(elements: Tuple[Any, Any]) -> bool:
     """
@@ -417,40 +277,6 @@ def _is_equal(elements: Tuple[Any, Any]) -> bool:
     """
     elem1, elem2 = elements  # Unpack
     return pd.isna(elem1) and pd.isna(elem2) or elem1 == elem2
-
-
-# def test_passthrough():
-#     """
-#     Tests that when passed no encoders, the TableVectorizer
-#     returns the dataset as-is.
-#     """
-
-#     X_dirty = _get_dirty_dataframe()
-#     X_clean = _get_clean_dataframe()
-
-#     tv = TableVectorizer(
-#         low_card_cat_transformer="passthrough",
-#         high_card_cat_transformer="passthrough",
-#         datetime_transformer="passthrough",
-#         numerical_transformer="passthrough",
-#         impute_missing="skip",
-#         auto_cast=False,
-#     )
-
-#     X_enc_dirty = cudf.DataFrame(
-#         tv.fit_transform(X_dirty), columns=tv.get_feature_names_out()
-#     )
-#     X_enc_clean = cudf.DataFrame(
-#         tv.fit_transform(X_clean), columns=tv.get_feature_names_out()
-#     )
-#     # Reorder encoded arrays' columns (see TableVectorizer's doc "Notes" section as to why)
-#     X_enc_dirty = X_enc_dirty[X_dirty.columns]
-#     X_enc_clean = X_enc_clean[X_clean.columns]
-
-#     dirty_flat_df = X_dirty.to_numpy().ravel().tolist()
-#     dirty_flat_trans_df = X_enc_dirty.to_numpy().ravel().tolist()
-#     assert all(map(_is_equal, zip(dirty_flat_df, dirty_flat_trans_df)))
-#     assert (X_clean.to_numpy() == X_enc_clean.to_numpy()).all()
 
 
 # def test_check_fitted_table_vectorizer():

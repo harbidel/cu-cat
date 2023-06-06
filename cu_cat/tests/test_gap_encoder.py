@@ -96,52 +96,7 @@ def test_gap_encoder(
     # np.testing.assert_array_equal(np.round(y.get(),10), np.round(y2.get(),10))
     np.testing.assert_array_almost_equal(y.get(), y2.get(),decimal=2)
 
-    
 
-
-# def test_input_type() -> None:
-#     # Numpy array with one column
-#     X = np.array([["alice"], ["bob"]])
-
-
-#     enc = GapEncoder(n_components=2, random_state=42)
-#     X_enc_array = enc.fit_transform(X)
-#     # List
-#     X2 = [["alice"], ["bob"]]
-
-
-#     enc = GapEncoder(n_components=2, random_state=42)
-#     X_enc_list = enc.fit_transform(X2)
-#     # Check if the encoded vectors are the same
-#     np.testing.assert_array_equal(X_enc_array, X_enc_list)
-
-#     # Numpy array with two columns
-#     X = np.array([["alice", "charlie"], ["bob", "delta"]])
-#     X = cudf.DataFrame(cudf.Series.from_pandas(X,nan_as_null=False))
-
-#     enc = GapEncoder(n_components=2, random_state=42)
-#     X_enc_array = enc.fit_transform(X)
-#     # Pandas dataframe with two columns
-#     df = pd.DataFrame(X)
-#     enc = GapEncoder(n_components=2, random_state=42)
-#     X_enc_df = enc.fit_transform(df)
-#     # Check if the encoded vectors are the same
-#     # np.testing.assert_array_equal(X_enc_array, X_enc_df)
-#     np.testing.assert_array_almost_equal(X_enc_array.get(), X_enc_df.get(),decimal=2)
-
-
-
-# def test_partial_fit(n_samples=70) -> None:
-#     X = generate_data(n_samples, random_state=0)
-#     # Gap encoder with fit on one batch
-#     enc = GapEncoder(random_state=42, batch_size=n_samples, max_iter=1)
-#     X_enc = enc.fit_transform(X)
-#     # Gap encoder with partial fit
-#     enc = GapEncoder(random_state=42)
-#     enc.partial_fit(X)
-#     X_enc_partial = enc.transform(X)
-#     # Check if the encoded vectors are the same
-#     np.testing.assert_almost_equal(X_enc, X_enc_partial)
 
 
 def test_get_feature_names_out(n_samples=70) -> None:
@@ -164,29 +119,6 @@ def test_get_feature_names_out(n_samples=70) -> None:
         topic_labels_3 = enc.get_feature_names_out(col_names=["abc", "def"])
         assert topic_labels_3[0] == "abc: " + topic_labels[0]
     return
-
-
-# def test_overflow_error() -> None:
-#     np.seterr(over="raise", divide="raise")
-#     r = np.random.RandomState(0)
-#     X = (r.randint(1e5, 1e6, size=(8000, 1)).astype(str))
-#     X=cudf.Series.from_pandas(pd.DataFrame(X)[0]).astype(str).reset_index()
-#     enc = GapEncoder(
-#         n_components=2, batch_size=1, min_iter=1, max_iter=1, random_state=0
-#     )
-#     enc.fit(X)
-
-
-# def test_score(n_samples: int = 70) -> None:
-#     X1 = generate_data(n_samples, random_state=0)
-#     X2 = np.hstack([X1, X1])
-#     enc = GapEncoder(random_state=42)
-#     enc.fit(X1)
-#     score_X1 = enc.score(X1)
-#     enc.fit(X2)
-#     score_X2 = enc.score(X2)
-#     # Check that two identical columns give the same score
-#     assert score_X1 * 2 == score_X2
 
 
 @pytest.mark.parametrize("missing", ["zero_impute"]) #, "error", "aaa"])
