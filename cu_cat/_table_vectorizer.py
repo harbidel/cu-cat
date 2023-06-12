@@ -450,18 +450,19 @@ class TableVectorizer(ColumnTransformer):
             if not pd.api.types.is_datetime64_any_dtype(X[col]):
                 # we don't want to cast datetime64
                 try:
-                    X[col] = pd.to_numeric(X[col], errors="raise")
+                    X[col] = cudf.to_numeric(X[col], errors="raise")
                 except (ValueError, TypeError):
+                  pass
                     # Only try to convert to datetime
                     # if the variable isn't numeric.
-                    try:
-                        X[col] = cudf.to_datetime(
-                            X[col], errors="raise", infer_datetime_format=True
-                        )
-                    except (ValueError, TypeError):
-                        pass
-            # Cast pandas dtypes to numpy dtypes
-            # for earlier versions of sklearn. FIXME: which ?
+                    # format = _infer_date_format(X[col])
+                    # if format is not None:
+                  try:
+                    X[col] = pd.to_datetime(X[col].to_numpy(), errors="raise", format='%Y-%m-%d %H:%M:%S+%z')
+                  except:
+                    pass
+                # Cast pandas dtypes to numpy dtypes
+                # for earlier versions of sklearn. FIXME: which ?
             if issubclass(X[col].dtype.__class__, ExtensionDtype):
                 try:
                     X[col] = X[col].astype(X[col].dtype.type, errors="ignore")
@@ -567,7 +568,7 @@ class TableVectorizer(ColumnTransformer):
         categorical_columns = X.select_dtypes(
             include=["string", "object", "category"]
         ).columns.to_list()
-        datetime_columns = X.select_dtypes(
+        self.datetime_columns = X.select_dtypes(
             include=["datetime", "datetimetz"]
         ).columns.to_list()
 
@@ -592,7 +593,7 @@ class TableVectorizer(ColumnTransformer):
         # Create the list of all the transformers.
         all_transformers: List[Tuple[str, OptionalTransformer, List[str]]] = [
             ("numeric", self.numerical_transformer, numeric_columns),
-            ("datetime", self.datetime_transformer_, datetime_columns),
+            # ("datetime", self.datetime_transformer_, datetime_columns),
             ("low_card_cat", self.low_card_cat_transformer_, low_card_cat_columns),
             ("high_card_cat", self.high_card_cat_transformer_, high_card_cat_columns),
         ]
@@ -648,6 +649,12 @@ class TableVectorizer(ColumnTransformer):
         if 'cudf' in self.Xt_ and 'cudf' not in str(getmodule(X)):
             X=cudf.from_pandas(X)#,nan_as_null=True) ### see how flag acts
         X = X.fillna(0)
+        # try:
+        R=X[self.datetime_columns]
+        X=X.drop(columns=self.datetime_columns)
+        
+        # except:
+          # pass
         X_enc = super().fit_transform(X, y)
         
         X_enc = cudf.DataFrame(X_enc) #from cuml.arraydata
@@ -667,8 +674,8 @@ class TableVectorizer(ColumnTransformer):
                 cols: List[int]
                 self.transformers_[i] = (name, enc, [self.columns_[j] for j in cols])
 
-        return X_enc
-
+        return cudf.DataFrame(X_enc.join(R))
+        
     def transform(self, X) -> np.ndarray:
         """
         Transform X by applying fitted transformers on each column,
@@ -755,8 +762,8 @@ class TableVectorizer(ColumnTransformer):
         if len(ct_feature_names) != len(all_trans_feature_names):
             warn("Could not extract clean feature names; returning defaults. ")
             return list(ct_feature_names)
-
-        return all_trans_feature_names
+        print(all_trans_feature_names + self.datetime_columns)
+        return all_trans_feature_names + self.datetime_columns
 
     def get_feature_names(self, input_features=None) -> List[str]:
         """
