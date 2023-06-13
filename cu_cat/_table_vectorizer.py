@@ -650,7 +650,7 @@ class TableVectorizer(ColumnTransformer):
             X=cudf.from_pandas(X)#,nan_as_null=True) ### see how flag acts
         X = X.fillna(0)
         # try:
-        R=X[self.datetime_columns]
+        self.R_=X[self.datetime_columns]
         X=X.drop(columns=self.datetime_columns)
         
         # except:
@@ -674,7 +674,7 @@ class TableVectorizer(ColumnTransformer):
                 cols: List[int]
                 self.transformers_[i] = (name, enc, [self.columns_[j] for j in cols])
 
-        return cudf.DataFrame(X_enc.join(R))
+        return cudf.DataFrame(X_enc.join(self.R_))
         
     def transform(self, X) -> np.ndarray:
         """
@@ -762,7 +762,6 @@ class TableVectorizer(ColumnTransformer):
         if len(ct_feature_names) != len(all_trans_feature_names):
             warn("Could not extract clean feature names; returning defaults. ")
             return list(ct_feature_names)
-        print(all_trans_feature_names + self.datetime_columns)
         return all_trans_feature_names + self.datetime_columns
 
     def get_feature_names(self, input_features=None) -> List[str]:
