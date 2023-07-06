@@ -60,12 +60,22 @@ def lazy_cuml_import_has_dependancy():
         with warnings.catch_warnings():
             warnings.filterwarnings("ignore")
             import cuml  # type: ignore
+            import subprocess as sp
+            import os
+
+            def get_gpu_memory():
+                command = "nvidia-smi --query-gpu=memory.free --format=csv"
+                memory_free_info = sp.check_output(command.split()).decode('ascii').split('\n')[:-1][1:]
+                memory_free_values = [int(x.split()[0]) for i, x in enumerate(memory_free_info)]
+                return memory_free_values
+
+            get_gpu_memory()
             # from cuml.feature_extraction.text import CountVectorizer,HashingVectorizer
 
 
-        return True, "ok", cuml #,CountVectorizer,HashingVectorizer
+        return True, "ok", cuml,get_gpu_memory() #,CountVectorizer,HashingVectorizer
     except ModuleNotFoundError as e:
-        return False, e, None
+        return False, e, None, None
     
 def lazy_sklearn_import_has_dependancy():
     try:
@@ -155,7 +165,7 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
             _, _, engine = lazy_sklearn_import_has_dependancy()
             from sklearn.feature_extraction.text import CountVectorizer,HashingVectorizer
         elif engine_resolved == 'cuml':
-            _, _, engine = lazy_cuml_import_has_dependancy()
+            _, _, engine, gmem = lazy_cuml_import_has_dependancy()
             from cuml.feature_extraction.text import CountVectorizer,HashingVectorizer
         
         self.ngram_range = ngram_range
@@ -179,6 +189,7 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
         self._CV = CountVectorizer
         self._HV = HashingVectorizer
         self.engine = engine_resolved
+        self.gmem = gmem
 
     def _init_vars(self, X) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
         """
@@ -394,7 +405,7 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
         unq_V=csr_gpu(unq_V);unq_H=cp.array(unq_H); ## redundant
 
         for n_iter_ in range(self.max_iter):
-            if (unq_V.shape[0]*unq_V.shape[1])<1e10 and self.engine=='cuml':
+            if (sys.getsizeof(unq_V)*sys.getsizeof(unq_V))<self.gmem and self.engine=='cuml':
                 logger.debug(f"fitting smallfast-wise")
                 W_type = df_type(self.W_)
                 if 'cudf' not in W_type and 'cupy' not in W_type:
@@ -425,7 +436,7 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
                 )
             else:
                 W_type = df_type(self.W_)
-                if self.engine=='cuml' and (unq_V.shape[0]*unq_V.shape[1]) > 2e10:
+                if self.engine=='cuml' and (sys.getsizeof(unq_V)*sys.getsizeof(unq_V))>self.gmem:
                     if 'cudf' not in W_type and 'cupy' not in W_type:
                         self.W_=cp.array(self.W_);self.B_=cp.array(self.B_);self.A_=cp.array(self.A_);
                         logger.debug(f"moving to cupy")
@@ -607,8 +618,8 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
         self._add_unseen_keys_to_H_dict(unq_X) ### need to get this back for transforming obviously
         unq_H = self._get_H(unq_X)
         # Loop over batches
-        logger.info(f"features and samples =  `{unq_V.shape}`, ie `{unq_V.shape[0]*unq_V.shape[1]}`")
-        if self.engine=='cuml' and unq_V.shape[0]*unq_V.shape[1]<1e10:
+        logger.info(f"req gpu mem =  `{(sys.getsizeof(unq_V)*sys.getsizeof(unq_V))}`, ie `{unq_V.shape[0]*unq_V.shape[1]}`")
+        if self.engine=='cuml' and (sys.getsizeof(unq_V)*sys.getsizeof(unq_V))<self.gmem:
             logger.debug(f"smallfast transform")
             unq_H = _multiplicative_update_h_smallfast(
                     unq_V,
@@ -622,7 +633,7 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
                 )
         else:
             W_type = df_type(self.W_)
-            if self.engine=='cuml' and unq_V.shape[0]*unq_V.shape[1] > 2e10:
+            if self.engine=='cuml' and (sys.getsizeof(unq_V)*sys.getsizeof(unq_V))>self.gmem:
                 logger.debug(f"cupy transform")
                 if 'cudf' not in W_type and 'cupy' not in W_type:
                     self.W_=cp.array(self.W_);unq_V=csr_gpu(unq_V);unq_H=cp.array(unq_H);
@@ -826,7 +837,7 @@ class GapEncoder(BaseEstimator, TransformerMixin):
             _, _, engine = lazy_sklearn_import_has_dependancy()
             from sklearn.feature_extraction.text import CountVectorizer,HashingVectorizer
         elif engine_resolved == 'cuml':
-            _, _, engine = lazy_cuml_import_has_dependancy()
+            _, _, engine, gmem = lazy_cuml_import_has_dependancy()
             from cuml.feature_extraction.text import CountVectorizer,HashingVectorizer
         
         self.ngram_range = ngram_range
@@ -851,6 +862,7 @@ class GapEncoder(BaseEstimator, TransformerMixin):
         self._CV = CountVectorizer
         self._HV = HashingVectorizer
         self.engine = engine_resolved
+        self.gmem = gmem
 
 
     def _more_tags(self) -> Dict[str, List[str]]:
