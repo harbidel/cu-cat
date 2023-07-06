@@ -189,7 +189,7 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
         self._CV = CountVectorizer
         self._HV = HashingVectorizer
         self.engine = engine_resolved
-        self.gmem = gmem
+        self.gmem = gmem[0]
 
     def _init_vars(self, X) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
         """
@@ -862,7 +862,7 @@ class GapEncoder(BaseEstimator, TransformerMixin):
         self._CV = CountVectorizer
         self._HV = HashingVectorizer
         self.engine = engine_resolved
-        self.gmem = gmem
+        self.gmem = gmem[0]
 
 
     def _more_tags(self) -> Dict[str, List[str]]:
