@@ -99,7 +99,7 @@ def assert_imported():
 
 
 def assert_imported_cuml():
-    has_cuml_dependancy_, import_cuml_exn, _ = lazy_cuml_import_has_dependancy()
+    has_cuml_dependancy_, import_cuml_exn, _, _ = lazy_cuml_import_has_dependancy()
     if not has_cuml_dependancy_:
         logger.warning("cuML not found, trying running " "`pip install cuml`")
         raise import_cuml_exn
@@ -115,7 +115,7 @@ def resolve_engine(
     if engine in ['cuml', 'sklearn']:
         return engine  # type: ignore
     if engine in ["auto"]:
-        has_cuml_dependancy_, _, _ = lazy_cuml_import_has_dependancy()
+        has_cuml_dependancy_, _, _, _ = lazy_cuml_import_has_dependancy()
         if has_cuml_dependancy_:
             return 'cuml'
         has_sklearn_dependancy_, _, _ = lazy_sklearn_import_has_dependancy()
