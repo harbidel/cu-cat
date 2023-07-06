@@ -394,7 +394,7 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
         unq_V=csr_gpu(unq_V);unq_H=cp.array(unq_H); ## redundant
 
         for n_iter_ in range(self.max_iter):
-            if (unq_V.shape[0]*unq_V.shape[1])<1e9 and self.engine=='cuml':
+            if (unq_V.shape[0]*unq_V.shape[1])<1e10 and self.engine=='cuml':
                 logger.debug(f"fitting smallfast-wise")
                 W_type = df_type(self.W_)
                 if 'cudf' not in W_type and 'cupy' not in W_type:
@@ -425,7 +425,7 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
                 )
             else:
                 W_type = df_type(self.W_)
-                if self.engine=='cuml' and (unq_V.shape[0]*unq_V.shape[1]) > 2e9:
+                if self.engine=='cuml' and (unq_V.shape[0]*unq_V.shape[1]) > 2e10:
                     if 'cudf' not in W_type and 'cupy' not in W_type:
                         self.W_=cp.array(self.W_);self.B_=cp.array(self.B_);self.A_=cp.array(self.A_);
                         logger.debug(f"moving to cupy")
@@ -608,7 +608,7 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
         unq_H = self._get_H(unq_X)
         # Loop over batches
         logger.info(f"features and samples =  `{unq_V.shape}`, ie `{unq_V.shape[0]*unq_V.shape[1]}`")
-        if self.engine=='cuml' and unq_V.shape[0]*unq_V.shape[1]<1e9:
+        if self.engine=='cuml' and unq_V.shape[0]*unq_V.shape[1]<1e10:
             logger.debug(f"smallfast transform")
             unq_H = _multiplicative_update_h_smallfast(
                     unq_V,
@@ -622,7 +622,7 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
                 )
         else:
             W_type = df_type(self.W_)
-            if self.engine=='cuml' and unq_V.shape[0]*unq_V.shape[1] > 2e9:
+            if self.engine=='cuml' and unq_V.shape[0]*unq_V.shape[1] > 2e10:
                 logger.debug(f"cupy transform")
                 if 'cudf' not in W_type and 'cupy' not in W_type:
                     self.W_=cp.array(self.W_);unq_V=csr_gpu(unq_V);unq_H=cp.array(unq_H);
