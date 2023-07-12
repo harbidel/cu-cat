@@ -402,7 +402,7 @@ class TableVectorizer(ColumnTransformer):
         if isinstance(self.datetime_transformer, sklearn.base.TransformerMixin):
             self.datetime_transformer_ = clone(self.datetime_transformer)
         elif self.datetime_transformer is None:
-            self.datetime_transformer_ = DatetimeEncoder()
+            self.datetime_transformer_ = "passthrough"
         elif self.datetime_transformer == "remainder":
             self.datetime_transformer_ = self.remainder
         else:
