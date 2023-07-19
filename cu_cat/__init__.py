@@ -6,7 +6,7 @@ from pathlib import Path as _Path
 try:
     from ._check_dependencies import check_dependencies
 
-    check_dependencies()
+    # check_dependencies()
 except ModuleNotFoundError:
     import warnings
 
@@ -14,7 +14,7 @@ except ModuleNotFoundError:
         "pkg_resources is not available, dependencies versions will not be checked."
     )
 
-from ._datetime_encoder import DatetimeEncoder
+# from ._datetime_encoder import DatetimeEncoder
 # from ._deduplicate import compute_ngram_distance, deduplicate
 # from ._feature_augmenter import FeatureAugmenter
 # from ._fuzzy_join import fuzzy_join
@@ -29,7 +29,7 @@ with open(_Path(__file__).parent / "VERSION.txt") as _fh:
 
 
 __all__ = [
-    "DatetimeEncoder",
+    # "DatetimeEncoder",
     # "FeatureAugmenter",
     # "fuzzy_join",
     "GapEncoder",
