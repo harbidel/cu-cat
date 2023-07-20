@@ -20,7 +20,7 @@ from cuml.preprocessing import OneHotEncoder
 from sklearn.utils.deprecation import deprecated
 from sklearn.utils.validation import check_is_fitted
 
-from cu_cat import DatetimeEncoder, GapEncoder
+from cu_cat import GapEncoder
 from cu_cat._utils import parse_version, df_type
 import cuml,cudf
 cuml.set_global_output_type('cupy')
