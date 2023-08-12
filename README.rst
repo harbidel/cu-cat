@@ -1,38 +1,18 @@
 `cu_cat`
 ===========
 
-.. image:: https://cu-cat.github.io/stable/_static/cu_cat.svg
-   :align: center
-   :alt: cu_cat logo
-
-
-|py_ver| |pypi_var| |pypi_dl| |codecov| |circleci| |black|
-
-.. |py_ver| image:: https://img.shields.io/pypi/pyversions/cu_cat
-.. |pypi_var| image:: https://img.shields.io/pypi/v/cu_cat?color=informational
-.. |pypi_dl| image:: https://img.shields.io/pypi/dm/cu_cat
-.. |codecov| image:: https://img.shields.io/codecov/c/github/cu-cat/cu_cat/main
-.. |circleci| image:: https://img.shields.io/circleci/build/github/cu-cat/cu_cat/main?label=CircleCI
-.. |black| image:: https://img.shields.io/badge/code%20style-black-000000.svg
-
-`cu_cat <https://cu-cat.github.io/>`_ is a Python library
-that facilitates machine-learning on dirty categorical variables.
-
-For a detailed description of the problem of encoding dirty categorical data, see
-`Similarity encoding for learning with dirty categorical variables <https://hal.inria.fr/hal-01806175>`_ [1]_
-and `Encoding high-cardinality string categorical variables <https://hal.inria.fr/hal-02171256v4>`_ [2]_.
-
-If you like the package, please *spread the word*, and ⭐ `the repository <https://github.com/cu-cat/cu_cat/>`_!
+`cu_cat` is an end-to-end gpu Python library that encodes categorical variables into machine-learnable numerics.
+It is a cuda accelerated port of what was dirty_cat, now rebranded as `skrub <https://github.com/skrub-data/skrub>`_
 
 What can `cu_cat` do?
 ------------------------
 
-`cu_cat` provides tools (``TableVectorizer``, ``fuzzy_join``...) and
-encoders (``GapEncoder``, ``MinHashEncoder``...) for **morphological similarities**,
+`cu_cat` provides tools (``TableVectorizer``...) and
+encoders (``GapEncoder``...) for **morphological similarities**,
 for which we usually identify three common cases: **similarities, typos and variations**
 
-`The first example notebook <https://cu-cat.github.io/stable/auto_examples/01_cu_categories.html>`_
-goes in-depth on how to identify and deal with dirty data using the `cu_cat` library.
+`Example notebooks <https://github.com/graphistry/pygraphistry/tree/bio-demos/demos/demos_by_use_case/bio/gpu>`_
+goes in-depth on how to identify and deal with dirty data (biological in this case) using the `cu_cat` library.
 
 What `cu_cat` does not
 ~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -51,39 +31,17 @@ methods.
 Installation
 ------------
 
-cu_cat can be easily installed via `pip`::
+cu_cat v 0.04 can be easily installed via `pip`::
 
-    pip install cu_cat
+    pip install git+http://github.com/graphistry/cu-cat.git@v0.04.0
 
 Dependencies
 ~~~~~~~~~~~~
 
-Dependencies and minimal versions are listed in the `setup <https://github.com/cu-cat/cu_cat/blob/main/setup.cfg#L26>`_ file.
+Major dependencies the cuml and cudf libraries, as well as `standard python libraries <https://github.com/skrub-data/skrub/blob/main/setup.cfg>`_
 
 Related projects
 ----------------
 
-Are listed on the `cu_cat's website <https://cu-cat.github.io/stable/#related-projects>`_
+dirty_cat is now rebranded as part of the sklearn family as `skrub <https://github.com/skrub-data/skrub>`_
 
-Contributing
-------------
-
-If you want to encourage development of `cu_cat`,
-the best thing to do is to *spread the word*!
-
-If you encounter an issue while using `cu_cat`, please
-`open an issue <https://docs.github.com/en/issues/tracking-your-work-with-issues/creating-an-issue>`_ and/or
-`submit a pull request <https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/proposing-changes-to-your-work-with-pull-requests/creating-a-pull-request>`_.
-Don't hesitate, you're helping to make this project better for everyone!
-
-Additional resources
---------------------
-
-* `Introductory video (YouTube) <https://youtu.be/_GNaaeEI2tg>`_
-* `Overview poster for EuroSciPy 2022 (Google Drive) <https://drive.google.com/file/d/1TtmJ3VjASy6rGlKe0txKacM-DdvJdIvB/view?usp=sharing>`_
-
-References
-----------
-
-.. [1] Patricio Cerda, Gaël Varoquaux, Balázs Kégl. Similarity encoding for learning with dirty categorical variables. 2018. Machine Learning journal, Springer.
-.. [2] Patricio Cerda, Gaël Varoquaux. Encoding high-cardinality string categorical variables. 2020. IEEE Transactions on Knowledge & Data Engineering.
