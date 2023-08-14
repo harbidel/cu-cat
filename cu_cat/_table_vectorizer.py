@@ -2,6 +2,8 @@
 Implements the TableVectorizer: a preprocessor to automatically apply
 transformers/encoders to different types of data, without the need to
 manually categorize them beforehand, or construct complex Pipelines.
+
+Implemented on GPU exclusively through use of GapEncoder in cu_cat
 """
 
 from typing import Dict, List, Literal, Optional, Tuple, Union

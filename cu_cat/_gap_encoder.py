@@ -13,6 +13,11 @@ The principle is as follows:
     4. In practice, this is equivalent to a non-negative matrix factorization
        with the Kullback-Leibler divergence as loss, and a Gamma prior on H.
        We thus optimize H and W with the multiplicative update method.
+
+Depending on available GPU memory, GapEncoder will attempt to fit NMF via matrix multiplication at once rather than serializing dot products.
+This dynamicity is accomplished through get_gpu_memory() and the gmem variable, initiated during lazy cuml import.
+
+If the gpu memory is too small, it will default to serializing dot products on the GPU, and in some (rare) cases the CPU will be faster until sufficient samples are provided to outcompete the parallelization of the CPU loops across features.
 """
 
 import warnings,sys
