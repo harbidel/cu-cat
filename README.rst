@@ -11,7 +11,7 @@ What can `cu_cat` do?
 encoders (``GapEncoder``...) for **morphological similarities**,
 for which we usually identify three common cases: **similarities, typos and variations**
 
-`Example notebooks <https://github.com/graphistry/pygraphistry/tree/bio-demos/demos/demos_by_use_case/bio/gpu>`_
+`Example notebooks <https://github.com/graphistry/cu-cat/tree/master/examples/cu-cat_demo.ipynb>`_
 goes in-depth on how to identify and deal with dirty data (biological in this case) using the `cu_cat` library.
 
 What `cu_cat` does not
