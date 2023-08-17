@@ -329,7 +329,7 @@ class TableVectorizer(ColumnTransformer):
         low_card_cat_transformer: OptionalTransformer = None,
         high_card_cat_transformer: OptionalTransformer = None,
         numerical_transformer: OptionalTransformer = None,
-        datetime_transformer: OptionalTransformer = None,
+        datetime_transformer: OptionalTransformer = "passthrough",
         auto_cast: bool = True,
         output_type: Literal["cupy", "cudf", "pandas", "numpy"] = "cudf",
         impute_missing: Literal["auto", "force", "skip"] = "auto",
@@ -348,7 +348,7 @@ class TableVectorizer(ColumnTransformer):
         self.low_card_cat_transformer = low_card_cat_transformer
         self.high_card_cat_transformer = high_card_cat_transformer
         self.numerical_transformer = numerical_transformer
-        self.datetime_transformer = datetime_transformer
+        self.datetime_transformer = "passthrough"
         self.auto_cast = auto_cast
         self.impute_missing = impute_missing
         self.output_type = output_type
@@ -401,14 +401,14 @@ class TableVectorizer(ColumnTransformer):
         else:
             self.numerical_transformer_ = self.numerical_transformer
 
-        if isinstance(self.datetime_transformer, sklearn.base.TransformerMixin):
-            self.datetime_transformer_ = clone(self.datetime_transformer)
-        elif self.datetime_transformer is None:
-            self.datetime_transformer_ = "passthrough"
-        elif self.datetime_transformer == "remainder":
-            self.datetime_transformer_ = self.remainder
-        else:
-            self.datetime_transformer_ = self.datetime_transformer
+        # if isinstance(self.datetime_transformer, sklearn.base.TransformerMixin):
+        #     self.datetime_transformer_ = "passthrough" #clone(self.datetime_transformer)
+        # elif self.datetime_transformer is None:
+        #     self.datetime_transformer_ = "passthrough"
+        # # elif self.datetime_transformer == "remainder":
+        #     # self.datetime_transformer_ = self.remainder
+        # else:
+        self.datetime_transformer_ = "passthrough" # self.datetime_transformer
 
         # TODO: check that the provided transformers are valid
 
@@ -592,9 +592,17 @@ class TableVectorizer(ColumnTransformer):
 
         # Next part: construct the transformers
         # Create the list of all the transformers.
-        all_transformers: List[Tuple[str, OptionalTransformer, List[str]]] = [
+        if self.datetime_transformer_ != "passthrough":
+            all_transformers: List[Tuple[str, OptionalTransformer, List[str]]] = [
+                ("numeric", self.numerical_transformer, numeric_columns),
+                ("datetime", self.datetime_transformer_, datetime_columns),
+                ("low_card_cat", self.low_card_cat_transformer_, low_card_cat_columns),
+                ("high_card_cat", self.high_card_cat_transformer_, high_card_cat_columns),
+            ]
+        else:
+            all_transformers: List[Tuple[str, OptionalTransformer, List[str]]] = [
             ("numeric", self.numerical_transformer, numeric_columns),
-            ("datetime", self.datetime_transformer_, datetime_columns),
+            # ("datetime", self.datetime_transformer_, datetime_columns),
             ("low_card_cat", self.low_card_cat_transformer_, low_card_cat_columns),
             ("high_card_cat", self.high_card_cat_transformer_, high_card_cat_columns),
         ]
@@ -606,7 +614,8 @@ class TableVectorizer(ColumnTransformer):
             name, enc, cols = trans  # Unpack
             if len(cols) > 0 and enc is not None:
                 self.transformers.append(trans)
-
+        print(self.transformers)
+        
         self.imputed_columns_ = []
         if self.impute_missing != "skip":
             # First, replace false missing
@@ -668,7 +677,11 @@ class TableVectorizer(ColumnTransformer):
                 # In this case, "cols" is a list of ints (the indices)
                 cols: List[int]
                 self.transformers_[i] = (name, enc, [self.columns_[j] for j in cols])
-
+                
+        if self.datetime_transformer_ == "passthrough":
+            print(X_enc.shape,X[datetime_columns])
+            X_enc = np.concatenate((X_enc, X[datetime_columns]), axis=1)
+            
         return X_enc
 
     def transform(self, X) -> np.ndarray:
@@ -734,9 +747,9 @@ class TableVectorizer(ColumnTransformer):
             Feature names.
         """
         # if parse_version(sklearn_version) < parse_version("1.0"):
-        ct_feature_names = super().get_feature_names()
+        ct_feature_names = super().get_feature_names_out()
         # else:
-            # ct_feature_names = super().get_feature_names_out()
+            # ct_feature_names = super().get_feature_names()
         all_trans_feature_names = []
 
         for name, trans, cols, _ in self._iter(fitted=True):
@@ -744,14 +757,14 @@ class TableVectorizer(ColumnTransformer):
                 if trans == "drop":
                     continue
                 elif trans == "passthrough":
-                    if all(isinstance(col, int) for col in cols):
+                    for col in cols:
                         cols = [self.columns_[i] for i in cols]
                     all_trans_feature_names.extend(cols)
                 continue
             # if parse_version(sklearn_version) < parse_version("1.0"):
-            trans_feature_names = trans.get_feature_names(cols)
+            # trans_feature_names = trans.get_feature_names(cols)
             # else:
-                # trans_feature_names = trans.get_feature_names_out(cols)
+            trans_feature_names = trans.get_feature_names_out(cols)
             all_trans_feature_names.extend(trans_feature_names)
 
         if len(ct_feature_names) != len(all_trans_feature_names):
@@ -760,20 +773,20 @@ class TableVectorizer(ColumnTransformer):
 
         return all_trans_feature_names
 
-    def get_feature_names(self, input_features=None) -> List[str]:
-        """
-        Ensures compatibility with sklearn < 1.0.
-        Use `get_feature_names_out` instead.
-        """
-        # if parse_version(sklearn_version) >= parse_version("1.0"):
-        #     warn(
-        #         "Following the changes in scikit-learn 1.0, "
-        #         "get_feature_names is deprecated. "
-        #         "Use get_feature_names_out instead. ",
-        #         DeprecationWarning,
-        #         stacklevel=2,
-        #     )
-        return self.get_feature_names_out(input_features)
+    # def get_feature_names(self, input_features=None) -> List[str]:
+    #     """
+    #     Ensures compatibility with sklearn < 1.0.
+    #     Use `get_feature_names_out` instead.
+    #     """
+    #     # if parse_version(sklearn_version) >= parse_version("1.0"):
+    #     #     warn(
+    #     #         "Following the changes in scikit-learn 1.0, "
+    #     #         "get_feature_names is deprecated. "
+    #     #         "Use get_feature_names_out instead. ",
+    #     #         DeprecationWarning,
+    #     #         stacklevel=2,
+    #     #     )
+    #     return self.get_feature_names_out(input_features)
 
 
 @deprecated("use TableVectorizer instead.")
