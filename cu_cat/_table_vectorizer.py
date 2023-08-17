@@ -659,8 +659,9 @@ class TableVectorizer(ColumnTransformer):
             X=cudf.from_pandas(X)#,nan_as_null=True) ### see how flag acts
         X = X.fillna(0)
         if self.datetime_transformer_ == "passthrough":
-            Z=cudf.concat([cudf.concat([X[numeric_columns],X[low_card_cat_columns]], axis=1,ignore_index=True),X[high_card_cat_columns]],axis=1,ignore_index=True)
+            Z=X.drop(columns=datetime_columns)
             X_enc = super().fit_transform(Z, y)
+
         else:
             X_enc = super().fit_transform(X, y)
         X_enc = cudf.DataFrame(X_enc) #from cuml.arraydata
