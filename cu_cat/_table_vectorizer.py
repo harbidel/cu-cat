@@ -614,7 +614,6 @@ class TableVectorizer(ColumnTransformer):
             name, enc, cols = trans  # Unpack
             if len(cols) > 0 and enc is not None:
                 self.transformers.append(trans)
-        print(self.transformers)
         
         self.imputed_columns_ = []
         if self.impute_missing != "skip":
@@ -660,7 +659,7 @@ class TableVectorizer(ColumnTransformer):
             X=cudf.from_pandas(X)#,nan_as_null=True) ### see how flag acts
         X = X.fillna(0)
         if self.datetime_transformer_ == "passthrough":
-          Z = np.concat(np.concat(X[numeric_columns],X[low_card_cat_columns],axis=1),X[high_card_cat_columns],axis=1)
+          Z = np.concatenate(np.concatenate(X[numeric_columns],X[low_card_cat_columns],axis=1),X[high_card_cat_columns],axis=1)
           X_enc = super().fit_transform(Z, y)
         else:
           X_enc = super().fit_transform(X, y)
