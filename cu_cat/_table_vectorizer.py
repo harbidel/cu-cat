@@ -659,8 +659,11 @@ class TableVectorizer(ColumnTransformer):
         if 'cudf' in self.Xt_ and 'cudf' not in str(getmodule(X)):
             X=cudf.from_pandas(X)#,nan_as_null=True) ### see how flag acts
         X = X.fillna(0)
-        X_enc = super().fit_transform(X, y)
-        
+        if self.datetime_transformer_ == "passthrough":
+          Z = X[[numeric_columns,low_card_cat_columns,high_card_cat_columns]]
+          X_enc = super().fit_transform(Z, y)
+        else:
+          X_enc = super().fit_transform(X, y)
         X_enc = cudf.DataFrame(X_enc) #from cuml.arraydata
         # print(str(getmodule(X_enc)))
         # X_enc.columns = X_enc.columns.astype('str')
