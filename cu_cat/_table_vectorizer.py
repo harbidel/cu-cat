@@ -682,8 +682,8 @@ class TableVectorizer(ColumnTransformer):
                 self.transformers_[i] = (name, enc, [self.columns_[j] for j in cols])
                 
         if self.datetime_transformer_ == "passthrough":
-            print(X_enc.shape,X[datetime_columns])
-            X_enc = np.concatenate((X_enc, X[datetime_columns]), axis=1)
+            # print(X_enc.shape,X[datetime_columns])
+            X_enc = cudf.concat([X_enc, X[datetime_columns]], axis=1)
             
         return X_enc
 
