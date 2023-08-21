@@ -681,8 +681,7 @@ class TableVectorizer(ColumnTransformer):
                 cols: List[int]
                 self.transformers_[i] = (name, enc, [self.columns_[j] for j in cols])
                 
-        if self.datetime_transformer_ == "passthrough":
-            # print(X_enc.shape,X[datetime_columns])
+        if self.datetime_transformer_ == "passthrough") & (X[datetime_columns] != []):
             X_enc = cudf.concat([X_enc, X[datetime_columns]], axis=1, ignore_index=True)
             
         return X_enc
@@ -760,7 +759,10 @@ class TableVectorizer(ColumnTransformer):
                 if trans == "drop":
                     continue
                 elif trans == "passthrough":
+                    # for col in cols:
+                        # print(self.columns_)
                     cols = self.columns_.to_list()
+                        # cols = [self.columns_[i] for i in cols]
                     all_trans_feature_names.extend(cols)
                 continue
             if parse_version(sklearn_version) < parse_version("1.0"):
