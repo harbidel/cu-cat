@@ -681,7 +681,7 @@ class TableVectorizer(ColumnTransformer):
                 cols: List[int]
                 self.transformers_[i] = (name, enc, [self.columns_[j] for j in cols])
                 
-        if (self.datetime_transformer_ == "passthrough") & (X[datetime_columns] != []):
+        if (self.datetime_transformer_ == "passthrough") & (datetime_columns != []):
             X_enc = cudf.concat([X_enc, X[datetime_columns]], axis=1, ignore_index=True)
             
         return X_enc
@@ -748,7 +748,7 @@ class TableVectorizer(ColumnTransformer):
         typing.List[str]
             Feature names.
         """
-        if parse_version(sklearn_version) < parse_version("1.0"):
+        if parse_version(sklearn_version) > parse_version("1.0"):
             ct_feature_names = super().get_feature_names_out()
         else:
             ct_feature_names = super().get_feature_names()
@@ -765,7 +765,7 @@ class TableVectorizer(ColumnTransformer):
                         # cols = [self.columns_[i] for i in cols]
                     all_trans_feature_names.extend(cols)
                 continue
-            if parse_version(sklearn_version) < parse_version("1.0"):
+            if parse_version(sklearn_version) > parse_version("1.0"):
                 trans_feature_names = trans.get_feature_names_out(cols)
             else:
                 trans_feature_names = trans.get_feature_names(cols)
