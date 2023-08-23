@@ -145,6 +145,22 @@ def _get_datetimes_dataframe() -> pd.DataFrame:
         }
     )
 
+def set_to_datetime(df: pd.DataFrame, cols: List, new_col: str):
+    # eg df["Start_Date"] = pd.to_datetime(df[['Month', 'Day', 'Year']])
+    X_type = str(getmodule(df))
+    if 'cudf' not in X_type:
+        df[new_col] = pd.to_datetime(df[cols], errors="coerce").fillna(0)
+    else:
+        # _, _, cudf = lazy_import_has_dependancy_cuda()
+        # assert cudf is not None
+        for col in df.columns:
+            try:
+                df[col] = cudf.to_datetime(
+                    df[col], errors="raise", infer_datetime_format=True
+                )
+                print(df[col])
+            except:
+                pass
 
 def _test_possibilities(X):
     """
@@ -419,38 +435,41 @@ def _is_equal(elements: Tuple[Any, Any]) -> bool:
     return pd.isna(elem1) and pd.isna(elem2) or elem1 == elem2
 
 
-# def test_passthrough():
-#     """
-#     Tests that when passed no encoders, the TableVectorizer
-#     returns the dataset as-is.
-#     """
+def test_passthrough():
+    """
+    Tests that when passed no encoders, the TableVectorizer
+    returns the dataset as-is.
+    """
 
-#     X_dirty = _get_dirty_dataframe()
-#     X_clean = _get_clean_dataframe()
+    X_dirty = _get_dirty_dataframe()
+    # X_dirty = set_to_datetime(X_dirty) ## test with or without explicit DT formate
 
-#     tv = TableVectorizer(
-#         low_card_cat_transformer="passthrough",
-#         high_card_cat_transformer="passthrough",
-#         datetime_transformer="passthrough",
-#         numerical_transformer="passthrough",
-#         impute_missing="skip",
-#         auto_cast=False,
-#     )
+    X_clean = _get_clean_dataframe()
+    X_clean = set_to_datetime(X_clean)
 
-#     X_enc_dirty = cudf.DataFrame(
-#         tv.fit_transform(X_dirty), columns=tv.get_feature_names_out()
-#     )
-#     X_enc_clean = cudf.DataFrame(
-#         tv.fit_transform(X_clean), columns=tv.get_feature_names_out()
-#     )
-#     # Reorder encoded arrays' columns (see TableVectorizer's doc "Notes" section as to why)
-#     X_enc_dirty = X_enc_dirty[X_dirty.columns]
-#     X_enc_clean = X_enc_clean[X_clean.columns]
+    tv = TableVectorizer(
+        # low_card_cat_transformer="passthrough",
+        # high_card_cat_transformer="passthrough",
+        datetime_transformer="passthrough",
+        # numerical_transformer="passthrough",
+        impute_missing="skip",
+        auto_cast=False,
+    )
 
-#     dirty_flat_df = X_dirty.to_numpy().ravel().tolist()
-#     dirty_flat_trans_df = X_enc_dirty.to_numpy().ravel().tolist()
-#     assert all(map(_is_equal, zip(dirty_flat_df, dirty_flat_trans_df)))
-#     assert (X_clean.to_numpy() == X_enc_clean.to_numpy()).all()
+    X_enc_dirty = cudf.DataFrame(
+        tv.fit_transform(X_dirty), columns=tv.get_feature_names_out()
+    )
+    X_enc_clean = cudf.DataFrame(
+        tv.fit_transform(X_clean), columns=tv.get_feature_names_out()
+    )
+    # Reorder encoded arrays' columns (see TableVectorizer's doc "Notes" section as to why)
+    X_enc_dirty = X_enc_dirty[X_dirty.columns]
+    X_enc_clean = X_enc_clean[X_clean.columns]
+
+    dirty_flat_df = X_dirty.to_numpy().ravel().tolist()
+    dirty_flat_trans_df = X_enc_dirty.to_numpy().ravel().tolist()
+    assert all(map(_is_equal, zip(dirty_flat_df, dirty_flat_trans_df)))
+    assert (X_clean.to_numpy() == X_enc_clean.to_numpy()).all()
 
 
 # def test_check_fitted_table_vectorizer():
