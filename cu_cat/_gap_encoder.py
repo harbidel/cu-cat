@@ -410,7 +410,7 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
         unq_V=csr_gpu(unq_V);unq_H=cp.array(unq_H); ## redundant
 
         for n_iter_ in range(self.max_iter):
-            if (sys.getsizeof(unq_V)*sys.getsizeof(unq_V))<self.gmem and self.engine=='cuml':
+            if (sys.getsizeof(unq_V)*sys.getsizeof(unq_V))<(self.gmem)*0.95 and self.engine=='cuml':
                 logger.debug(f"fitting smallfast-wise")
                 W_type = df_type(self.W_)
                 if 'cudf' not in W_type and 'cupy' not in W_type:
@@ -624,7 +624,7 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
         unq_H = self._get_H(unq_X)
         # Loop over batches
         logger.info(f"req gpu mem =  `{(sys.getsizeof(unq_V)*sys.getsizeof(unq_V))}`, ie `{unq_V.shape[0]*unq_V.shape[1]}`")
-        if self.engine=='cuml' and (sys.getsizeof(unq_V)*sys.getsizeof(unq_V))<self.gmem:
+        if self.engine=='cuml' and (sys.getsizeof(unq_V)*sys.getsizeof(unq_V))<(self.gmem)*0.95:
             logger.debug(f"smallfast transform")
             unq_H = _multiplicative_update_h_smallfast(
                     unq_V,
