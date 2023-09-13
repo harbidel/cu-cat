@@ -20,7 +20,7 @@ This dynamicity is accomplished through get_gpu_memory() and the gmem variable, 
 If the gpu memory is too small, it will default to serializing dot products on the GPU, and in some (rare) cases the CPU will be faster until sufficient samples are provided to outcompete the parallelization of the CPU loops across features.
 """
 
-import warnings,sys
+import warnings,sys,gc
 from typing import Dict, Generator, List, Literal, Optional, Tuple, Union
 from inspect import getmodule
 import cupy as cp, cudf, pyarrow, cuml
@@ -346,16 +346,14 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
         unq_V = csr_gpu(unq_V)
         unq_H = cp.array(unq_H); ## redundant
         
-        sh=sys.getsizeof(unq_H.to_pandas())/1e6
-        sv=sys.getsizeof(unq_V.to_pandas())/1e6
-        # sx=sys.getsizeof(unq_X)/1e6
-        sw=sys.getsizeof(self.W_.to_pandas())/1e6
+        # sh=sys.getsizeof(unq_H.get())/1e6
+        # sw=sys.getsizeof(self.W_.get())/1e6
+        sh=len(unq_H.get().flatten())
+        sw=len(self.W_.get().flatten())
         
-        
-        print(['fit V:',sv,'H:',sh,'W:',sw,"sys:",self.gmem])
-        logger.info(f"req gpu mem for fit=  `{(sh*sw)}`, free sys gmem= `{self.gmem}`")
+        logger.info(f"req gpu mem for fit=  `{(24*sh*sw)/1e6}`, free sys gmem= `{self.gmem}`")
         for n_iter_ in range(self.max_iter):
-            if (sh*sw)<self.gmem and self.engine =='cuml':
+            if ((24*sh*sw)/1e6)<self.gmem and self.engine =='cuml':
                 logger.debug(f"fitting smallfast-wise")
                 W_type = df_type(self.W_)
                 if 'cudf' not in W_type and 'cupy' not in W_type:
@@ -386,7 +384,7 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
                 )
             else:
                 W_type = df_type(self.W_)
-                if self.engine =='cuml' and (sh*sv)>self.gmem:
+                if self.engine =='cuml' and ((24*sh*sw)/1e6)>self.gmem:
                     if 'cudf' not in W_type and 'cupy' not in W_type:
                         self.W_= cp.array(self.W_);self.B_= cp.array(self.B_);self.A_= cp.array(self.A_);
                         logger.debug(f"moving to cupy")
@@ -568,14 +566,14 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
         self._add_unseen_keys_to_H_dict(unq_X) ### need to get this back for transforming obviously
         unq_H = self._get_H(unq_X)
         
-        sh=sys.getsizeof(unq_H.to_pandas())/1e6
-        sv=sys.getsizeof(unq_V.to_pandas())/1e6
-        sw=sys.getsizeof(self.W_.to_pandas())/1e6
+        # sh=sys.getsizeof(unq_H.get())/1e6
+        # sw=sys.getsizeof(self.W_.get())/1e6
+        sh=len(unq_H.get().flatten())
+        sw=len(self.W_.get().flatten())
         
         # Loop over batches
-        print(['transform V:',sv,'H:',sh,'W:',sw,"sys:",self.gmem])
-        logger.info(f"req gpu mem for transform =  `{(sh*sw)}`, free sys gmem = `{self.gmem}`")
-        if self.engine == 'cuml' and (sh*sw)<self.gmem:
+        logger.info(f"req gpu mem for transform =  `{(24*sh*sw)/1e6}`, free sys gmem = `{self.gmem}`")
+        if self.engine == 'cuml' and ((24*sh*sw)/1e6)<self.gmem:
             logger.debug(f"smallfast transform")
             unq_H = _multiplicative_update_h_smallfast(
                     unq_V,
@@ -589,7 +587,7 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
                 )
         else:
             W_type = df_type(self.W_)
-            if self.engine == 'cuml' and (sh*sv)>self.gmem:
+            if self.engine == 'cuml' and ((24*sh*sw)/1e6)>self.gmem:
                 logger.debug(f"cupy transform")
                 if 'cudf' not in W_type and 'cupy' not in W_type:
                     self.W_=cp.array(self.W_);unq_V=csr_gpu(unq_V);unq_H=cp.array(unq_H);
@@ -1057,7 +1055,8 @@ def _multiplicative_update_w(
         W=cp.multiply(A, cp.reciprocal(B))#, out=W)
         if rescale_W:
             _rescale_W(W, A)
-        cp._default_memory_pool.free_all_blocks()
+        # cp._default_memory_pool.free_all_blocks()
+        gc.collect()
         
     # else: # self.engine!='cuml':
     #     try:
@@ -1118,7 +1117,8 @@ def _multiplicative_update_w_smallfast(
         _rescale_W(W, A)
     # W=W.get();A=A.get();B=B.get()
     del C,R,T,Ht,Vt
-    cp._default_memory_pool.free_all_blocks()
+    # cp._default_memory_pool.free_all_blocks()
+    gc.collect()
     return W,A,B
 
 def _rescale_h(self, V: np.array, H: np.array) -> np.array:
@@ -1175,7 +1175,8 @@ def _multiplicative_update_h(
                 squared_norm = cp.multiply(cp.dot(ht_out - ht, ht_out - ht), cp.reciprocal(cp.dot(ht, ht)))
                 ht[:] = ht_out
         del Vt,W_,W_WT1,ht,ht_out,vt,vt_
-        cp._default_memory_pool.free_all_blocks()
+        # cp._default_memory_pool.free_all_blocks()
+        gc.collect()
     # else:
         
         # for vt, ht in zip(Vt, Ht):
@@ -1260,6 +1261,7 @@ def _multiplicative_update_h_smallfast(
     for n_iter_ in range(max_iter):
         if squared_norm <= squared_epsilon:
             break
+        print(['Ht:',sys.getsizeof(Ht.get())/1e6,'W:',sys.getsizeof(W.get())/1e6])
         C=Vt.multiply( cp.reciprocal(cp.matmul(Ht, W) + 1e-10)) ##sparse now
         aux=C.dot(W_WT1)
         ht_out = cp.multiply(Ht,aux) + const
