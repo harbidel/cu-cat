@@ -34,7 +34,6 @@ from scipy import sparse
 from scipy.sparse import csr_matrix as csr_cpu
 from sklearn import __version__ as sklearn_version
 from sklearn.base import BaseEstimator, TransformerMixin
-from cuml.cluster import KMeans
 # from cuml.feature_extraction.text import CountVectorizer,HashingVectorizer
 from sklearn.neighbors import NearestNeighbors
 from sklearn.utils import check_random_state, gen_batches
@@ -44,11 +43,6 @@ from sklearn.utils.validation import check_is_fitted
 
 from ._utils import check_input, parse_version, df_type
 import logging
-
-if parse_version(sklearn_version) < parse_version("0.24"):
-    from sklearn.cluster._kmeans import _k_init
-else:
-    from sklearn.cluster import kmeans_plusplus
 
 from sklearn.decomposition._nmf import _beta_divergence
 
@@ -151,7 +145,7 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
         rescale_rho: bool = False,
         hashing: bool = False,
         hashing_n_features: int = 2**12,
-        init: Literal["k-means++", "random", "k-means"] = "random",
+        init: Literal["random"] = "random",
         tol: float = 1e-4,
         min_iter: int = 2,
         max_iter: int = 5,
@@ -298,74 +292,16 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
     def _init_w(self, V: np.array, X) -> Tuple[np.array, np.array, np.array]:
         """
         Initialize the topics W.
-        If self.init='k-means++', we use the init method of
-        sklearn.cluster.KMeans.
         If self.init='random', topics are initialized with a Gamma
         distribution.
-        If self.init='k-means', topics are initialized with a KMeans on the
-        n-grams counts.
         """
-        if self.init == "k-means++":
-            if parse_version(sklearn_version) < parse_version("0.24"):
-                W = (
-                    _k_init(
-                        V,
-                        self.n_components,
-                        x_squared_norms=row_norms(V, squared=True),
-                        random_state=self.random_state,
-                        n_local_trials=None,
-                    )
-                    + 0.1
-                )
-            else:
-                W, _ = kmeans_plusplus(
-                    V,
-                    self.n_components,
-                    x_squared_norms=row_norms(V, squared=True),
-                    random_state=self.random_state,
-                    n_local_trials=None,
-                )
-                W = W + 0.1  # To avoid restricting topics to a few n-grams only
-        elif self.init == "random":
+        if self.init == "random":
             W = self.random_state.gamma(
                 shape=self.gamma_shape_prior,
                 scale=self.gamma_scale_prior,
                 size=(self.n_components, self.n_vocab),
             )
-        elif self.init == "k-means":
-            prototypes = get_kmeans_prototypes(
-                X,
-                self.n_components,
-                analyzer=self.analyzer,
-                random_state=self.random_state,
-            )
-            W = self.ngrams_count_.transform(prototypes).A + 0.1
-            if self.add_words:
-                W2 = self.word_count_.transform(prototypes).A + 0.1
-                W = np.hstack((W, W2))
-            # if k-means doesn't find the exact number of prototypes
-            if W.shape[0] < self.n_components:
-                if parse_version(sklearn_version) < parse_version("0.24"):
-                    W2 = (
-                        _k_init(
-                            V,
-                            self.n_components - W.shape[0],
-                            x_squared_norms=row_norms(V, squared=True),
-                            random_state=self.random_state,
-                            n_local_trials=None,
-                        )
-                        + 0.1
-                    )
-                else:
-                    W2, _ = kmeans_plusplus(
-                        V,
-                        self.n_components - W.shape[0],
-                        x_squared_norms=row_norms(V, squared=True),
-                        random_state=self.random_state,
-                        n_local_trials=None,
-                    )
-                    W2 = W2 + 0.1
-                W = np.concatenate((W, W2), axis=0)
+        
         else:
             raise ValueError(f"Initialization method {self.init!r} does not exist. ")
         W = cp.array(W)
@@ -407,18 +343,27 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
         # Get activations unq_H
         del X
         unq_H = self._get_H(unq_X)
-        unq_V=csr_gpu(unq_V);unq_H=cp.array(unq_H); ## redundant
-
+        unq_V = csr_gpu(unq_V)
+        unq_H = cp.array(unq_H); ## redundant
+        
+        sh=sys.getsizeof(unq_H.to_pandas())/1e6
+        sv=sys.getsizeof(unq_V.to_pandas())/1e6
+        # sx=sys.getsizeof(unq_X)/1e6
+        sw=sys.getsizeof(self.W_.to_pandas())/1e6
+        
+        
+        print(['fit V:',sv,'H:',sh,'W:',sw,"sys:",self.gmem])
+        logger.info(f"req gpu mem for fit=  `{(sh*sw)}`, free sys gmem= `{self.gmem}`")
         for n_iter_ in range(self.max_iter):
-            if (sys.getsizeof(unq_V)*sys.getsizeof(unq_V))<(self.gmem)*0.95 and self.engine=='cuml':
+            if (sh*sw)<self.gmem and self.engine =='cuml':
                 logger.debug(f"fitting smallfast-wise")
                 W_type = df_type(self.W_)
                 if 'cudf' not in W_type and 'cupy' not in W_type:
                     logger.debug(f"moving to gpu")
-                    self.W_=cp.array(self.W_);self.B_=cp.array(self.B_);self.A_=cp.array(self.A_)
+                    self.W_= cp.array(self.W_);self.B_= cp.array(self.B_);self.A_= cp.array(self.A_)
                 elif 'cudf' in W_type:
                     logger.debug(f"keeping on gpu via cupy")
-                    self.W_=self.W_.to_cupy();self.B_=self.B_.to_cupy();self.A_=self.A_.to_cupy()
+                    self.W_= self.W_.to_cupy();self.B_= self.B_.to_cupy();self.A_= self.A_.to_cupy()
                 W_last = self.W_.copy()
                 unq_H = _multiplicative_update_h_smallfast(
                     unq_V,
@@ -441,18 +386,18 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
                 )
             else:
                 W_type = df_type(self.W_)
-                if self.engine=='cuml' and (sys.getsizeof(unq_V)*sys.getsizeof(unq_V))>self.gmem:
+                if self.engine =='cuml' and (sh*sv)>self.gmem:
                     if 'cudf' not in W_type and 'cupy' not in W_type:
-                        self.W_=cp.array(self.W_);self.B_=cp.array(self.B_);self.A_=cp.array(self.A_);
+                        self.W_= cp.array(self.W_);self.B_= cp.array(self.B_);self.A_= cp.array(self.A_);
                         logger.debug(f"moving to cupy")
                     elif 'cudf' in W_type:
-                        self.W_=self.W_.to_cupy();self.B_=self.B_.to_cupy();self.A_=self.A_.to_cupy();
+                        self.W_= self.W_.to_cupy();self.B_= self.B_.to_cupy();self.A_= self.A_.to_cupy();
                         logger.debug(f"keeping on gpu via cupy")
                     # Loop over batches
                 else:
-                    
+                    print('shit - numpy')
                     if hasattr(unq_H, 'device') or 'cupy' in W_type:
-                        # unq_V=unq_V.get();unq_H=unq_H.get();
+                        unq_V=unq_V.get();unq_H=unq_H.get();
                         logger.debug(f"force numpy fit")
                 for i, (unq_idx, idx) in enumerate(batch_lookup(lookup, n=self.batch_size)):
                     if i == n_batch - 1:
@@ -622,23 +567,29 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
         # Add unseen strings in X to H_dict
         self._add_unseen_keys_to_H_dict(unq_X) ### need to get this back for transforming obviously
         unq_H = self._get_H(unq_X)
+        
+        sh=sys.getsizeof(unq_H.to_pandas())/1e6
+        sv=sys.getsizeof(unq_V.to_pandas())/1e6
+        sw=sys.getsizeof(self.W_.to_pandas())/1e6
+        
         # Loop over batches
-        logger.info(f"req gpu mem =  `{(sys.getsizeof(unq_V)*sys.getsizeof(unq_V))}`, ie `{unq_V.shape[0]*unq_V.shape[1]}`")
-        if self.engine=='cuml' and (sys.getsizeof(unq_V)*sys.getsizeof(unq_V))<(self.gmem)*0.95:
+        print(['transform V:',sv,'H:',sh,'W:',sw,"sys:",self.gmem])
+        logger.info(f"req gpu mem for transform =  `{(sh*sw)}`, free sys gmem = `{self.gmem}`")
+        if self.engine == 'cuml' and (sh*sw)<self.gmem:
             logger.debug(f"smallfast transform")
             unq_H = _multiplicative_update_h_smallfast(
                     unq_V,
                     self.W_,
                     unq_H,
                     epsilon=1e-3,
-                    max_iter=100,
+                    max_iter=self.max_iter_e_step,
                     rescale_W=self.rescale_W,
                     gamma_shape_prior=self.gamma_shape_prior,
                     gamma_scale_prior=self.gamma_scale_prior,
                 )
         else:
             W_type = df_type(self.W_)
-            if self.engine=='cuml' and (sys.getsizeof(unq_V)*sys.getsizeof(unq_V))>self.gmem:
+            if self.engine == 'cuml' and (sh*sv)>self.gmem:
                 logger.debug(f"cupy transform")
                 if 'cudf' not in W_type and 'cupy' not in W_type:
                     self.W_=cp.array(self.W_);unq_V=csr_gpu(unq_V);unq_H=cp.array(unq_H);
@@ -647,7 +598,8 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
                     self.W_=self.W_.to_cupy(); unq_V=unq_V.to_cupy();unq_H=unq_H.to_cupy();
                     logger.debug(f"kept on gpu via cupy")
             else:
-                # self.W_=self.W_.get();
+                print('shit - numpy trans')
+                self.W_=self.W_.get();
                 if hasattr(unq_H, 'device') or 'cupy' in W_type or self.engine !='cuml':
                     logger.debug(f"force numpy transform")
             for slc in gen_batches(n=unq_H.shape[0], batch_size=self.batch_size):
@@ -711,11 +663,9 @@ class GapEncoder(BaseEstimator, TransformerMixin):
     hashing_n_features : int, optional, default=2**12
         Number of features for the :class:`~sklearn.feature_extraction.text.HashingVectorizer`.
         Only relevant if `hashing=True`.
-    init : {"k-means++", "random", "k-means"}, optional, default='k-means++'
+    init : {"random"}, optional, default='random'
         Initialization method of the W matrix.
-        If `init='k-means++'`, we use the init method of :class:`~sklearn.cluster.KMeans`.
         If `init='random'`, topics are initialized with a Gamma distribution.
-        If `init='k-means'`, topics are initialized with a KMeans on the n-grams
         counts. This usually makes convergence faster but is a bit slower.
     tol : float, default=1e-4
         Tolerance for the convergence of the matrix *W*.
@@ -741,7 +691,7 @@ class GapEncoder(BaseEstimator, TransformerMixin):
     rescale_W : bool, optional, default=True
         If true, the weight matrix *W* is rescaled at each iteration
         to have a l1 norm equal to 1 for each row.
-    max_iter_e_step : int, default=20
+    max_iter_e_step : int, default=1
         Maximum number of iterations to adjust the activations h at each step.
     handle_missing : {"error", "empty_impute"}, optional, default='empty_impute'
         Whether to raise an error or impute with empty string ``''`` if missing
@@ -822,7 +772,7 @@ class GapEncoder(BaseEstimator, TransformerMixin):
         rescale_rho: bool = False,
         hashing: bool = False,
         hashing_n_features: int = 2**12,
-        init: Literal["k-means++", "random", "k-means"] = "random",
+        init: Literal["random"] = "random",
         tol: float = 1e-4,
         min_iter: int = 2,
         max_iter: int = 5,
@@ -1109,34 +1059,34 @@ def _multiplicative_update_w(
             _rescale_W(W, A)
         cp._default_memory_pool.free_all_blocks()
         
-    else: # self.engine!='cuml':
-        try:
-            W=W.get()
-        except:
-            pass
-        try:
-            Ht=Ht.get()
-        except:
-            pass
-        try:
-            Vt=Vt.get()
-        except:
-            pass
-        try:
-            A=A.get()
-        except:
-            pass
-        try:
-            B=B.get()
-        except:
-            pass
-        A *= rho
-        A += np.multiply(W, safe_sparse_dot(Ht.T, Vt.multiply(1 / (np.dot(Ht, W) + 1e-10))))
-        B *= rho
-        B += Ht.sum(axis=0).reshape(-1, 1)
-        W=np.multiply(A, np.reciprocal(B))#, out=W)
-        if rescale_W:
-            _rescale_W(W, A)
+    # else: # self.engine!='cuml':
+    #     try:
+    #         W=W.get()
+    #     except:
+    #         pass
+    #     try:
+    #         Ht=Ht.get()
+    #     except:
+    #         pass
+    #     try:
+    #         Vt=Vt.get()
+    #     except:
+    #         pass
+    #     try:
+    #         A=A.get()
+    #     except:
+    #         pass
+    #     try:
+    #         B=B.get()
+    #     except:
+    #         pass
+    #     A *= rho
+    #     A += np.multiply(W, safe_sparse_dot(Ht.T, Vt.multiply(1 / (np.dot(Ht, W) + 1e-10))))
+    #     B *= rho
+    #     B += Ht.sum(axis=0).reshape(-1, 1)
+    #     W=np.multiply(A, np.reciprocal(B))#, out=W)
+    #     if rescale_W:
+    #         _rescale_W(W, A)
     return W,A,B #cp.array(W), cp.array(A), cp.array(B)
 
 def _multiplicative_update_w_smallfast(
@@ -1226,7 +1176,7 @@ def _multiplicative_update_h(
                 ht[:] = ht_out
         del Vt,W_,W_WT1,ht,ht_out,vt,vt_
         cp._default_memory_pool.free_all_blocks()
-    else:
+    # else:
         
         # for vt, ht in zip(Vt, Ht):
         #     vt_ = vt.data
@@ -1242,45 +1192,45 @@ def _multiplicative_update_h(
         #         squared_norm = np.multiply(np.dot(ht_out - ht, ht_out - ht), np.reciprocal(np.dot(ht, ht)))
         #         ht[:] = ht_out
         
-        for vt, ht in zip(Vt, Ht):
+#         for vt, ht in zip(Vt, Ht):
             
-            try:
-                idx=idx.get()
-            except:
-                pass
-            try:
-                W_WT1=W_WT1.get()
-            except:
-                pass
-            try:
-                W=W.get()
-            except:
-                pass
-            try:
-                ht=ht.get()
-            except:
-                pass
-            try:
-                vt_=vt_.get()
-            except:
-                pass
+#             try:
+#                 idx=idx.get()
+#             except:
+#                 pass
+#             try:
+#                 W_WT1=W_WT1.get()
+#             except:
+#                 pass
+#             try:
+#                 W=W.get()
+#             except:
+#                 pass
+#             try:
+#                 ht=ht.get()
+#             except:
+#                 pass
+#             try:
+#                 vt_=vt_.get()
+#             except:
+#                 pass
             
-            vt_ = vt.data
-            idx = vt.indices
-            W_WT1_ = W_WT1[:, idx]
-            W_ = W[:, idx]
+#             vt_ = vt.data
+#             idx = vt.indices
+#             W_WT1_ = W_WT1[:, idx]
+#             W_ = W[:, idx]
             
 
-            for n_iter_ in range(max_iter):
-                R=np.dot(ht, W_)
-                S=np.multiply(vt_,np.reciprocal(R + 1e-10))
-                aux = np.dot(W_WT1_, S)
-                ht_out = np.multiply(ht, aux) + const
-                squared_norm = np.multiply(np.dot(ht_out - ht, ht_out - ht), np.reciprocal(np.dot(ht, ht)))
-                squared_norm_mask = squared_norm > squared_epsilon
-                ht[squared_norm_mask] = ht_out[squared_norm_mask]
-                if not np.any(squared_norm_mask):
-                    break
+            # for n_iter_ in range(max_iter):
+            #     R=np.dot(ht, W_)
+            #     S=np.multiply(vt_,np.reciprocal(R + 1e-10))
+            #     aux = np.dot(W_WT1_, S)
+            #     ht_out = np.multiply(ht, aux) + const
+            #     squared_norm = np.multiply(np.dot(ht_out - ht, ht_out - ht), np.reciprocal(np.dot(ht, ht)))
+            #     squared_norm_mask = squared_norm > squared_epsilon
+            #     ht[squared_norm_mask] = ht_out[squared_norm_mask]
+            #     if not np.any(squared_norm_mask):
+            #         break
     return Ht
 
 def _multiplicative_update_h_smallfast(
@@ -1331,38 +1281,3 @@ def batch_lookup(
         indices = lookup[slice(idx, min(idx + n, len_iter))]
         unq_indices = np.unique(indices)
         yield unq_indices, indices
-
-
-def get_kmeans_prototypes(
-    X,
-    n_prototypes: int,
-    analyzer: Literal["word", "char", "char_wb"] = "char",
-    hashing_dim: int = 128,
-    ngram_range: Tuple[int, int] = (2, 4),
-    sparse: bool = False,
-    sample_weight=None,
-    random_state: Optional[Union[int, RandomState]] = None,
-):
-    """
-    Computes prototypes based on:
-      - dimensionality reduction (via hashing n-grams)
-      - k-means clustering
-      - nearest neighbor
-    """
-    vectorizer = self._HV(
-        analyzer=analyzer,
-        norm=None,
-        alternate_sign=False,
-        ngram_range=ngram_range,
-        n_features=hashing_dim,
-    )
-    projected = vectorizer.transform(X)
-    if not sparse:
-        projected = projected.toarray()
-    kmeans = KMeans(n_clusters=n_prototypes, random_state=random_state)
-    kmeans.fit(projected, sample_weight=sample_weight)
-    centers = kmeans.cluster_centers_
-    neighbors = NearestNeighbors()
-    neighbors.fit(projected)
-    indexes_prototypes = np.unique(neighbors.kneighbors(centers, 1)[-1])
-    return np.sort(X[indexes_prototypes])
