@@ -345,11 +345,8 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
         unq_H = self._get_H(unq_X)
         unq_V = csr_gpu(unq_V)
         unq_H = cp.array(unq_H); ## redundant
-        
-        # sh=sys.getsizeof(unq_H.get())/1e6
-        # sw=sys.getsizeof(self.W_.get())/1e6
-        sh=len(unq_H.get().flatten())
-        sw=len(self.W_.get().flatten())
+        sh=len(unq_H)
+        sw=len(self.W_)
         
         logger.info(f"req gpu mem for fit=  `{(24*sh*sw)/1e6}`, free sys gmem= `{self.gmem}`")
         for n_iter_ in range(self.max_iter):
@@ -393,9 +390,8 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
                         logger.debug(f"keeping on gpu via cupy")
                     # Loop over batches
                 else:
-                    print('shit - numpy')
                     if hasattr(unq_H, 'device') or 'cupy' in W_type:
-                        unq_V=unq_V.get();unq_H=unq_H.get();
+                        # unq_V=unq_V.get();unq_H=unq_H.get();
                         logger.debug(f"force numpy fit")
                 for i, (unq_idx, idx) in enumerate(batch_lookup(lookup, n=self.batch_size)):
                     if i == n_batch - 1:
@@ -568,8 +564,8 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
         
         # sh=sys.getsizeof(unq_H.get())/1e6
         # sw=sys.getsizeof(self.W_.get())/1e6
-        sh=len(unq_H.get().flatten())
-        sw=len(self.W_.get().flatten())
+        sh=len(unq_H)
+        sw=len(self.W_)
         
         # Loop over batches
         logger.info(f"req gpu mem for transform =  `{(24*sh*sw)/1e6}`, free sys gmem = `{self.gmem}`")
@@ -596,8 +592,7 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
                     self.W_=self.W_.to_cupy(); unq_V=unq_V.to_cupy();unq_H=unq_H.to_cupy();
                     logger.debug(f"kept on gpu via cupy")
             else:
-                print('shit - numpy trans')
-                self.W_=self.W_.get();
+                # self.W_=self.W_.get();
                 if hasattr(unq_H, 'device') or 'cupy' in W_type or self.engine !='cuml':
                     logger.debug(f"force numpy transform")
             for slc in gen_batches(n=unq_H.shape[0], batch_size=self.batch_size):
@@ -1261,7 +1256,6 @@ def _multiplicative_update_h_smallfast(
     for n_iter_ in range(max_iter):
         if squared_norm <= squared_epsilon:
             break
-        print(['Ht:',sys.getsizeof(Ht.get())/1e6,'W:',sys.getsizeof(W.get())/1e6])
         C=Vt.multiply( cp.reciprocal(cp.matmul(Ht, W) + 1e-10)) ##sparse now
         aux=C.dot(W_WT1)
         ht_out = cp.multiply(Ht,aux) + const
