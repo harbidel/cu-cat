@@ -452,13 +452,13 @@ class TableVectorizer(ColumnTransformer):
             if not pd.api.types.is_datetime64_any_dtype(X[col]):
                 # we don't want to cast datetime64
                 try:
-                    X[col] = pd.to_numeric(X[col], errors="raise")
+                    X[col] = pd.to_numeric(X[col], errors="coerce")
                 except (ValueError, TypeError):
                     # Only try to convert to datetime
                     # if the variable isn't numeric.
                     try:
                         X[col] = cudf.to_datetime(
-                            X[col], errors="raise", infer_datetime_format=True
+                            X[col], errors="coerce", infer_datetime_format=True
                         )
                     except (ValueError, TypeError):
                         pass
