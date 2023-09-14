@@ -348,9 +348,9 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
         sh=len(unq_H)
         sw=len(self.W_)
         
-        logger.info(f"req gpu mem for fit=  `{(24*sh*sw)/1e6}`, free sys gmem= `{self.gmem}`")
+        logger.info(f"req gpu mem for fit=  `{(8*sh*sw)/1e3}`, free sys gmem= `{self.gmem}`")
         for n_iter_ in range(self.max_iter):
-            if ((24*sh*sw)/1e6)<self.gmem and self.engine =='cuml':
+            if ((8*sh*sw)/1e3)<self.gmem and self.engine =='cuml':
                 logger.debug(f"fitting smallfast-wise")
                 W_type = df_type(self.W_)
                 if 'cudf' not in W_type and 'cupy' not in W_type:
@@ -381,7 +381,7 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
                 )
             else:
                 W_type = df_type(self.W_)
-                if self.engine =='cuml' and ((24*sh*sw)/1e6)>self.gmem:
+                if self.engine =='cuml' and ((8*sh*sw)/1e3)>self.gmem:
                     if 'cudf' not in W_type and 'cupy' not in W_type:
                         self.W_= cp.array(self.W_);self.B_= cp.array(self.B_);self.A_= cp.array(self.A_);
                         logger.debug(f"moving to cupy")
@@ -562,14 +562,14 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
         self._add_unseen_keys_to_H_dict(unq_X) ### need to get this back for transforming obviously
         unq_H = self._get_H(unq_X)
         
-        # sh=sys.getsizeof(unq_H.get())/1e6
-        # sw=sys.getsizeof(self.W_.get())/1e6
+        # sh=sys.getsizeof(unq_H.get())/1e3
+        # sw=sys.getsizeof(self.W_.get())/1e3
         sh=len(unq_H)
         sw=len(self.W_)
         
         # Loop over batches
-        logger.info(f"req gpu mem for transform =  `{(24*sh*sw)/1e6}`, free sys gmem = `{self.gmem}`")
-        if self.engine == 'cuml' and ((24*sh*sw)/1e6)<self.gmem:
+        logger.info(f"req gpu mem for transform =  `{(8*sh*sw)/1e3}`, free sys gmem = `{self.gmem}`")
+        if self.engine == 'cuml' and ((8*sh*sw)/1e3)<self.gmem:
             logger.debug(f"smallfast transform")
             unq_H = _multiplicative_update_h_smallfast(
                     unq_V,
@@ -583,7 +583,7 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
                 )
         else:
             W_type = df_type(self.W_)
-            if self.engine == 'cuml' and ((24*sh*sw)/1e6)>self.gmem:
+            if self.engine == 'cuml' and ((8*sh*sw)/1e3)>self.gmem:
                 logger.debug(f"cupy transform")
                 if 'cudf' not in W_type and 'cupy' not in W_type:
                     self.W_=cp.array(self.W_);unq_V=csr_gpu(unq_V);unq_H=cp.array(unq_H);
