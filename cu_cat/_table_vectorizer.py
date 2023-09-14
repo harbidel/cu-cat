@@ -454,6 +454,7 @@ class TableVectorizer(ColumnTransformer):
                 try:
                     X[col] = pd.to_numeric(X[col], errors="raise")
                 except (ValueError, TypeError):
+                    pass
                     # Only try to convert to datetime
                     # if the variable isn't numeric.
                     # try:
