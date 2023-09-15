@@ -381,7 +381,7 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
                 )
             else:
                 W_type = df_type(self.W_)
-                if self.engine =='cuml' and ((8*sh*sw)/1e3)>self.gmem:
+                if self.engine =='cuml' and ((8*sh*sw)/1e3)>self.gmem and ((8*sh)/1e3)<self.gmem and ((8*sw)/1e3)<self.gmem:
                     if 'cudf' not in W_type and 'cupy' not in W_type:
                         self.W_= cp.array(self.W_);self.B_= cp.array(self.B_);self.A_= cp.array(self.A_);
                         logger.debug(f"moving to cupy")
@@ -390,8 +390,8 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
                         logger.debug(f"keeping on gpu via cupy")
                     # Loop over batches
                 else:
-                    if hasattr(unq_H, 'device') or 'cupy' in W_type:
-                        # unq_V=unq_V.get();unq_H=unq_H.get();
+                    if hasattr(unq_H, 'device') or 'cupy' in W_type and (((8*sh)/1e3)>self.gmem or ((8*sw)/1e3)>self.gmem):
+                        unq_V=unq_V.get();unq_H=unq_H.get();
                         logger.debug(f"force numpy fit")
                 for i, (unq_idx, idx) in enumerate(batch_lookup(lookup, n=self.batch_size)):
                     if i == n_batch - 1:
@@ -583,7 +583,7 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
                 )
         else:
             W_type = df_type(self.W_)
-            if self.engine == 'cuml' and ((8*sh*sw)/1e3)>self.gmem:
+            if self.engine =='cuml' and ((8*sh*sw)/1e3)>self.gmem and ((8*sh)/1e3)<self.gmem and ((8*sw)/1e3)<self.gmem:
                 logger.debug(f"cupy transform")
                 if 'cudf' not in W_type and 'cupy' not in W_type:
                     self.W_=cp.array(self.W_);unq_V=csr_gpu(unq_V);unq_H=cp.array(unq_H);
@@ -592,8 +592,8 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
                     self.W_=self.W_.to_cupy(); unq_V=unq_V.to_cupy();unq_H=unq_H.to_cupy();
                     logger.debug(f"kept on gpu via cupy")
             else:
-                # self.W_=self.W_.get();
-                if hasattr(unq_H, 'device') or 'cupy' in W_type or self.engine !='cuml':
+                if hasattr(unq_H, 'device') or 'cupy' in W_type and (((8*sh)/1e3)>self.gmem or ((8*sw)/1e3)>self.gmem):
+                    self.W_=self.W_.get();
                     logger.debug(f"force numpy transform")
             for slc in gen_batches(n=unq_H.shape[0], batch_size=self.batch_size):
                 # Given the learnt topics W, optimize H to fit V = HW
@@ -1053,35 +1053,35 @@ def _multiplicative_update_w(
         # cp._default_memory_pool.free_all_blocks()
         gc.collect()
         
-    # else: # self.engine!='cuml':
-    #     try:
-    #         W=W.get()
-    #     except:
-    #         pass
-    #     try:
-    #         Ht=Ht.get()
-    #     except:
-    #         pass
-    #     try:
-    #         Vt=Vt.get()
-    #     except:
-    #         pass
-    #     try:
-    #         A=A.get()
-    #     except:
-    #         pass
-    #     try:
-    #         B=B.get()
-    #     except:
-    #         pass
-    #     A *= rho
-    #     A += np.multiply(W, safe_sparse_dot(Ht.T, Vt.multiply(1 / (np.dot(Ht, W) + 1e-10))))
-    #     B *= rho
-    #     B += Ht.sum(axis=0).reshape(-1, 1)
-    #     W=np.multiply(A, np.reciprocal(B))#, out=W)
-    #     if rescale_W:
-    #         _rescale_W(W, A)
-    return W,A,B #cp.array(W), cp.array(A), cp.array(B)
+    else: # self.engine!='cuml':
+        try:
+            W=W.get()
+        except:
+            pass
+        try:
+            Ht=Ht.get()
+        except:
+            pass
+        try:
+            Vt=Vt.get()
+        except:
+            pass
+        try:
+            A=A.get()
+        except:
+            pass
+        try:
+            B=B.get()
+        except:
+            pass
+        A *= rho
+        A += np.multiply(W, safe_sparse_dot(Ht.T, Vt.multiply(1 / (np.dot(Ht, W) + 1e-10))))
+        B *= rho
+        B += Ht.sum(axis=0).reshape(-1, 1)
+        W=np.multiply(A, np.reciprocal(B))#, out=W)
+        if rescale_W:
+            _rescale_W(W, A)
+    return cp.array(W), cp.array(A), cp.array(B)
 
 def _multiplicative_update_w_smallfast(
     Vt: np.array,
@@ -1172,7 +1172,7 @@ def _multiplicative_update_h(
         del Vt,W_,W_WT1,ht,ht_out,vt,vt_
         # cp._default_memory_pool.free_all_blocks()
         gc.collect()
-    # else:
+    else:
         
         # for vt, ht in zip(Vt, Ht):
         #     vt_ = vt.data
@@ -1188,45 +1188,45 @@ def _multiplicative_update_h(
         #         squared_norm = np.multiply(np.dot(ht_out - ht, ht_out - ht), np.reciprocal(np.dot(ht, ht)))
         #         ht[:] = ht_out
         
-#         for vt, ht in zip(Vt, Ht):
+        for vt, ht in zip(Vt, Ht):
             
-#             try:
-#                 idx=idx.get()
-#             except:
-#                 pass
-#             try:
-#                 W_WT1=W_WT1.get()
-#             except:
-#                 pass
-#             try:
-#                 W=W.get()
-#             except:
-#                 pass
-#             try:
-#                 ht=ht.get()
-#             except:
-#                 pass
-#             try:
-#                 vt_=vt_.get()
-#             except:
-#                 pass
+            try:
+                idx=idx.get()
+            except:
+                pass
+            try:
+                W_WT1=W_WT1.get()
+            except:
+                pass
+            try:
+                W=W.get()
+            except:
+                pass
+            try:
+                ht=ht.get()
+            except:
+                pass
+            try:
+                vt_=vt_.get()
+            except:
+                pass
             
-#             vt_ = vt.data
-#             idx = vt.indices
-#             W_WT1_ = W_WT1[:, idx]
-#             W_ = W[:, idx]
+            vt_ = vt.data
+            idx = vt.indices
+            W_WT1_ = W_WT1[:, idx]
+            W_ = W[:, idx]
             
 
-            # for n_iter_ in range(max_iter):
-            #     R=np.dot(ht, W_)
-            #     S=np.multiply(vt_,np.reciprocal(R + 1e-10))
-            #     aux = np.dot(W_WT1_, S)
-            #     ht_out = np.multiply(ht, aux) + const
-            #     squared_norm = np.multiply(np.dot(ht_out - ht, ht_out - ht), np.reciprocal(np.dot(ht, ht)))
-            #     squared_norm_mask = squared_norm > squared_epsilon
-            #     ht[squared_norm_mask] = ht_out[squared_norm_mask]
-            #     if not np.any(squared_norm_mask):
-            #         break
+            for n_iter_ in range(max_iter):
+                R=np.dot(ht, W_)
+                S=np.multiply(vt_,np.reciprocal(R + 1e-10))
+                aux = np.dot(W_WT1_, S)
+                ht_out = np.multiply(ht, aux) + const
+                squared_norm = np.multiply(np.dot(ht_out - ht, ht_out - ht), np.reciprocal(np.dot(ht, ht)))
+                squared_norm_mask = squared_norm > squared_epsilon
+                ht[squared_norm_mask] = ht_out[squared_norm_mask]
+                if not np.any(squared_norm_mask):
+                    break
     return Ht
 
 def _multiplicative_update_h_smallfast(
