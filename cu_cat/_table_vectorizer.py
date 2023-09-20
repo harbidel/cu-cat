@@ -750,9 +750,9 @@ class TableVectorizer(ColumnTransformer):
             Feature names.
         """
         if parse_version(sklearn_version) < parse_version("1.0"):
-            ct_feature_names = super().get_feature_names_out()
-        else:
             ct_feature_names = super().get_feature_names()
+        else:
+            ct_feature_names = super().get_feature_names_out()
         all_trans_feature_names = []
 
         for name, trans, cols, _ in self._iter(fitted=True):
@@ -767,9 +767,9 @@ class TableVectorizer(ColumnTransformer):
                     all_trans_feature_names.extend(cols)
                 continue
             if parse_version(sklearn_version) < parse_version("1.0"):
-                trans_feature_names = trans.get_feature_names_out(cols)
-            else:
                 trans_feature_names = trans.get_feature_names(cols)
+            else:
+                trans_feature_names = trans.get_feature_names_out(cols)
             all_trans_feature_names.extend(trans_feature_names)
 
         if len(ct_feature_names) != len(all_trans_feature_names):
@@ -777,22 +777,6 @@ class TableVectorizer(ColumnTransformer):
             return list(ct_feature_names)
 
         return all_trans_feature_names
-
-    def get_feature_names(self, input_features=None) -> List[str]:
-        """
-        Ensures compatibility with sklearn < 1.0.
-        Use `get_feature_names_out` instead.
-        """
-        # if parse_version(sklearn_version) >= parse_version("1.0"):
-        #     warn(
-        #         "Following the changes in scikit-learn 1.0, "
-        #         "get_feature_names is deprecated. "
-        #         "Use get_feature_names_out instead. ",
-        #         DeprecationWarning,
-        #         stacklevel=2,
-        #     )
-        return self.get_feature_names_out(input_features)
-
 
 @deprecated("use TableVectorizer instead.")
 class SuperVectorizer(TableVectorizer):

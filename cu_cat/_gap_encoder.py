@@ -915,7 +915,7 @@ class GapEncoder(BaseEstimator, TransformerMixin):
             self.fitted_models_ = []
             for k in range(X.shape[1]):
                 col_enc = self._create_column_gap_encoder()
-                self.fitted_models_.append(col_enc.fit(X.iloc[:,k]))
+                self.fitted_models_.append(col_enc.fit(X.iloc[:, k]))
             
         return self
 
