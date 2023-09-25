@@ -2,7 +2,7 @@ from inspect import ismodule
 
 import pytest
 
-from skrub._utils import LRUDict, import_optional_dependency
+from cu_cat._utils import LRUDict, import_optional_dependency
 
 
 def test_lrudict():

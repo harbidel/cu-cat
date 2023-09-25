@@ -3,9 +3,9 @@ from types import ModuleType
 
 import pandas as pd
 
-import skrub.dataframe._pandas as skrub_pd
-import skrub.dataframe._polars as skrub_pl
-from skrub.dataframe._types import DataFrameLike
+import cu_cat.dataframe._pandas as skrub_pd
+import cu_cat.dataframe._polars as skrub_pl
+from cu_cat.dataframe._types import DataFrameLike
 
 
 def is_pandas(dataframe: DataFrameLike) -> bool:
@@ -51,7 +51,7 @@ def get_df_namespace(
     """Get the namespaces of dataframes.
 
     Introspects dataframes and returns their skrub namespace object
-    ``skrub.dataframe._{pandas, polars}`` and the dataframe module
+    ``cu_cat.dataframe._{pandas, polars}`` and the dataframe module
     ``{polars, pandas}`` itself.
 
     The dataframes passed in input need to come from the same module, otherwise a

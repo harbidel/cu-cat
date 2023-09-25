@@ -7,7 +7,7 @@ This folder contains benchmarks used by the skrub maintainers to:
 - Validate decisions based on empirical evidence
 - Tune (hyper)parameters in the library
 
-These benchmarks do not aim at replacing the tests within skrub.
+These benchmarks do not aim at replacing the tests within cu_cat.
 
 ## Implementing a benchmark
 

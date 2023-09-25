@@ -2,7 +2,7 @@ import pandas as pd
 import pytest
 from pandas.testing import assert_frame_equal
 
-from skrub.dataframe._pandas import aggregate, join
+from cu_cat.dataframe._pandas import aggregate, join
 
 main = pd.DataFrame(
     {

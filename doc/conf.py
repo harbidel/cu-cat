@@ -156,9 +156,9 @@ html_theme = "pydata_sphinx_theme"
 # documentation.
 html_theme_options = {
     "logo": {
-        "image_relative": "_static/skrub.svg",
-        "image_light": "_static/skrub.svg",
-        "image_dark": "_static/skrub.svg",
+        "image_relative": "_static/cu_cat.svg",
+        "image_light": "_static/cu_cat.svg",
+        "image_dark": "_static/cu_cat.svg",
     },
     # "external_links": [
     #     {
@@ -235,7 +235,7 @@ html_js_files = []
 
 
 # Project logo, to place at the top of the sidebar.
-html_logo = "_static/skrub.svg"
+html_logo = "_static/cu_cat.svg"
 
 
 # Modify the title to get good social-media links
@@ -271,7 +271,7 @@ latex_elements = {
 latex_documents = [
     (
         master_doc,
-        "skrub.tex",
+        "cu_cat.tex",
         "skrub Documentation",
         "skrub developers",
         "manual",
@@ -436,7 +436,7 @@ if with_jupyterlite:
 
 # -- sphinx.ext.opengraph configuration ---------------------------------------
 ogp_site_url = "https://skrub-data.github.io/stable/"
-ogp_image = "https://skrub-data.github.io/stable/_static/skrub.svg"
+ogp_image = "https://skrub-data.github.io/stable/_static/cu_cat.svg"
 ogp_use_first_image = True
 ogp_site_name = "skrub"
 
@@ -491,20 +491,20 @@ numpydoc_xref_aliases = {
     "read_csv": "pandas.read_csv",
     "pandas.merge": "pandas.merge",
     # Skrub
-    "fetch_ken_table_aliases": "skrub.datasets.fetch_ken_table_aliases",
-    "fetch_ken_types": "skrub.datasets.fetch_ken_types",
-    "fetch_ken_embeddings": "skrub.datasets.fetch_ken_embeddings",
-    "fuzzy_join": "skrub.fuzzy_join",
-    "Joiner": "skrub.Joiner",
-    "GapEncoder": "skrub.GapEncoder",
-    "MinHashEncoder": "skrub.MinHashEncoder",
-    "SimilarityEncoder": "skrub.SimilarityEncoder",
-    "DatetimeEncoder": "skrub.DatetimeEncoder",
-    "deduplicate": "skrub.deduplicate",
-    "TableVectorizer": "skrub.TableVectorizer",
-    "DatasetInfoOnly": "skrub.datasets._fetching.DatasetInfoOnly",
-    "DatasetAll": "skrub.datasets._fetching.DatasetAll",
-    "_replace_false_missing": "skrub._table_vectorizer._replace_false_missing",
+    "fetch_ken_table_aliases": "cu_cat.datasets.fetch_ken_table_aliases",
+    "fetch_ken_types": "cu_cat.datasets.fetch_ken_types",
+    "fetch_ken_embeddings": "cu_cat.datasets.fetch_ken_embeddings",
+    "fuzzy_join": "cu_cat.fuzzy_join",
+    "Joiner": "cu_cat.Joiner",
+    "GapEncoder": "cu_cat.GapEncoder",
+    "MinHashEncoder": "cu_cat.MinHashEncoder",
+    "SimilarityEncoder": "cu_cat.SimilarityEncoder",
+    "DatetimeEncoder": "cu_cat.DatetimeEncoder",
+    "deduplicate": "cu_cat.deduplicate",
+    "TableVectorizer": "cu_cat.TableVectorizer",
+    "DatasetInfoOnly": "cu_cat.datasets._fetching.DatasetInfoOnly",
+    "DatasetAll": "cu_cat.datasets._fetching.DatasetAll",
+    "_replace_false_missing": "cu_cat._table_vectorizer._replace_false_missing",
 }
 
 # -- sphinx.ext.autodoc configuration -----------------------------------------
@@ -512,7 +512,7 @@ numpydoc_xref_aliases = {
 autodoc_typehints = "none"
 
 # -- sphinx_favicon configuration ---------------------------------------------
-favicons = {"rel": "icon", "href": "_static/skrub.svg", "type": "image/svg+xml"}
+favicons = {"rel": "icon", "href": "_static/cu_cat.svg", "type": "image/svg+xml"}
 
 # -- github links -------------------------------------------------------------
 

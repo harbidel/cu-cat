@@ -1,9 +1,9 @@
 import pandas as pd
 import pytest
 
-import skrub.dataframe._pandas as skrub_pd
-import skrub.dataframe._polars as skrub_pl
-from skrub.dataframe import POLARS_SETUP, get_df_namespace
+import cu_cat.dataframe._pandas as skrub_pd
+import cu_cat.dataframe._polars as skrub_pl
+from cu_cat.dataframe import POLARS_SETUP, get_df_namespace
 
 main = pd.DataFrame(
     {

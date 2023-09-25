@@ -9,7 +9,7 @@ from typing import Iterable
 import numpy as np
 import pandas as pd
 
-from skrub._utils import atleast_1d_or_none
+from cu_cat._utils import atleast_1d_or_none
 
 
 def aggregate(

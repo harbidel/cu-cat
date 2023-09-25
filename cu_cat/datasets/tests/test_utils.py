@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from skrub.datasets._utils import get_data_dir, get_data_home
+from cu_cat.datasets._utils import get_data_dir, get_data_home
 
 
 @pytest.mark.parametrize("data_home_type", ["string", "path"])

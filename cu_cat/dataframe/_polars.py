@@ -3,7 +3,7 @@ Polars specialization of the aggregate and join operations.
 """
 from typing import Iterable
 
-from skrub.dataframe._types import POLARS_SETUP, DataFrameLike
+from cu_cat.dataframe._types import POLARS_SETUP, DataFrameLike
 
 if POLARS_SETUP:
     import polars as pl
@@ -11,7 +11,7 @@ if POLARS_SETUP:
 
 from itertools import product
 
-from skrub._utils import atleast_1d_or_none
+from cu_cat._utils import atleast_1d_or_none
 
 
 def aggregate(

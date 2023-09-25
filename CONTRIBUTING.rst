@@ -110,7 +110,7 @@ Let maintainers know whether:
 If the enhancement is refused
 '''''''''''''''''''''''''''''
 
-There are specific incentives behind skrub. While most enhancement
+There are specific incentives behind cu_cat. While most enhancement
 ideas are good, they don't always fit in the context of the library.
 
 If you'd like to implement your idea regardless, we'd be very glad if

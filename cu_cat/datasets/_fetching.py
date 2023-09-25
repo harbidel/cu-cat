@@ -26,8 +26,8 @@ from sklearn import __version__ as sklearn_version
 from sklearn.datasets import fetch_openml
 from sklearn.datasets._base import _sha256
 
-from skrub._utils import import_optional_dependency, parse_version
-from skrub.datasets._utils import get_data_dir
+from cu_cat._utils import import_optional_dependency, parse_version
+from cu_cat.datasets._utils import get_data_dir
 
 # Ignore lines too long, first docstring lines can't be cut
 # flake8: noqa: E501

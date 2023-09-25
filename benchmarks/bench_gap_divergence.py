@@ -28,7 +28,7 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 
 from argparse import ArgumentParser
-from skrub._gap_encoder import (
+from cu_cat._gap_encoder import (
     GapEncoder,
     GapEncoderColumn,
     _multiplicative_update_h,

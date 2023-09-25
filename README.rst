@@ -1,7 +1,7 @@
 `skrub`
 =======
 
-.. image:: https://skrub-data.github.io/stable/_static/skrub.svg
+.. image:: https://skrub-data.github.io/stable/_static/cu_cat.svg
    :align: center
    :width: 50 %
    :alt: skrub logo
@@ -57,7 +57,7 @@ You can still install the package from the GitHub repository with:
 
 .. code-block:: shell
 
-    pip install git+https://github.com/skrub-data/skrub.git
+    pip install git+https://github.com/skrub-data/cu_cat.git
 
 
 Dependencies

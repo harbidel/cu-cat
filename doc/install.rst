@@ -63,7 +63,7 @@ run the following command in a shell command line:
 
 .. code:: console
 
-    $ pip install git+https://github.com/skrub-data/skrub.git
+    $ pip install git+https://github.com/skrub-data/cu_cat.git
 
 Advanced usage, for contributors
 --------------------------------

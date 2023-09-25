@@ -1,8 +1,8 @@
 import pandas as pd
 import pytest
 
-from skrub.dataframe import POLARS_SETUP
-from skrub.dataframe._polars import aggregate, join
+from cu_cat.dataframe import POLARS_SETUP
+from cu_cat.dataframe._polars import aggregate, join
 
 if POLARS_SETUP:
     import polars as pl

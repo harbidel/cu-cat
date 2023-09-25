@@ -6,7 +6,7 @@ from numpy.typing import ArrayLike, NDArray
 from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.utils.validation import check_is_fitted
 
-from skrub._utils import check_input
+from cu_cat._utils import check_input
 
 # Required for ignoring lines too long in the docstrings
 # flake8: noqa: E501

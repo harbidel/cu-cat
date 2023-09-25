@@ -201,7 +201,7 @@ def deduplicate(
 
     Examples
     --------
-    >>> from skrub.datasets import make_deduplication_data
+    >>> from cu_cat.datasets import make_deduplication_data
     >>> duplicated = make_deduplication_data(examples=['black', 'white'],
                                              entries_per_example=[5, 5],
                                              prob_mistake_per_letter=0.3,

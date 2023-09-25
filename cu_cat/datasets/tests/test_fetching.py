@@ -5,7 +5,7 @@ from urllib.error import URLError
 import pandas as pd
 import pytest
 
-from skrub.datasets import _fetching
+from cu_cat.datasets import _fetching
 
 
 def _has_data_id(call, data_id: int) -> bool:
@@ -18,7 +18,7 @@ def _has_data_id(call, data_id: int) -> bool:
 
 
 @mock.patch(
-    "skrub.datasets._fetching.fetch_openml",
+    "cu_cat.datasets._fetching.fetch_openml",
     side_effect=_fetching.fetch_openml,
 )
 def test_openml_fetching(fetch_openml_mock: mock.Mock):
@@ -77,7 +77,7 @@ def test_openml_datasets_exist():
     )
 
 
-@mock.patch("skrub.datasets._fetching.fetch_openml")
+@mock.patch("cu_cat.datasets._fetching.fetch_openml")
 def test_openml_datasets_calls(fetch_openml_mock: mock.Mock):
     """
     Checks that calling the fetching functions actually calls

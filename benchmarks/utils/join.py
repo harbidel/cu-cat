@@ -1,7 +1,7 @@
 import pandas as pd
 from pathlib import Path
 
-from skrub.datasets._utils import get_data_dir
+from cu_cat.datasets._utils import get_data_dir
 
 
 def get_local_data(
