@@ -1,13 +1,15 @@
-from collections.abc import Callable
+from typing import Callable, Optional
 
 import numpy as np
 import numpy.testing
 import pytest
+from sklearn import __version__ as sklearn_version
 from sklearn.exceptions import NotFittedError
 
-from skrub import SimilarityEncoder
-from skrub._similarity_encoder import ngram_similarity_matrix
-from skrub._string_distances import ngram_similarity
+from cu_cat import SimilarityEncoder
+from cu_cat._similarity_encoder import get_kmeans_prototypes, ngram_similarity_matrix
+from cu_cat._string_distances import ngram_similarity
+from cu_cat._utils import parse_version
 
 
 def test_specifying_categories() -> None:
@@ -48,7 +50,7 @@ def test_fast_ngram_similarity() -> None:
     assert np.allclose(feature_matrix, feature_matrix_fast)
 
 
-def test_parameters() -> None:
+def test_parameters():
     X = [["foo"], ["baz"]]
     X2 = [["foo"], ["bar"]]
     with pytest.raises(ValueError, match=r"Got handle_unknown="):
@@ -67,7 +69,7 @@ def test_parameters() -> None:
         sim.transform(X2)
 
 
-def _test_missing_values(input_type: str, missing: str) -> None:
+def _test_missing_values(input_type, missing):
     observations = [["a", "b"], ["b", "a"], ["b", np.nan], ["a", "c"], [np.nan, "a"]]
     encoded = np.array(
         [
@@ -136,38 +138,101 @@ def _test_missing_values_transform(input_type: str, missing: str) -> None:
 
 def _test_similarity(
     similarity_f: Callable,
-    hashing_dim: int | None = None,
+    hashing_dim: Optional[int] = None,
     categories: str = "auto",
+    n_prototypes: int = None,
 ) -> None:
-    X = np.array(["aa", "aaa", "aaab"]).reshape(-1, 1)
-    X_test = np.array([["Aa", "aAa", "aaa", "aaab", " aaa  c"]]).reshape(-1, 1)
+    if n_prototypes is None:
+        X = np.array(["aa", "aaa", "aaab"]).reshape(-1, 1)
+        X_test = np.array([["Aa", "aAa", "aaa", "aaab", " aaa  c"]]).reshape(-1, 1)
 
-    model = SimilarityEncoder(
-        hashing_dim=hashing_dim,
-        categories=categories,
-        ngram_range=(3, 3),
-    )
+        model = SimilarityEncoder(
+            hashing_dim=hashing_dim,
+            categories=categories,
+            n_prototypes=n_prototypes,
+            ngram_range=(3, 3),
+        )
 
-    X_test_enc = model.fit(X).transform(X_test)
+        encoder = model.fit(X).transform(X_test)
 
-    ans = np.zeros((len(X_test), len(X)))
-    for i, x_t in enumerate(X_test.reshape(-1)):
-        for j, x in enumerate(X.reshape(-1)):
-            ans[i, j] = similarity_f(x_t, x, 3)
-    numpy.testing.assert_almost_equal(X_test_enc, ans)
+        ans = np.zeros((len(X_test), len(X)))
+        for i, x_t in enumerate(X_test.reshape(-1)):
+            for j, x in enumerate(X.reshape(-1)):
+                ans[i, j] = similarity_f(x_t, x, 3)
+        numpy.testing.assert_almost_equal(encoder, ans)
+    else:
+        X = np.array(
+            ["aac", "aaa", "aaab", "aaa", "aaab", "aaa", "aaab", "aaa"]
+        ).reshape(-1, 1)
+        X_test = np.array([["Aa", "aAa", "aaa", "aaab", " aaa  c"]]).reshape(-1, 1)
+
+        if categories == "auto":
+            with pytest.warns(UserWarning, match=r"n_prototypes parameter ignored"):
+                SimilarityEncoder(
+                    categories=categories,
+                    n_prototypes=n_prototypes,
+                )
+        try:
+            model = SimilarityEncoder(
+                hashing_dim=hashing_dim,
+                categories=categories,
+                n_prototypes=n_prototypes,
+                random_state=42,
+                ngram_range=(3, 3),
+            )
+        except ValueError as e:
+            assert (
+                e.__str__()
+                == "n_prototypes expected None or a positive non null integer. "
+            )
+            return
+
+        encoder = model.fit(X).transform(X_test)
+        if n_prototypes == 1:
+            assert model.categories_ == ["aaa"]
+        elif n_prototypes == 2:
+            a = [np.array(["aaa", "aaab"], dtype="<U4")]
+            assert np.array_equal(a, model.categories_)
+        elif n_prototypes == 3:
+            a = [np.array(["aaa", "aaab", "aac"], dtype="<U4")]
+            assert np.array_equal(a, model.categories_)
+
+        ans = np.zeros((len(X_test), len(np.array(model.categories_).reshape(-1))))
+        for i, x_t in enumerate(X_test.reshape(-1)):
+            for j, x in enumerate(np.array(model.categories_).reshape(-1)):
+                ans[i, j] = similarity_f(x_t, x, 3)
+
+        numpy.testing.assert_almost_equal(encoder, ans)
 
 
 def test_similarity_encoder() -> None:
-    _test_similarity(
-        ngram_similarity,
-        categories="auto",
-    )
-    _test_similarity(
-        ngram_similarity,
-        hashing_dim=2**16,
-        categories="auto",
-    )
-    _test_similarity(ngram_similarity, categories="auto")
+    categories = ["auto", "most_frequent", "k-means"]
+    for category in categories:
+        if category == "auto":
+            _test_similarity(
+                ngram_similarity,
+                categories=category,
+                n_prototypes=None,
+            )
+            _test_similarity(
+                ngram_similarity,
+                hashing_dim=2**16,
+                categories=category,
+            )
+            _test_similarity(ngram_similarity, categories=category, n_prototypes=4)
+        else:
+            for i in range(0, 4):
+                _test_similarity(
+                    ngram_similarity,
+                    categories=category,
+                    n_prototypes=i,
+                )
+                _test_similarity(
+                    ngram_similarity,
+                    hashing_dim=2**16,
+                    categories=category,
+                    n_prototypes=i,
+                )
 
     input_types = ["list", "numpy", "pandas"]
     handle_missing = ["aaa", "error", ""]
@@ -177,19 +242,27 @@ def test_similarity_encoder() -> None:
             _test_missing_values_transform(input_type, missing)
 
 
-@pytest.mark.parametrize("analyzer", ["char", "char_wb", "word"])
-def test_ngram_similarity_matrix(analyzer) -> None:
+def test_kmeans_protoypes() -> None:
+    X_test = np.array(["cbbba", "baaac", "accc"])
+    proto = get_kmeans_prototypes(X_test, 3, sparse=True)
+    assert np.array_equal(np.sort(proto), np.sort(X_test))
+    X_test_2 = np.array(["aa", "bb", "cc", "bbb"])
+    with pytest.warns(UserWarning, match=r"number of unique prototypes is lower "):
+        get_kmeans_prototypes(X_test_2, 4)
+
+
+def test_ngram_similarity_matrix() -> None:
     X1 = np.array(["cat1", "cat2", "cat3"])
     X2 = np.array(["cata1", "caat2", "ccat3"])
-    sim = ngram_similarity_matrix(
-        X1, X2, ngram_range=(2, 2), analyzer=analyzer, hashing_dim=5
-    )
+    sim = ngram_similarity_matrix(X1, X2, ngram_range=(2, 2), hashing_dim=5)
     assert sim.shape == (len(X1), len(X2))
 
 
-def test_determinist() -> None:
+def test_reproducibility() -> None:
     sim_enc = SimilarityEncoder(
-        categories="auto",
+        categories="k-means",
+        n_prototypes=10,
+        random_state=435,
     )
     X = np.array([" %s " % chr(i) for i in range(32, 127)]).reshape((-1, 1))
     prototypes = sim_enc.fit(X).categories_[0]
@@ -197,7 +270,7 @@ def test_determinist() -> None:
         assert np.array_equal(prototypes, sim_enc.fit(X).categories_[0])
 
 
-def test_fit_transform() -> None:
+def test_fit_transform():
     X = [["foo"], ["baz"]]
     y = ["foo", "bar"]
     tr1 = SimilarityEncoder().fit_transform(X, y)
@@ -208,11 +281,15 @@ def test_fit_transform() -> None:
 
 
 def test_get_features() -> None:
-    # See https://github.com/skrub-data/skrub/issues/168
-    sim_enc = SimilarityEncoder()
+    # See https://github.com/cu-cat/cu_cat/issues/168
+    sim_enc = SimilarityEncoder(random_state=435)
     X = np.array(["%s" % chr(i) for i in range(32, 127)]).reshape((-1, 1))
     sim_enc.fit(X)
-    assert sim_enc.get_feature_names_out().tolist() == [
+    if parse_version(sklearn_version) < parse_version("1.0"):
+        feature_names = sim_enc.get_feature_names()
+    else:
+        feature_names = sim_enc.get_feature_names_out()
+    assert feature_names.tolist() == [
         "x0_ ",
         "x0_!",
         'x0_"',
@@ -310,8 +387,7 @@ def test_get_features() -> None:
         "x0_~",
     ]
 
-
-def test_check_fitted_super_vectorizer() -> None:
+def test_check_fitted_super_vectorizer():
     """Test that calling transform before fit raises an error"""
     sim_enc = SimilarityEncoder()
     X = np.array(["%s" % chr(i) for i in range(32, 127)]).reshape((-1, 1))
@@ -319,3 +395,23 @@ def test_check_fitted_super_vectorizer() -> None:
         sim_enc.transform(X)
     sim_enc.fit(X)
     sim_enc.transform(X)
+
+
+def test_perf():
+    """Test gpu speed boost and correctness"""
+    askHN = pd.read_csv('https://storage.googleapis.com/cohere-assets/blog/text-clustering/data/askhn3k_df.csv', index_col=0)
+    df = df.sample(1000,replace=False)
+
+    t0 = time()
+    cpu_enc = SimilarityEncoder(random_state=42, engine='cpu')
+    CW=cpu_enc.fit_transform(df)
+    t01=time()-t0
+    t1 = time()
+    gpu_enc = SimilarityEncoder(random_state=42, engine='gpu')
+    GW=gpu_enc.fit_transform(df)
+    t02=time()-t1
+
+    assert(t01 > t02)
+    intersect=np.sum(np.sum(pd.DataFrame(CW)==pd.DataFrame(GW)))
+    union=pd.DataFrame(CW).shape[0]*pd.DataFrame(CW).shape[1]
+    assert(intersect==union)
