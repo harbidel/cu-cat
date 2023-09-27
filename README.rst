@@ -2,7 +2,7 @@
 ===========
 
 `cu_cat` is an end-to-end gpu Python library that encodes categorical variables into machine-learnable numerics.
-It is a cuda accelerated port of what was dirty_cat, now rebranded as `skrub <https://github.com/skrub-data/skrub>`_
+It is a cuda accelerated port of what was dirty_cat, now rebranded as `cu_cat <https://github.com/cu_cat-data/cu_cat>`_
 
 What can `cu_cat` do?
 ------------------------
@@ -38,10 +38,10 @@ cu_cat v 0.04 can be easily installed via `pip`::
 Dependencies
 ~~~~~~~~~~~~
 
-Major dependencies the cuml and cudf libraries, as well as `standard python libraries <https://github.com/skrub-data/skrub/blob/main/setup.cfg>`_
+Major dependencies the cuml and cudf libraries, as well as `standard python libraries <https://github.com/cu_cat-data/cu_cat/blob/main/setup.cfg>`_
 
 Related projects
 ----------------
 
-dirty_cat is now rebranded as part of the sklearn family as `skrub <https://github.com/skrub-data/skrub>`_
+dirty_cat is now rebranded as part of the sklearn family as `cu_cat <https://github.com/cu_cat-data/cu_cat>`_
 

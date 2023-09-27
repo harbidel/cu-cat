@@ -10,7 +10,7 @@ from cu_cat.datasets import fetch_traffic_violations
 from sklearn.model_selection import train_test_split
 from sklearn.ensemble import HistGradientBoostingClassifier
 from sklearn.metrics import roc_auc_score, balanced_accuracy_score
-from skrub import GapEncoder
+from cu_cat import GapEncoder
 from cu_cat._gap_encoder import (
     GapEncoderColumn,
     _beta_divergence,

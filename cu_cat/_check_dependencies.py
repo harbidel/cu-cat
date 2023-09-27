@@ -4,7 +4,7 @@ from packaging.requirements import Requirement
 
 
 def check_dependencies():
-    package_name = "skrub"
+    package_name = "cu_cat"
     package_version = version(package_name)
     requirements = requires(package_name)
 

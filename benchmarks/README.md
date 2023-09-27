@@ -1,8 +1,8 @@
-# skrub benchmarks
+# cu_cat benchmarks
 
 ## Objectives
 
-This folder contains benchmarks used by the skrub maintainers to:
+This folder contains benchmarks used by the cu_cat maintainers to:
 - Experiment on new algorithms
 - Validate decisions based on empirical evidence
 - Tune (hyper)parameters in the library

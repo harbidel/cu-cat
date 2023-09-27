@@ -38,7 +38,7 @@ from cu_cat.datasets._utils import get_data_dir
 # Note: the tree structure is created by ``fetch_openml()``.
 # As of october 2020, this function is annotated as
 # ``Experimental`` so the structure might change in future releases.
-# This path will be concatenated to the skrub data directory,
+# This path will be concatenated to the cu_cat data directory,
 # available via the function ``get_data_dir()``.
 DETAILS_DIRECTORY: str = "openml/openml.org/api/v1/json/data/"
 
@@ -161,7 +161,7 @@ def _fetch_openml_dataset(
         The ID of the dataset to fetch.
     data_directory : pathlib.Path, optional
         The directory where the dataset is stored.
-        By default, a subdirectory "openml" in the skrub data directory.
+        By default, a subdirectory "openml" in the cu_cat data directory.
 
     Returns
     -------
@@ -245,7 +245,7 @@ def _fetch_world_bank_data(
         The ID of the indicator's dataset to fetch.
     data_directory : pathlib.Path, optional
         The directory where the dataset is stored.
-        By default, a subdirectory "world_bank" in the skrub data directory.
+        By default, a subdirectory "world_bank" in the cu_cat data directory.
 
     Returns
     -------
@@ -328,7 +328,7 @@ def _fetch_figshare(
         The ID of the dataset to fetch.
     data_directory : pathlib.Path, optional
         The directory where the dataset is stored.
-        By default, a subdirectory "figshare" in the skrub data directory.
+        By default, a subdirectory "figshare" in the cu_cat data directory.
 
     Returns
     -------
@@ -597,7 +597,7 @@ def _fetch_dataset_as_dataclass(
     pass `load_dataframe=False`.
 
     To save/load the dataset to/from a specific directory,
-    pass `data_directory`. If `None`, uses the default skrub
+    pass `data_directory`. If `None`, uses the default cu_cat
     data directory.
 
     If the dataset doesn't have a target (unsupervised learning or inapplicable),
