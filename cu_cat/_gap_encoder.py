@@ -223,7 +223,9 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
         # Init H_dict_ with empty dict to train from scratch
         self.H_dict_ = dict() #cudf.Series()
         # self.X_dict_ = cudf.Series()
-
+        if parse_version(cuml.__version__) > parse_version("23.04"):
+            X=X.replace('nan',np.nan).fillna('0o0o0') ## must be string w/len >= 3 (otherwise wont pass to gap encoder)
+            
         # Build the n-grams counts matrix unq_V on unique elements of X
         if 'cudf' not in str(getmodule(X)):
             unq_X, lookup = np.unique(X, return_inverse=True)
@@ -338,6 +340,8 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
         # else:
         #     assert isinstance(X.str.lower(), str), "Input data is not string. "
         # Make n-grams counts matrix unq_V
+        if parse_version(cuml.__version__) > parse_version("23.04"):
+            X=X.replace('nan',np.nan).fillna('0o0o0')
         unq_X, unq_V, lookup = self._init_vars(X)
         n_batch = (len(X) - 1) // self.batch_size + 1
         # Get activations unq_H
@@ -551,8 +555,9 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
         check_is_fitted(self, "H_dict_")
         # Check if first item has str or np.str_ type
         # assert isinstance(X[0], str), "Input data is not string. "
+        if parse_version(cuml.__version__) > parse_version("23.04"):
+            X=X.replace('nan',np.nan).fillna('0o0o0')
         unq_X = X.unique() # np.unique(X)
-
         # Build the n-grams counts matrix V for the string data to encode
         unq_V = self.ngrams_count_.transform(unq_X)
         if self.add_words:  # Add words counts
@@ -561,7 +566,6 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
         # Add unseen strings in X to H_dict
         self._add_unseen_keys_to_H_dict(unq_X) ### need to get this back for transforming obviously
         unq_H = self._get_H(unq_X)
-        
         # sh=sys.getsizeof(unq_H.get())/1e3
         # sw=sys.getsizeof(self.W_.get())/1e3
         sh=len(unq_H)
@@ -861,7 +865,7 @@ class GapEncoder(BaseEstimator, TransformerMixin):
                     X[missing_mask] = ""
         else:
             missing_mask = _object_dtype_isnan(X.to_pandas())
-            if sum(missing_mask) != 0:
+            if missing_mask.any(axis=None): # != 0:
                 if self.handle_missing == "error":
                     raise ValueError("Input data contains missing values. ")
                 elif self.handle_missing == "zero_impute":
@@ -897,13 +901,15 @@ class GapEncoder(BaseEstimator, TransformerMixin):
             self.column_names_ = list(X.columns)
         # Check input data shape
         self.Xt_ = df_type(X)
+        # if parse_version(cuml.__version__) > parse_version("23.04"):
+            # X=X.replace('nan',np.nan).fillna('0o0o0')
         if 'cudf' not in self.Xt_ or 'cuml' != self.engine:
             X = check_input(X)
             try:
                 X = X.to_pandas()
             except:
                 pass
-            # X = self._handle_missing(X)
+            X = self._handle_missing(X)
             self.fitted_models_ = []
             
             for k in range(X.shape[1]):
@@ -911,7 +917,7 @@ class GapEncoder(BaseEstimator, TransformerMixin):
                 self.fitted_models_.append(col_enc.fit(X.iloc[:, k]))
         else :
             X = check_input(X)
-            # X = self._handle_missing(X)
+            X = self._handle_missing(X)
             self.fitted_models_ = []
             for k in range(X.shape[1]):
                 col_enc = self._create_column_gap_encoder()
@@ -943,8 +949,9 @@ class GapEncoder(BaseEstimator, TransformerMixin):
         check_is_fitted(self, "fitted_models_")
         # Check input data shape
         X = check_input(X)
-        
-        # X = self._handle_missing(X)
+        # if parse_version(cuml.__version__) > parse_version("23.04"):
+            # X=X.replace('nan',np.nan).fillna('0o0o0')
+        X = self._handle_missing(X)
         X_enc = []
         if 'cudf' in str(getmodule(X)) or 'cuml' == self.engine:
             for k in range(X.shape[1]):

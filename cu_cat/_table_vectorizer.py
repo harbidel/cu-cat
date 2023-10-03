@@ -658,7 +658,7 @@ class TableVectorizer(ColumnTransformer):
             print(f"[TableVectorizer] Assigned transformers: {self.transformers}")
         if 'cudf' in self.Xt_ and 'cudf' not in str(getmodule(X)):
             X=cudf.from_pandas(X)#,nan_as_null=True) ### see how flag acts
-        X = X.fillna(0)
+        X.fillna(0.0,inplace=True)
         if (self.datetime_transformer_ == "passthrough") and (datetime_columns !=[]):
             Z=X.drop(columns=datetime_columns)
             X_enc = super().fit_transform(Z, y)
