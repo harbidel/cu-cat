@@ -48,7 +48,9 @@ cp = deps.cupy
 cuml = deps.cuml
 cudf = deps.cudf
 pyarrow = deps.pyarrow
-csr_gpu = cupyx.scipy.sparse_csr_matrix
+cupyx_ = deps.cupyx
+if cupyx_:
+    from cupyx.scipy.sparse import csr_matrix as csr_gpu
 # import cupy as cp, cudf, pyarrow, cuml
 # from cupyx.scipy.sparse import csr_matrix as csr_gpu
 

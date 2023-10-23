@@ -25,8 +25,8 @@ from cu_cat._utils import parse_version, df_type
 deps = DepManager()
 cuml = deps.cuml
 cudf = deps.cudf
-ColumnTransformer = cuml.compose_ColumnTransformer
-OneHotEncoder = cuml.preprocessing_OneHotEncoder
+ColumnTransformer = cuml.compose.ColumnTransformer
+OneHotEncoder = cuml.preprocessing.OneHotEncoder
 # import cuml,cudf
 # from cuml.compose import ColumnTransformer
 # from cuml.preprocessing import OneHotEncoder

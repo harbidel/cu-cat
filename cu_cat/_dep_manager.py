@@ -5,9 +5,9 @@ class DepManager:
         self.pkgs = {}
 
     def __getattr__(self, pkg:str):
-        if '_' in pkg:
-            module = '.'.join(pkg.split('_')[:-1])
-            name = pkg.split('_')[-1]
+        if '.' in pkg:
+            module = '.'.join(pkg.split('.')[:-1])
+            name = pkg.split('.')[-1]
             self.import_from(module, name)
             try:
                 return self.pkgs[name]
