@@ -23,12 +23,10 @@ If the gpu memory is too small, it will default to serializing dot products on t
 import warnings,sys,gc
 from typing import Dict, Generator, List, Literal, Optional, Tuple, Union
 from inspect import getmodule
-import cupy as cp, cudf, pyarrow, cuml
+
 import numpy as np
 import pandas as pd
 from time import time
-
-from cupyx.scipy.sparse import csr_matrix as csr_gpu
 from numpy.random import RandomState
 from scipy import sparse
 from scipy.sparse import csr_matrix as csr_cpu
@@ -39,11 +37,20 @@ from sklearn.utils import check_random_state, gen_batches
 from sklearn.utils.extmath import row_norms, safe_sparse_dot
 from sklearn.utils.fixes import _object_dtype_isnan
 from sklearn.utils.validation import check_is_fitted
+from sklearn.decomposition._nmf import _beta_divergence
 
 from ._utils import check_input, parse_version, df_type
 import logging
 
-from sklearn.decomposition._nmf import _beta_divergence
+from cu_cat import DepManager
+deps = DepManager()
+cp = deps.cupy
+cuml = deps.cuml
+cudf = deps.cudf
+pyarrow = deps.pyarrow
+csr_gpu = cupyx.scipy.sparse_csr_matrix
+# import cupy as cp, cudf, pyarrow, cuml
+# from cupyx.scipy.sparse import csr_matrix as csr_gpu
 
 # Ignore lines too long, as some things in the docstring cannot be cut.
 # flake8: noqa: E501'
@@ -1029,7 +1036,7 @@ def _multiplicative_update_w(
         # try:
         #     A=A.get()
         # except:
-        #     passrm *
+        #     pass
         # try:
         #     B=B.get()
         # except:

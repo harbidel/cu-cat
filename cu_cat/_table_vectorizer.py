@@ -16,15 +16,22 @@ import sklearn
 from pandas.core.dtypes.base import ExtensionDtype
 from sklearn import __version__ as sklearn_version
 from sklearn.base import TransformerMixin, clone
-from cuml.compose import ColumnTransformer
-from cuml.preprocessing import OneHotEncoder
 from sklearn.utils.deprecation import deprecated
 from sklearn.utils.validation import check_is_fitted
 
-from cu_cat import GapEncoder
+from cu_cat import GapEncoder, DepManager
 from cu_cat._utils import parse_version, df_type
-import cuml,cudf
-cuml.set_global_output_type('cupy')
+
+deps = DepManager()
+cuml = deps.cuml
+cudf = deps.cudf
+ColumnTransformer = cuml.compose_ColumnTransformer
+OneHotEncoder = cuml.preprocessing_OneHotEncoder
+# import cuml,cudf
+# from cuml.compose import ColumnTransformer
+# from cuml.preprocessing import OneHotEncoder
+if cudf:
+    cuml.set_global_output_type('cupy')
 
 # Required for ignoring lines too long in the docstrings
 # flake8: noqa: E501
