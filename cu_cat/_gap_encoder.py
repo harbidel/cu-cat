@@ -1014,10 +1014,10 @@ def _multiplicative_update_w(
         gc.collect()
         
     else:
-        try:
-            W=W.get()
-        except:
-            pass
+        # try:
+        #     W=W.get()
+        # except:
+        #     pass
         try:
             Ht=Ht.get()
         except:
@@ -1026,14 +1026,14 @@ def _multiplicative_update_w(
             Vt=Vt.get()
         except:
             pass
-        try:
-            A=A.get()
-        except:
-            pass
-        try:
-            B=B.get()
-        except:
-            pass
+        # try:
+        #     A=A.get()
+        # except:
+        #     pass
+        # try:
+        #     B=B.get()
+        # except:
+        #     pass
         A *= rho
         A += np.multiply(W, safe_sparse_dot(Ht.T, Vt.multiply(1 / (np.dot(Ht, W) + 1e-10))))
         B *= rho
@@ -1128,18 +1128,18 @@ def _multiplicative_update_h(
 
         for vt, ht in zip(Vt, Ht):
             
-            try:
-                idx=idx.get()
-            except:
-                pass
-            try:
-                W_WT1=W_WT1.get()
-            except:
-                pass
-            try:
-                W=W.get()
-            except:
-                pass
+            # try:
+            #     idx=idx.get()
+            # except:
+            #     pass
+            # try:
+            #     W_WT1=W_WT1.get()
+            # except:
+            #     pass
+            # try:
+            #     W=W.get()
+            # except:
+            #     pass
             try:
                 ht=ht.get()
             except:
