@@ -16,7 +16,6 @@ import sklearn
 from pandas.core.dtypes.base import ExtensionDtype
 from sklearn import __version__ as sklearn_version
 from sklearn.base import TransformerMixin, clone
-# from sklearn.compose import ColumnTransformer
 from cuml.compose import ColumnTransformer
 from cuml.preprocessing import OneHotEncoder
 from sklearn.utils.deprecation import deprecated
@@ -70,10 +69,6 @@ def _replace_false_missing(
         "NaN",
     ]  # taken from pandas.io.parsers (version 1.1.4)
     Xt_= df_type(df)
-    
-    # if isinstance(df, pd.DataFrame):
-    # df=df.astype(object).replace(STR_NA_VALUES + [None, "?", "..."], np.nan)
-    # df=df.astype(object).replace(r"^\s+$", '0', regex=True)  # Replace whitespaces
     if 'cudf' not in Xt_:
         df = df.replace(STR_NA_VALUES + [None, "?", "..."], np.nan)
         df = df.replace(r"^\s+$", np.nan, regex=True)  # Replace whitespaces
@@ -83,10 +78,8 @@ def _replace_false_missing(
             if 'int' in str(df[i].dtype):
                 df[i] = df[i].astype('str')
                 df[i] = df[i].replace(STR_NA_VALUES + [None, "?", "..."], 'None')
-                # df[i] = int(df[i]) #.as_type('int')
             try:
                 df[i]=df[i].str.normalize_spaces()
-                # df[i]=df[i].str.normalize_characters()
             except:
                 df[i]=df[i]
             try:
@@ -101,19 +94,6 @@ def _replace_false_missing(
                 df[i]=cudf.from_pandas(df[i],nan_as_null=False)
             except:
                 pass
-    # if 'cudf' in df_type: ## do this after munging -- before fit/transform
-    #     import cudf
-    #     df=cudf.from_pandas(df)
-        
-    # if 'cudf' in str(getmodule(df)):
-    #     df.astype(object).replace(STR_NA_VALUES + [None, "?", "..."], '0',inplace=True)
-    #     df.astype(object).replace('0', np.nan,inplace=True)
-    #     for i in df.columns:
-    #         try:
-    #             df[i]=df[i].str.normalize_spaces()
-    #             df[i]=df[i].str.normalize_characters()
-    #         except:
-    #             df[i]=df[i]
     return df
 
 
@@ -401,13 +381,6 @@ class TableVectorizer(ColumnTransformer):
         else:
             self.numerical_transformer_ = self.numerical_transformer
 
-        # if isinstance(self.datetime_transformer, sklearn.base.TransformerMixin):
-        #     self.datetime_transformer_ = "passthrough" #clone(self.datetime_transformer)
-        # elif self.datetime_transformer is None:
-        #     self.datetime_transformer_ = "passthrough"
-        # # elif self.datetime_transformer == "remainder":
-        #     # self.datetime_transformer_ = self.remainder
-        # else:
         self.datetime_transformer_ = "passthrough" # self.datetime_transformer
 
         # TODO: check that the provided transformers are valid
@@ -455,14 +428,6 @@ class TableVectorizer(ColumnTransformer):
                     X[col] = pd.to_numeric(X[col], errors="raise")
                 except (ValueError, TypeError):
                     pass
-                    # Only try to convert to datetime
-                    # if the variable isn't numeric.
-                    # try:
-                    #     X[col] = cudf.to_datetime(
-                    #         X[col], errors="raise", infer_datetime_format=True
-                    #     )
-                    # except (ValueError, TypeError):
-                    #     pass
             # Cast pandas dtypes to numpy dtypes
             # for earlier versions of sklearn. FIXME: which ?
             if issubclass(X[col].dtype.__class__, ExtensionDtype):
@@ -665,12 +630,7 @@ class TableVectorizer(ColumnTransformer):
 
         else:
             X_enc = super().fit_transform(X, y)
-        X_enc = cudf.DataFrame(X_enc) #from cuml.arraydata
-        # print(str(getmodule(X_enc)))
-        # X_enc.columns = X_enc.columns.astype('str')
-        # X_enc = X_enc.to_arrow()
-        #cp.array([(item).as_py() for item in X_enc])
-
+        X_enc = cudf.DataFrame(X_enc)
         
         # For the "remainder" columns, the `ColumnTransformer` `transformers_`
         # attribute contains the index instead of the column name,
@@ -723,7 +683,6 @@ class TableVectorizer(ColumnTransformer):
             X.columns = self.columns_
 
         if self.auto_cast:
-            # X = self._auto_cast(X)
             try:
                 X = self._apply_cast(X)
             except:
@@ -760,10 +719,7 @@ class TableVectorizer(ColumnTransformer):
                 if trans == "drop":
                     continue
                 elif trans == "passthrough":
-                    # for col in cols:
-                        # print(self.columns_)
                     cols = self.columns_.to_list()
-                        # cols = [self.columns_[i] for i in cols]
                     all_trans_feature_names.extend(cols)
                 continue
             if parse_version(sklearn_version) > parse_version("1.0"):
