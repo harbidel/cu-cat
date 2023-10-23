@@ -1029,7 +1029,7 @@ def _multiplicative_update_w(
         # try:
         #     A=A.get()
         # except:
-        #     pass
+        #     passrm *
         # try:
         #     B=B.get()
         # except:
