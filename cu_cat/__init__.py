@@ -18,6 +18,7 @@ except ModuleNotFoundError:
 # from ._deduplicate import compute_ngram_distance, deduplicate
 # from ._feature_augmenter import FeatureAugmenter
 # from ._fuzzy_join import fuzzy_join
+from ._dep_manager import DepManager
 from ._gap_encoder import GapEncoder
 # from ._minhash_encoder import MinHashEncoder
 # from ._similarity_encoder import SimilarityEncoder
