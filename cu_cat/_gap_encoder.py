@@ -44,11 +44,11 @@ import subprocess as sp
 
 from cu_cat import DepManager
 deps = DepManager()
-
+pyarrow = deps.pyarrow
 # sklearn = deps.sklearn
 
 # import cupy as cp, cudf, pyarrow, cuml
-# from cupyx.scipy.sparse import csr_matrix as csr_gpu
+# from cupyx.scipy.sparse import csr_matrix as csr
 
 # Ignore lines too long, as some things in the docstring cannot be cut.
 # flake8: noqa: E501'
@@ -122,18 +122,22 @@ def resolve_engine(
         cuml = deps.cuml  ## for cuml to run gap_encoder, following need to be loaded
         cp = deps.cupy
         cudf = deps.cudf
-        pyarrow = deps.pyarrow
         sklearn = deps.sklearn
         cupyx_ = deps.cupyx
-        if cuml and cp and cudf and pyarrow and cupyx_:
+        if cuml and cp and cudf and cupyx_:
             from cupyx.scipy import sparse
-            from cupyx.scipy.sparse import csr_matrix as csr_gpu
+            from cupyx.scipy.sparse import csr_matrix as csr
             cuml.set_global_output_type('cupy')
-            return 'cuml'
-        elif sklearn:
+            # return 'cuml'
+            return 'cuml',cuml,cp,csr,sparse,cudf
+
+        else:
             from scipy import sparse
-            from scipy.sparse import csr_matrix as csr_cpu
-            return 'sklearn'
+            from scipy.sparse import csr_matrix as csr
+            cp = deps.numpy
+            # return 'sklearn'
+            return 'sklearn',sklearn,cp,csr,sparse,cudf
+
 
     raise ValueError(  # noqa
         f'engine expected to be "auto", '
@@ -141,6 +145,7 @@ def resolve_engine(
         f"but received: {engine} :: {type(engine)}"
     )
 
+engine_,engine,cp,csr,sparse,cudf=resolve_engine('auto')
 
 class GapEncoderColumn(BaseEstimator, TransformerMixin):
 
@@ -174,11 +179,11 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
         
         engine_resolved = resolve_engine(engine)
         # FIXME remove as set_new_kwargs will always replace?
-        if engine_resolved == 'sklearn':
+        if  'sklearn' in engine_resolved:
             # _, _, engine = lazy_sklearn_import_has_dependancy()
             engine = deps.sklearn
             from sklearn.feature_extraction.text import CountVectorizer,HashingVectorizer
-        elif engine_resolved == 'cuml':
+        elif 'cuml' in engine_resolved:
             # _, _, engine, gmem = lazy_cuml_import_has_dependancy()
             engine = deps.cuml
             from cuml.feature_extraction.text import CountVectorizer,HashingVectorizer
@@ -351,7 +356,7 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
         # Get activations unq_H
         del X
         unq_H = self._get_H(unq_X)
-        unq_V = csr_gpu(unq_V)
+        unq_V = csr(unq_V)
         unq_H = cp.array(unq_H); # redundant
         sh=len(unq_H)
         sw=len(self.W_)
@@ -582,7 +587,7 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
             if self.engine =='cuml' and ((8*sh*sw)/1e3)>self.gmem and ((8*sh)/1e3)<self.gmem and ((8*sw)/1e3)<self.gmem:
                 logger.debug(f"cupy transform")
                 if 'cudf' not in W_type and 'cupy' not in W_type:
-                    self.W_=cp.array(self.W_);unq_V=csr_gpu(unq_V);unq_H=cp.array(unq_H);
+                    self.W_=cp.array(self.W_);unq_V=csr(unq_V);unq_H=cp.array(unq_H);
                     logger.debug(f"moving to cupy")
                 if 'cudf' in W_type:
                     self.W_=self.W_.to_cupy(); unq_V=unq_V.to_cupy();unq_H=unq_H.to_cupy();
@@ -775,16 +780,17 @@ class GapEncoder(BaseEstimator, TransformerMixin):
     ):
         engine_resolved = resolve_engine(engine)
         # FIXME remove as set_new_kwargs will always replace?
-        if engine_resolved == 'sklearn':
+        if 'sklearn' in engine_resolved:
             engine = deps.sklearn
-            math = deps.numpy
+            # math = deps.numpy
+            cp = deps.numpy
             # _, _, engine = lazy_sklearn_import_has_dependancy()
             from sklearn.feature_extraction.text import CountVectorizer,HashingVectorizer
-        elif engine_resolved == 'cuml':
+        elif 'cuml' in engine_resolved:
             # _, _, engine, gmem = lazy_cuml_import_has_dependancy()
             engine = deps.cuml
             gmem = get_gpu_memory()
-            math = deps.cupy
+            # math = deps.cupy
             from cuml.feature_extraction.text import CountVectorizer,HashingVectorizer
         
         self.ngram_range = ngram_range
@@ -809,7 +815,7 @@ class GapEncoder(BaseEstimator, TransformerMixin):
         self._CV = CountVectorizer
         self._HV = HashingVectorizer
         self.engine = engine_resolved
-        self.math = math
+        # self.math = math
         self.gmem = gmem[0]
 
 
@@ -1217,7 +1223,7 @@ def _multiplicative_update_h_smallfast(
     squared_epsilon = epsilon #**2
 
     squared_norm = 1
-    Vt=csr_gpu(Vt);Ht=cp.array(Ht);W=cp.array(W);W_WT1=cp.array(W_WT1.T)#;Vt=cp.array(Vt)
+    Vt=csr(Vt);Ht=cp.array(Ht);W=cp.array(W);W_WT1=cp.array(W_WT1.T)#;Vt=cp.array(Vt)
     for n_iter_ in range(max_iter):
         if squared_norm <= squared_epsilon:
             break

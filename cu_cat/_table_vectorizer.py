@@ -24,12 +24,16 @@ from cu_cat._utils import parse_version, df_type
 
 deps = DepManager()
 cuml = deps.cuml
-cudf = deps.cudf
-ColumnTransformer = cuml.compose.ColumnTransformer
-OneHotEncoder = cuml.preprocessing.OneHotEncoder
+if cuml:
+    from cuml.compose import ColumnTransformer
+    from cuml.preprocessing import OneHotEncoder
+else:
+    from sklearn.compose import ColumnTransformer
+    from sklearn.preprocessing import OneHotEncoder
 # import cuml,cudf
 # from cuml.compose import ColumnTransformer
 # from cuml.preprocessing import OneHotEncoder
+cudf = deps.cudf
 if cudf:
     cuml.set_global_output_type('cupy')
 
