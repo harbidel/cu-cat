@@ -40,7 +40,7 @@ from sklearn.utils.validation import check_is_fitted
 from sklearn.decomposition._nmf import _beta_divergence
 
 from ._utils import check_input, parse_version, df_type, get_gpu_memory
-import subprocess as sp
+
 
 from cu_cat import DepManager
 deps = DepManager()
@@ -244,7 +244,8 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
 
         # Init H_dict_ with empty dict to train from scratch
         self.H_dict_ = dict()
-        if 'cudf' == self.Xt_ and self.engine == 'cuml':
+        # if 'cudf' == self.Xt_ and self.engine == 'cuml':
+        if deps.cudf and self.engine == 'cuml':
             if parse_version(cuml.__version__) > parse_version("23.04"):
                 X=X.replace('nan',np.nan).fillna('0o0o0') ## must be string w/len >= 3 (otherwise wont pass to gap encoder)
             
@@ -347,7 +348,7 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
         
         # Check if first item has str or np.str_ type
         
-        self.Xt_= df_type(X)
+        # self.Xt_= df_type(X)
         # Make n-grams counts matrix unq_V
         if parse_version(cuml.__version__) > parse_version("23.04"):
             X=X.replace('nan',np.nan).fillna('0o0o0')
@@ -485,7 +486,7 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
 
         vectorizer = self._CV()
 
-        if 'cudf'  in self.Xt_:
+        if deps.cudf: # 'cudf'  in self.Xt_:
             A=cudf.Series([(item).as_py() for item in self.H_dict_.keys()])
             vectorizer.fit(A)
             vocabulary = (vectorizer.get_feature_names().to_arrow())
@@ -517,7 +518,7 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
         Add activations of unseen string categories from X to H_dict.
         """
 
-        if 'cudf' in self.Xt_:
+        if deps.cudf: #'cudf' in self.Xt_:
             A=np.array([(item).as_py() for item in self.H_dict_])
             unseen_X = np.setdiff1d(X.to_arrow(), A, assume_unique=True) 
             unseen_X = cudf.Series(unseen_X)
@@ -857,7 +858,7 @@ class GapEncoder(BaseEstimator, TransformerMixin):
                 "handle_missing should be either 'error' or "
                 f"'zero_impute', got {self.handle_missing!r}. "
             )
-        if 'cudf' not in self.Xt_:
+        if deps.cudf: # 'cudf' not in self.Xt_:
             missing_mask = _object_dtype_isnan(X)
         
             if missing_mask.any():
@@ -902,8 +903,9 @@ class GapEncoder(BaseEstimator, TransformerMixin):
         if isinstance(X, pd.DataFrame):
             self.column_names_ = list(X.columns)
         # Check input data shape
-        self.Xt_ = df_type(X)
-        if 'cudf' not in self.Xt_ or 'cuml' != self.engine:
+        # self.Xt_ = df_type(X)
+        # if 'cudf' not in self.Xt_ or 'cuml' != self.engine:
+        if deps.cuml or 'cuml' != self.engine:
             X = check_input(X)
             try:
                 X = X.to_pandas()

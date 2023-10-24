@@ -7,6 +7,7 @@ from cu_cat import DepManager
 deps = DepManager()
 cp = deps.cupy
 cudf = deps.cudf
+import subprocess as sp
 # import cupy as cp
 
 try:

@@ -44,7 +44,7 @@ def _has_missing_values(self, df: Union[pd.DataFrame, pd.Series]) -> bool:
     """
     Returns True if `array` contains missing values, False otherwise.
     """
-    if 'cudf' in self.Xt_:
+    if deps.cudf: # 'cudf' in self.Xt_:
         df=df.to_pandas()
     return any(df.isnull())
 
@@ -79,8 +79,8 @@ def _replace_false_missing(
         "#N/A",
         "NaN",
     ]  # taken from pandas.io.parsers (version 1.1.4)
-    Xt_= df_type(df)
-    if 'cudf' not in Xt_:
+    # Xt_= df_type(df)
+    if deps.cudf: # 'cudf' not in Xt_:
         df = df.replace(STR_NA_VALUES + [None, "?", "..."], np.nan)
         df = df.replace(r"^\s+$", np.nan, regex=True)  # Replace whitespaces
         
@@ -415,7 +415,7 @@ class TableVectorizer(ColumnTransformer):
         # We replace in all columns regardless of their type,
         # as we might have some false missing
         # in numerical columns for instance.
-        self.Xt_= df_type(X)
+        # self.Xt_= df_type(X)
         X = _replace_false_missing(X)
 
         # Handle missing values
@@ -629,10 +629,11 @@ class TableVectorizer(ColumnTransformer):
         # missing values or not.
         if self.imputed_columns_ and self.auto_cast:
             X = self._auto_cast(X)
-        self.Xt_= df_type(X)
+        # self.Xt_= df_type(X)
         if self.verbose:
             print(f"[TableVectorizer] Assigned transformers: {self.transformers}")
-        if 'cudf' in self.Xt_ and 'cudf' not in str(getmodule(X)):
+        # if 'cudf' in self.Xt_ and 'cudf' not in str(getmodule(X)):
+        if deps.cudf and 'cudf' not in str(getmodule(X)):
             X=cudf.from_pandas(X)#,nan_as_null=True) ### see how flag acts
         X.fillna(0.0,inplace=True)
         if (self.datetime_transformer_ == "passthrough") and (datetime_columns !=[]):
@@ -699,12 +700,10 @@ class TableVectorizer(ColumnTransformer):
             except:
                 pass
 
-        if 'cudf' in self.Xt_:
-            try:
-                import cudf
-                X=cudf.from_pandas(X)
-            except:
-                pass
+        # if 'cudf' in self.Xt_:
+        if deps.cudf:
+            cudf = deps.cudf
+            X=cudf.from_pandas(X)
 
         return super().transform(X)
 
