@@ -44,7 +44,7 @@ import subprocess as sp
 
 from cu_cat import DepManager
 deps = DepManager()
-
+pyarrow = deps.pyarrow
 # sklearn = deps.sklearn
 
 # import cupy as cp, cudf, pyarrow, cuml
@@ -122,19 +122,22 @@ def resolve_engine(
         cuml = deps.cuml  ## for cuml to run gap_encoder, following need to be loaded
         cp = deps.cupy
         cudf = deps.cudf
-        pyarrow = deps.pyarrow
         sklearn = deps.sklearn
         cupyx_ = deps.cupyx
-        if cuml and cp and cudf and pyarrow and cupyx_:
+        if cuml and cp and cudf and cupyx_:
             from cupyx.scipy import sparse
             from cupyx.scipy.sparse import csr_matrix as csr
             cuml.set_global_output_type('cupy')
-            return 'cuml'
-        elif sklearn:
+            # return 'cuml'
+            return 'cuml',cuml,cp,csr,sparse,cudf
+
+        else:
             from scipy import sparse
             from scipy.sparse import csr_matrix as csr
             cp = deps.numpy
-            return 'sklearn'
+            # return 'sklearn'
+            return 'sklearn',sklearn,cp,csr,sparse,cudf
+
 
     raise ValueError(  # noqa
         f'engine expected to be "auto", '
@@ -142,6 +145,7 @@ def resolve_engine(
         f"but received: {engine} :: {type(engine)}"
     )
 
+engine_,engine,cp,csr,sparse,cudf=resolve_engine('auto')
 
 class GapEncoderColumn(BaseEstimator, TransformerMixin):
 
@@ -175,11 +179,11 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
         
         engine_resolved = resolve_engine(engine)
         # FIXME remove as set_new_kwargs will always replace?
-        if engine_resolved == 'sklearn':
+        if  'sklearn' in engine_resolved:
             # _, _, engine = lazy_sklearn_import_has_dependancy()
             engine = deps.sklearn
             from sklearn.feature_extraction.text import CountVectorizer,HashingVectorizer
-        elif engine_resolved == 'cuml':
+        elif 'cuml' in engine_resolved:
             # _, _, engine, gmem = lazy_cuml_import_has_dependancy()
             engine = deps.cuml
             from cuml.feature_extraction.text import CountVectorizer,HashingVectorizer
@@ -776,13 +780,13 @@ class GapEncoder(BaseEstimator, TransformerMixin):
     ):
         engine_resolved = resolve_engine(engine)
         # FIXME remove as set_new_kwargs will always replace?
-        if engine_resolved == 'sklearn':
+        if 'sklearn' in engine_resolved:
             engine = deps.sklearn
             # math = deps.numpy
             cp = deps.numpy
             # _, _, engine = lazy_sklearn_import_has_dependancy()
             from sklearn.feature_extraction.text import CountVectorizer,HashingVectorizer
-        elif engine_resolved == 'cuml':
+        elif 'cuml' in engine_resolved:
             # _, _, engine, gmem = lazy_cuml_import_has_dependancy()
             engine = deps.cuml
             gmem = get_gpu_memory()
