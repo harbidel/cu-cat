@@ -133,6 +133,7 @@ def resolve_engine(
         elif sklearn:
             from scipy import sparse
             from scipy.sparse import csr_matrix as csr
+            cp = deps.numpy
             return 'sklearn'
 
     raise ValueError(  # noqa
@@ -777,14 +778,15 @@ class GapEncoder(BaseEstimator, TransformerMixin):
         # FIXME remove as set_new_kwargs will always replace?
         if engine_resolved == 'sklearn':
             engine = deps.sklearn
-            math = deps.numpy
+            # math = deps.numpy
+            cp = deps.numpy
             # _, _, engine = lazy_sklearn_import_has_dependancy()
             from sklearn.feature_extraction.text import CountVectorizer,HashingVectorizer
         elif engine_resolved == 'cuml':
             # _, _, engine, gmem = lazy_cuml_import_has_dependancy()
             engine = deps.cuml
             gmem = get_gpu_memory()
-            math = deps.cupy
+            # math = deps.cupy
             from cuml.feature_extraction.text import CountVectorizer,HashingVectorizer
         
         self.ngram_range = ngram_range
@@ -809,7 +811,7 @@ class GapEncoder(BaseEstimator, TransformerMixin):
         self._CV = CountVectorizer
         self._HV = HashingVectorizer
         self.engine = engine_resolved
-        self.math = math
+        # self.math = math
         self.gmem = gmem[0]
 
 
