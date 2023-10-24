@@ -20,7 +20,7 @@ This dynamicity is accomplished through get_gpu_memory() and the gmem variable, 
 If the gpu memory is too small, it will default to serializing dot products on the GPU, and in some (rare) cases the CPU will be faster until sufficient samples are provided to outcompete the parallelization of the CPU loops across features.
 """
 
-import warnings,sys,gc
+import warnings,sys,gc,os,logging
 from typing import Dict, Generator, List, Literal, Optional, Tuple, Union
 from inspect import getmodule
 
@@ -28,8 +28,8 @@ import numpy as np
 import pandas as pd
 from time import time
 from numpy.random import RandomState
-from scipy import sparse
-from scipy.sparse import csr_matrix as csr_cpu
+# from scipy import sparse
+# from scipy.sparse import csr_matrix as csr_cpu
 from sklearn import __version__ as sklearn_version
 from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.neighbors import NearestNeighbors
@@ -39,18 +39,14 @@ from sklearn.utils.fixes import _object_dtype_isnan
 from sklearn.utils.validation import check_is_fitted
 from sklearn.decomposition._nmf import _beta_divergence
 
-from ._utils import check_input, parse_version, df_type
-import logging
+from ._utils import check_input, parse_version, df_type, get_gpu_memory
+import subprocess as sp
 
 from cu_cat import DepManager
 deps = DepManager()
-cp = deps.cupy
-cuml = deps.cuml
-cudf = deps.cudf
-pyarrow = deps.pyarrow
-cupyx_ = deps.cupyx
-if cupyx_:
-    from cupyx.scipy.sparse import csr_matrix as csr_gpu
+
+# sklearn = deps.sklearn
+
 # import cupy as cp, cudf, pyarrow, cuml
 # from cupyx.scipy.sparse import csr_matrix as csr_gpu
 
@@ -59,55 +55,57 @@ if cupyx_:
 
 logger = logging.getLogger()
 
-def lazy_cuml_import_has_dependancy():
-    try:
-        import warnings
+# def lazy_cuml_import_has_dependancy():
+#     try:
+#         import warnings
 
-        warnings.filterwarnings("ignore")
-        with warnings.catch_warnings():
-            warnings.filterwarnings("ignore")
-            import cuml  # type: ignore
-            import subprocess as sp
-            import os
+#         warnings.filterwarnings("ignore")
+#         with warnings.catch_warnings():
+#             warnings.filterwarnings("ignore")
+#             import cuml  # type: ignore
+#             import subprocess as sp
+#             import os
 
-            def get_gpu_memory():
-                command = "nvidia-smi --query-gpu=memory.free --format=csv"
-                memory_free_info = sp.check_output(command.split()).decode('ascii').split('\n')[:-1][1:]
-                memory_free_values = [int(x.split()[0]) for i, x in enumerate(memory_free_info)]
-                return memory_free_values
+#             def get_gpu_memory():
+#                 command = "nvidia-smi --query-gpu=memory.free --format=csv"
+#                 memory_free_info = sp.check_output(command.split()).decode('ascii').split('\n')[:-1][1:]
+#                 memory_free_values = [int(x.split()[0]) for i, x in enumerate(memory_free_info)]
+#                 return memory_free_values
 
-            get_gpu_memory()
+#             # get_gpu_memory()
 
-        return True, "ok", cuml,get_gpu_memory()
-    except ModuleNotFoundError as e:
-        return False, e, None, None
+#         return True, "ok", cuml,get_gpu_memory()
+#     except ModuleNotFoundError as e:
+#         return False, e, None, None
     
-def lazy_sklearn_import_has_dependancy():
-    try:
-        import warnings
+# def lazy_sklearn_import_has_dependancy():
+#     try:
+#         import warnings
 
-        warnings.filterwarnings("ignore")
-        import sklearn  # noqa
-
-
-
-        return True, "ok", sklearn
-    except ModuleNotFoundError as e:
-        return False, e, None
+#         warnings.filterwarnings("ignore")
+#         import sklearn  # noqa
 
 
-def assert_imported():
-    has_dependancy_, import_exn, _ = lazy_sklearn_import_has_dependancy()
-    if not has_dependancy_:
-        logger.error("SKLEARN not found, trying running " "`pip install sklearn`")
-        raise import_exn
+
+#         return True, "ok", sklearn
+#     except ModuleNotFoundError as e:
+#         return False, e, None
 
 
-def assert_imported_cuml():
-    has_cuml_dependancy_, import_cuml_exn, _, _ = lazy_cuml_import_has_dependancy()
-    if not has_cuml_dependancy_:
-        logger.warning("cuML not found, trying running " "`pip install cuml`")
-        raise import_cuml_exn
+# def assert_imported():
+#     # has_dependancy_, import_exn, _ = lazy_sklearn_import_has_dependancy()
+#     sklearn = deps.sklearn
+#     if not sklearn:
+#         logger.error("SKLEARN not found, trying running " "`pip install sklearn`")
+#         # raise import_exn
+
+
+# def assert_imported_cuml():
+#     # has_cuml_dependancy_, import_cuml_exn, _, _ = lazy_cuml_import_has_dependancy()
+#     cuml = deps.cuml
+#     if not cuml:
+#         logger.warning("cuML not found, trying running " "`pip install cuml`")
+#         # raise import_cuml_exn
 
 
 EngineConcrete = Literal['cuml', 'sklearn']
@@ -119,12 +117,22 @@ def resolve_engine(
 ) -> EngineConcrete:  # noqa
     if engine in ['cuml', 'sklearn']:
         return engine  # type: ignore
-    if engine in ["auto"]:
-        has_cuml_dependancy_, _, _, _ = lazy_cuml_import_has_dependancy()
-        if has_cuml_dependancy_:
+    if engine in ["auto", None]:
+        # , _, _, _ = lazy_cuml_import_has_dependancy()
+        cuml = deps.cuml  ## for cuml to run gap_encoder, following need to be loaded
+        cp = deps.cupy
+        cudf = deps.cudf
+        pyarrow = deps.pyarrow
+        sklearn = deps.sklearn
+        cupyx_ = deps.cupyx
+        if cuml and cp and cudf and pyarrow and cupyx_:
+            from cupyx.scipy import sparse
+            from cupyx.scipy.sparse import csr_matrix as csr_gpu
+            cuml.set_global_output_type('cupy')
             return 'cuml'
-        has_sklearn_dependancy_, _, _ = lazy_sklearn_import_has_dependancy()
-        if has_sklearn_dependancy_:
+        elif sklearn:
+            from scipy import sparse
+            from scipy.sparse import csr_matrix as csr_cpu
             return 'sklearn'
 
     raise ValueError(  # noqa
@@ -167,12 +175,15 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
         engine_resolved = resolve_engine(engine)
         # FIXME remove as set_new_kwargs will always replace?
         if engine_resolved == 'sklearn':
-            _, _, engine = lazy_sklearn_import_has_dependancy()
+            # _, _, engine = lazy_sklearn_import_has_dependancy()
+            engine = deps.sklearn
             from sklearn.feature_extraction.text import CountVectorizer,HashingVectorizer
         elif engine_resolved == 'cuml':
-            _, _, engine, gmem = lazy_cuml_import_has_dependancy()
+            # _, _, engine, gmem = lazy_cuml_import_has_dependancy()
+            engine = deps.cuml
             from cuml.feature_extraction.text import CountVectorizer,HashingVectorizer
-        
+            gmem = get_gpu_memory()
+
         self.ngram_range = ngram_range
         self.n_components = n_components
         self.gamma_shape_prior = gamma_shape_prior  # 'a' parameter
@@ -202,7 +213,7 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
         the topics W.
         """
         self.Xt_ = df_type(X)
-        cuml.set_global_output_type('cupy')
+        # cuml.set_global_output_type('cupy')
         # Init n-grams counts vectorizer
         if self.hashing:
             self.ngrams_count_ = self._HV(
@@ -228,13 +239,14 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
 
         # Init H_dict_ with empty dict to train from scratch
         self.H_dict_ = dict()
-        if parse_version(cuml.__version__) > parse_version("23.04"):
-            X=X.replace('nan',np.nan).fillna('0o0o0') ## must be string w/len >= 3 (otherwise wont pass to gap encoder)
+        if 'cudf' == self.Xt_ and self.engine == 'cuml':
+            if parse_version(cuml.__version__) > parse_version("23.04"):
+                X=X.replace('nan',np.nan).fillna('0o0o0') ## must be string w/len >= 3 (otherwise wont pass to gap encoder)
             
         # Build the n-grams counts matrix unq_V on unique elements of X
-        if 'cudf' not in str(getmodule(X)):
+        if 'cudf' not in str(getmodule(X)) and self.engine != 'cuml':
             unq_X, lookup = np.unique(X, return_inverse=True)
-        elif 'cudf' in str(getmodule(X)):
+        elif 'cudf' in str(getmodule(X)) and self.engine == 'cuml':
             unq_X = X.unique()
             tmp, lookup = np.unique(X.to_arrow(), return_inverse=True)
         unq_V = self.ngrams_count_.fit_transform(unq_X)
@@ -268,9 +280,9 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
         """
         Return the bag-of-n-grams representation of X.
         """
-        if 'cudf' in df_type(X) or 'arrow' in df_type(self.H_dict_):
+        if 'cudf' in df_type(X) or 'arrow' in df_type(self.H_dict_): ## sadly i think all three are necessary
             H_out = cp.empty((len(X), self.n_components))
-            for x, h_out in zip(X.to_arrow(), H_out): # from cupy back to cudf
+            for x, h_out in zip(X.to_arrow(), H_out): # from cupy to arrow back to cudf
                 h_out[:] = cp.asarray(self.H_dict_[x])
         elif self.engine != 'cuml':
             H_out = np.empty((len(X), self.n_components))
@@ -764,10 +776,15 @@ class GapEncoder(BaseEstimator, TransformerMixin):
         engine_resolved = resolve_engine(engine)
         # FIXME remove as set_new_kwargs will always replace?
         if engine_resolved == 'sklearn':
-            _, _, engine = lazy_sklearn_import_has_dependancy()
+            engine = deps.sklearn
+            math = deps.numpy
+            # _, _, engine = lazy_sklearn_import_has_dependancy()
             from sklearn.feature_extraction.text import CountVectorizer,HashingVectorizer
         elif engine_resolved == 'cuml':
-            _, _, engine, gmem = lazy_cuml_import_has_dependancy()
+            # _, _, engine, gmem = lazy_cuml_import_has_dependancy()
+            engine = deps.cuml
+            gmem = get_gpu_memory()
+            math = deps.cupy
             from cuml.feature_extraction.text import CountVectorizer,HashingVectorizer
         
         self.ngram_range = ngram_range
@@ -792,6 +809,7 @@ class GapEncoder(BaseEstimator, TransformerMixin):
         self._CV = CountVectorizer
         self._HV = HashingVectorizer
         self.engine = engine_resolved
+        self.math = math
         self.gmem = gmem[0]
 
 
