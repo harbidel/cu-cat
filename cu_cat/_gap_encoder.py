@@ -48,7 +48,7 @@ deps = DepManager()
 # sklearn = deps.sklearn
 
 # import cupy as cp, cudf, pyarrow, cuml
-# from cupyx.scipy.sparse import csr_matrix as csr_gpu
+# from cupyx.scipy.sparse import csr_matrix as csr
 
 # Ignore lines too long, as some things in the docstring cannot be cut.
 # flake8: noqa: E501'
@@ -127,12 +127,12 @@ def resolve_engine(
         cupyx_ = deps.cupyx
         if cuml and cp and cudf and pyarrow and cupyx_:
             from cupyx.scipy import sparse
-            from cupyx.scipy.sparse import csr_matrix as csr_gpu
+            from cupyx.scipy.sparse import csr_matrix as csr
             cuml.set_global_output_type('cupy')
             return 'cuml'
         elif sklearn:
             from scipy import sparse
-            from scipy.sparse import csr_matrix as csr_cpu
+            from scipy.sparse import csr_matrix as csr
             return 'sklearn'
 
     raise ValueError(  # noqa
@@ -351,7 +351,7 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
         # Get activations unq_H
         del X
         unq_H = self._get_H(unq_X)
-        unq_V = csr_gpu(unq_V)
+        unq_V = csr(unq_V)
         unq_H = cp.array(unq_H); # redundant
         sh=len(unq_H)
         sw=len(self.W_)
@@ -582,7 +582,7 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
             if self.engine =='cuml' and ((8*sh*sw)/1e3)>self.gmem and ((8*sh)/1e3)<self.gmem and ((8*sw)/1e3)<self.gmem:
                 logger.debug(f"cupy transform")
                 if 'cudf' not in W_type and 'cupy' not in W_type:
-                    self.W_=cp.array(self.W_);unq_V=csr_gpu(unq_V);unq_H=cp.array(unq_H);
+                    self.W_=cp.array(self.W_);unq_V=csr(unq_V);unq_H=cp.array(unq_H);
                     logger.debug(f"moving to cupy")
                 if 'cudf' in W_type:
                     self.W_=self.W_.to_cupy(); unq_V=unq_V.to_cupy();unq_H=unq_H.to_cupy();
@@ -1217,7 +1217,7 @@ def _multiplicative_update_h_smallfast(
     squared_epsilon = epsilon #**2
 
     squared_norm = 1
-    Vt=csr_gpu(Vt);Ht=cp.array(Ht);W=cp.array(W);W_WT1=cp.array(W_WT1.T)#;Vt=cp.array(Vt)
+    Vt=csr(Vt);Ht=cp.array(Ht);W=cp.array(W);W_WT1=cp.array(W_WT1.T)#;Vt=cp.array(Vt)
     for n_iter_ in range(max_iter):
         if squared_norm <= squared_epsilon:
             break
