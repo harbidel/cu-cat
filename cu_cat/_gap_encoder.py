@@ -46,7 +46,16 @@ from cu_cat import DepManager
 deps = DepManager()
 pyarrow = deps.pyarrow
 # sklearn = deps.sklearn
+cuml = deps.cuml  ## for cuml to run gap_encoder, following need to be loaded
+cp = deps.cupy
+cudf = deps.cudf
 
+sklearn = deps.sklearn
+cupyx_ = deps.cupyx
+if cuml and cp and cudf and cupyx_:
+    from cupyx.scipy import sparse
+    from cupyx.scipy.sparse import csr_matrix as csr
+    cuml.set_global_output_type('cupy')
 # import cupy as cp, cudf, pyarrow, cuml
 # from cupyx.scipy.sparse import csr_matrix as csr
 
@@ -115,14 +124,13 @@ Engine = Literal[EngineConcrete, "auto"]
 def resolve_engine(
     engine: Engine,
 ) -> EngineConcrete:  # noqa
-    if engine in ['cuml', 'sklearn']:
-        return engine  # type: ignore
-    if engine in ["auto", None]:
+    # if engine in ['cuml', 'sklearn']:
+        # return engine  # type: ignore
+    if engine in ["auto", None, 'cuml']:
         # , _, _, _ = lazy_cuml_import_has_dependancy()
         cuml = deps.cuml  ## for cuml to run gap_encoder, following need to be loaded
         cp = deps.cupy
         cudf = deps.cudf
-        sklearn = deps.sklearn
         cupyx_ = deps.cupyx
         if cuml and cp and cudf and cupyx_:
             from cupyx.scipy import sparse
@@ -130,13 +138,15 @@ def resolve_engine(
             cuml.set_global_output_type('cupy')
             # return 'cuml'
             return 'cuml',cuml,cp,csr,sparse,cudf
-
-        else:
-            from scipy import sparse
-            from scipy.sparse import csr_matrix as csr
-            cp = deps.numpy
-            # return 'sklearn'
-            return 'sklearn',sklearn,cp,csr,sparse,cudf
+    elif engine in ['auto',None,'sklearn']:
+        # else:
+        sklearn = deps.sklearn
+        from scipy import sparse
+        from scipy.sparse import csr_matrix as csr
+        cp = deps.numpy
+        cudf = deps.pandas
+        # return 'sklearn'
+        return 'sklearn',sklearn,cp,csr,sparse,cudf
 
 
     raise ValueError(  # noqa
@@ -179,11 +189,11 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
         
         engine_resolved = resolve_engine(engine)
         # FIXME remove as set_new_kwargs will always replace?
-        if  'sklearn' in engine_resolved:
+        if 'sklearn' in engine_resolved:
             # _, _, engine = lazy_sklearn_import_has_dependancy()
             engine = deps.sklearn
             from sklearn.feature_extraction.text import CountVectorizer,HashingVectorizer
-        elif 'cuml' in engine_resolved:
+        elif  'cuml' in engine_resolved:
             # _, _, engine, gmem = lazy_cuml_import_has_dependancy()
             engine = deps.cuml
             from cuml.feature_extraction.text import CountVectorizer,HashingVectorizer
@@ -209,7 +219,7 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
         self.max_iter_e_step = max_iter_e_step
         self._CV = CountVectorizer
         self._HV = HashingVectorizer
-        self.engine = engine_resolved
+        self.engine = engine_resolved[0]
         self.gmem = gmem[0]
 
     def _init_vars(self, X) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
@@ -250,9 +260,9 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
                 X=X.replace('nan',np.nan).fillna('0o0o0') ## must be string w/len >= 3 (otherwise wont pass to gap encoder)
             
         # Build the n-grams counts matrix unq_V on unique elements of X
-        if 'cudf' not in str(getmodule(X)) and self.engine != 'cuml':
+        if 'cudf' not in str(getmodule(X)) and 'cuml' not in self.engine:
             unq_X, lookup = np.unique(X, return_inverse=True)
-        elif 'cudf' in str(getmodule(X)) and self.engine == 'cuml':
+        elif 'cudf' in str(getmodule(X)) and 'cuml' in self.engine:
             unq_X = X.unique()
             tmp, lookup = np.unique(X.to_arrow(), return_inverse=True)
         unq_V = self.ngrams_count_.fit_transform(unq_X)
@@ -273,7 +283,7 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
         # Init the activations unq_H of each unique input string
         unq_H = _rescale_h(self, unq_V, np.ones((len(unq_X), self.n_components)))
         # Update self.H_dict_ with unique input strings and their activations
-        if self.engine == 'cuml' :
+        if 'cuml' in self.engine:
             self.H_dict_.update(zip(unq_X.to_arrow(), unq_H.values))
         else:
             self.H_dict_.update(zip(unq_X, unq_H))
@@ -290,7 +300,7 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
             H_out = cp.empty((len(X), self.n_components))
             for x, h_out in zip(X.to_arrow(), H_out): # from cupy to arrow back to cudf
                 h_out[:] = cp.asarray(self.H_dict_[x])
-        elif self.engine != 'cuml':
+        elif 'cuml' not in self.engine:
             H_out = np.empty((len(X), self.n_components))
 
             for x, h_out in zip(X, H_out):
@@ -348,7 +358,7 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
         
         # Check if first item has str or np.str_ type
         
-        # self.Xt_= df_type(X)
+        self.Xt_= df_type(X)
         # Make n-grams counts matrix unq_V
         if parse_version(cuml.__version__) > parse_version("23.04"):
             X=X.replace('nan',np.nan).fillna('0o0o0')
@@ -486,7 +496,7 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
 
         vectorizer = self._CV()
 
-        if deps.cudf: # 'cudf'  in self.Xt_:
+        if 'cudf'  in self.Xt_:
             A=cudf.Series([(item).as_py() for item in self.H_dict_.keys()])
             vectorizer.fit(A)
             vocabulary = (vectorizer.get_feature_names().to_arrow())
@@ -518,7 +528,7 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
         Add activations of unseen string categories from X to H_dict.
         """
 
-        if deps.cudf: #'cudf' in self.Xt_:
+        if 'cudf' in self.Xt_:
             A=np.array([(item).as_py() for item in self.H_dict_])
             unseen_X = np.setdiff1d(X.to_arrow(), A, assume_unique=True) 
             unseen_X = cudf.Series(unseen_X)
@@ -815,7 +825,7 @@ class GapEncoder(BaseEstimator, TransformerMixin):
         self.handle_missing = handle_missing
         self._CV = CountVectorizer
         self._HV = HashingVectorizer
-        self.engine = engine_resolved
+        self.engine = engine_resolved[0]
         # self.math = math
         self.gmem = gmem[0]
 
@@ -858,7 +868,7 @@ class GapEncoder(BaseEstimator, TransformerMixin):
                 "handle_missing should be either 'error' or "
                 f"'zero_impute', got {self.handle_missing!r}. "
             )
-        if deps.cudf: # 'cudf' not in self.Xt_:
+        if 'cudf' not in self.Xt_:
             missing_mask = _object_dtype_isnan(X)
         
             if missing_mask.any():
@@ -903,9 +913,9 @@ class GapEncoder(BaseEstimator, TransformerMixin):
         if isinstance(X, pd.DataFrame):
             self.column_names_ = list(X.columns)
         # Check input data shape
-        # self.Xt_ = df_type(X)
-        # if 'cudf' not in self.Xt_ or 'cuml' != self.engine:
-        if deps.cuml or 'cuml' != self.engine:
+        self.Xt_ = df_type(X)
+        if 'cudf' not in self.Xt_ or 'cuml' != self.engine:
+        # if deps.cuml or 'cuml' != self.engine:
             X = check_input(X)
             try:
                 X = X.to_pandas()
