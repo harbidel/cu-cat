@@ -155,14 +155,12 @@ def resolve_engine(
         f"but received: {engine} :: {type(engine)}"
     )
 
-engine_,engine,cp,csr,sparse,cudf=resolve_engine('auto')
-
 class GapEncoderColumn(BaseEstimator, TransformerMixin):
 
     """See GapEncoder's docstring."""
 
     rho_: float
-    H_dict_: Dict[pyarrow.StringScalar, cp.ndarray]
+    H_dict_: Dict[pyarrow.StringScalar, np.ndarray]
 
     def __init__(
         self,
