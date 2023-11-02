@@ -3,7 +3,11 @@ from typing import Any, Hashable
 from inspect import getmodule
 import numpy as np
 from sklearn.utils import check_array
-import cupy as cp
+from cu_cat import DepManager
+deps = DepManager()
+cp = deps.cupy
+cudf = deps.cudf
+# import cupy as cp
 
 try:
     # Works for sklearn >= 1.0
@@ -60,7 +64,7 @@ def check_input(X) -> np.ndarray:
         if X_.dtype.kind in {"U", "S"}:  # contains strings
             if np.any(X_ == "nan"):  # missing value converted to string
                 return check_array(
-                    cp.array(X, dtype=object),
+                    np.array(X, dtype=object),  ## had been using cp here, but not necessary
                     dtype=None,
                     ensure_2d=True,
                     force_all_finite=False,
@@ -89,3 +93,11 @@ def df_type(df):
         X = str(cp.get_array_module(df))
     # except:
     return X
+
+
+def get_gpu_memory():
+    command = "nvidia-smi --query-gpu=memory.free --format=csv"
+    memory_free_info = sp.check_output(command.split()).decode('ascii').split('\n')[:-1][1:]
+    memory_free_values = [int(x.split()[0]) for i, x in enumerate(memory_free_info)]
+    return memory_free_values
+
