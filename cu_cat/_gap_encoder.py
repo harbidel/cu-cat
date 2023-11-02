@@ -39,7 +39,7 @@ from sklearn.utils.fixes import _object_dtype_isnan
 from sklearn.utils.validation import check_is_fitted
 from sklearn.decomposition._nmf import _beta_divergence
 
-from ._utils import check_input, parse_version, df_type, get_gpu_memory
+from ._utils import check_input, parse_version, get_gpu_memory, df_type
 
 
 from cu_cat import DepManager
@@ -227,7 +227,7 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
         Build the bag-of-n-grams representation V of X and initialize
         the topics W.
         """
-        self.Xt_ = df_type(X)
+        # self.Xt_ = df_type(X)
         # cuml.set_global_output_type('cupy')
         # Init n-grams counts vectorizer
         if self.hashing:
@@ -296,7 +296,8 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
         """
         Return the bag-of-n-grams representation of X.
         """
-        if 'cudf' in df_type(X) or 'arrow' in df_type(self.H_dict_): ## sadly i think all three are necessary
+        # if 'cudf' in df_type(X) or 'arrow' in df_type(self.H_dict_): ## sadly i think all three are necessary
+        if deps.cudf or 'arrow' in df_type(self.H_dict_):
             H_out = cp.empty((len(X), self.n_components))
             for x, h_out in zip(X.to_arrow(), H_out): # from cupy to arrow back to cudf
                 h_out[:] = cp.asarray(self.H_dict_[x])
@@ -355,10 +356,10 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
         t = time()
         # Copy parameter rho
         self.rho_ = self.rho
-        
+
         # Check if first item has str or np.str_ type
-        
-        self.Xt_= df_type(X)
+
+        # self.Xt_= df_type(X)
         # Make n-grams counts matrix unq_V
         if parse_version(cuml.__version__) > parse_version("23.04"):
             X=X.replace('nan',np.nan).fillna('0o0o0')
@@ -378,6 +379,7 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
                 logger.debug(f"fitting smallfast-wise")
                 W_type = df_type(self.W_)
                 if 'cudf' not in W_type and 'cupy' not in W_type:
+                # if not deps.cudf and not deps.cupy: #'cupy' not in W_type:
                     logger.debug(f"moving to gpu")
                     self.W_= cp.array(self.W_);self.B_= cp.array(self.B_);self.A_= cp.array(self.A_)
                 elif 'cudf' in W_type:
@@ -406,10 +408,11 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
             else:
                 W_type = df_type(self.W_)
                 if self.engine =='cuml' and ((8*sh*sw)/1e3)>self.gmem and ((8*sh)/1e3)<self.gmem and ((8*sw)/1e3)<self.gmem:
-                    if 'cudf' not in W_type and 'cupy' not in W_type:
+                    # if 'cudf' not in W_type and 'cupy' not in W_type:
+                    if not deps.cudf and not deps.cupy:
                         self.W_= cp.array(self.W_);self.B_= cp.array(self.B_);self.A_= cp.array(self.A_);
                         logger.debug(f"moving to cupy")
-                    elif 'cudf' in W_type:
+                    else: # 'cudf' in W_type:
                         self.W_= self.W_.to_cupy();self.B_= self.B_.to_cupy();self.A_= self.A_.to_cupy();
                         logger.debug(f"keeping on gpu via cupy")
                     # Loop over batches
@@ -449,7 +452,8 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
 
             if (W_change < self.tol) and (n_iter_ >= self.min_iter - 1):
                 break  # Stop if the change in W is smaller than the tolerance
-        if 'cudf' in df_type(unq_X) :
+        # if 'cudf' in df_type(unq_X) :
+        if deps.cudf:
             self.H_dict_.update(zip(unq_X.to_arrow(), unq_H))
         else:
             self.H_dict_.update(zip(unq_X, unq_H))
@@ -496,7 +500,8 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
 
         vectorizer = self._CV()
 
-        if 'cudf'  in self.Xt_:
+        # if 'cudf'  in self.Xt_:
+        if deps.cudf:
             A=cudf.Series([(item).as_py() for item in self.H_dict_.keys()])
             vectorizer.fit(A)
             vocabulary = (vectorizer.get_feature_names().to_arrow())
@@ -528,7 +533,8 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
         Add activations of unseen string categories from X to H_dict.
         """
 
-        if 'cudf' in self.Xt_:
+        # if 'cudf' in self.Xt_:
+        if deps.cudf:
             A=np.array([(item).as_py() for item in self.H_dict_])
             unseen_X = np.setdiff1d(X.to_arrow(), A, assume_unique=True) 
             unseen_X = cudf.Series(unseen_X)
@@ -542,7 +548,8 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
 
             unseen_H = _rescale_h(self,unseen_V, np.ones((unseen_V.shape[0], self.n_components)))
             
-            if 'cudf' in df_type(unseen_X) :
+            # if 'cudf' in df_type(unseen_X) :
+            if deps.cudf:
                 self.H_dict_.update(zip(unseen_X.to_arrow(), unseen_H.values))
             else:
                 self.H_dict_.update(zip(unseen_X, unseen_H))
@@ -620,7 +627,8 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
                     gamma_shape_prior=self.gamma_shape_prior,
                     gamma_scale_prior=self.gamma_scale_prior,
                 )
-        if 'cudf' in df_type(unq_X) :
+        # if 'cudf' in df_type(unq_X) :
+        if deps.cudf:
             self.H_dict_.update(zip(unq_X.to_arrow(), unq_H))
         else:
             self.H_dict_.update(zip(unq_X, unq_H))
@@ -868,9 +876,10 @@ class GapEncoder(BaseEstimator, TransformerMixin):
                 "handle_missing should be either 'error' or "
                 f"'zero_impute', got {self.handle_missing!r}. "
             )
-        if 'cudf' not in self.Xt_:
+        # if 'cudf' not in self.Xt_:
+        if not deps.cudf:
             missing_mask = _object_dtype_isnan(X)
-        
+
             if missing_mask.any():
                 if self.handle_missing == "error":
                     raise ValueError("Input data contains missing values. ")
@@ -913,8 +922,9 @@ class GapEncoder(BaseEstimator, TransformerMixin):
         if isinstance(X, pd.DataFrame):
             self.column_names_ = list(X.columns)
         # Check input data shape
-        self.Xt_ = df_type(X)
-        if 'cudf' not in self.Xt_ or 'cuml' != self.engine:
+        # self.Xt_ = df_type(X)
+        # if 'cudf' not in self.Xt_ or 'cuml' != self.engine:
+        if not deps.cudf or 'cuml' != self.engine:
         # if deps.cuml or 'cuml' != self.engine:
             X = check_input(X)
             try:
@@ -923,7 +933,7 @@ class GapEncoder(BaseEstimator, TransformerMixin):
                 pass
             X = self._handle_missing(X)
             self.fitted_models_ = []
-            
+
             for k in range(X.shape[1]):
                 col_enc = self._create_column_gap_encoder()
                 self.fitted_models_.append(col_enc.fit(X.iloc[:, k]))
@@ -1048,7 +1058,8 @@ def _multiplicative_update_w(
     """
     Multiplicative update step for the topics W.
     """
-    if 'cudf' in df_type(Vt) or 'cupy' in df_type(Vt):
+    # if 'cudf' in df_type(Vt) or 'cupy' in df_type(Vt):
+    if deps.cudf or deps.cupy:
         A *= rho
         A += cp.multiply(W, safe_sparse_dot(Ht.T, Vt.multiply(1 / (cp.dot(Ht, W) + 1e-10))))
         B *= rho
@@ -1120,7 +1131,8 @@ def _rescale_h(self, V: np.array, H: np.array) -> np.array:
     """
     epsilon = 1e-10  # in case of a document having length=0
 
-    if 'cupy' in df_type(V):
+    # if 'cupy' in df_type(V):
+    if deps.cupy:
         H = cp.array(H)
         H *= cp.maximum(epsilon, V.sum(axis=1))
     else:
@@ -1152,8 +1164,9 @@ def _multiplicative_update_h(
         W_WT1 = W / WT1.reshape(-1, 1)
     const = (gamma_shape_prior - 1) / WT1
     squared_epsilon = epsilon #**2
-    
-    if 'cudf' in df_type(Vt) or 'cupy' in df_type(Vt):
+
+    # if 'cudf' in df_type(Vt) or 'cupy' in df_type(Vt):
+    if deps.cudf or deps.cupy:
         for vt, ht in zip(Vt, Ht):
             vt_ = vt.data
             idx = vt.indices
