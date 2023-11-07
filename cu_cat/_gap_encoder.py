@@ -59,7 +59,7 @@ if not cupyx_:
     cudf = deps.pandas
     sklearn = deps.sklearn
 # import cupy as cp, cudf, pyarrow, cuml
-# from cupyx.scipy.sparse import csr_matrix as csr
+    from scipy.sparse import csr_matrix as csr
 
 # Ignore lines too long, as some things in the docstring cannot be cut.
 # flake8: noqa: E501'
@@ -226,6 +226,8 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
         self.engine = engine_resolved[0]
         if gmem:
             self.gmem = gmem[0]
+        else:
+            self.gmem = 0
 
     def _init_vars(self, X) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
         """
@@ -266,7 +268,7 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
             
         # Build the n-grams counts matrix unq_V on unique elements of X
         if 'cudf' not in str(getmodule(X)) and 'cuml' not in self.engine:
-            unq_X, lookup = np.unique(X, return_inverse=True)
+            unq_X, lookup = np.unique(X.astype(str), return_inverse=True)
         elif 'cudf' in str(getmodule(X)) and 'cuml' in self.engine:
             unq_X = X.unique()
             tmp, lookup = np.unique(X.to_arrow(), return_inverse=True)
@@ -320,7 +322,10 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
                     self.H_dict_[x]=self.H_dict_[x].get()
                 except:
                     pass
-                h_out[:] = self.H_dict_[x]
+                try:
+                    h_out[:] = self.H_dict_[x]
+                except:
+                    pass
         else:
             H_out = cp.empty((len(X), self.n_components))
             for x, h_out in zip(X, H_out): # from cupy back to cudf
@@ -384,7 +389,8 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
         sh=len(unq_H)
         sw=len(self.W_)
         
-        logger.info(f"req gpu mem for fit=  `{(8*sh*sw)/1e3}`, free sys gmem= `{self.gmem}`")
+        if deps.cuml:
+            logger.info(f"req gpu mem for fit=  `{(8*sh*sw)/1e3}`, free sys gmem= `{self.gmem}`")
         for n_iter_ in range(self.max_iter):
             if ((8*sh*sw)/1e3)<self.gmem and self.engine =='cuml':
                 logger.debug(f"fitting smallfast-wise")
@@ -550,7 +556,7 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
             unseen_X = np.setdiff1d(X.to_arrow(), A, assume_unique=True) 
             unseen_X = cudf.Series(unseen_X)
         else:
-            unseen_X = np.setdiff1d(X, np.array([*self.H_dict_]))
+            unseen_X = np.setdiff1d(X.astype(str), np.array([*self.H_dict_]))
         if unseen_X.size > 0:
             unseen_V = self.ngrams_count_.transform(unseen_X)
             if self.add_words:
@@ -583,13 +589,14 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
         t = time()
         check_is_fitted(self, "H_dict_")
         # Check if first item has str or np.str_ type
-        if parse_version(cuml.__version__) > parse_version("23.04"):
-            X=X.replace('nan',np.nan).fillna('0o0o0')
+        if deps.cuml:
+            if parse_version(cuml.__version__) > parse_version("23.04"):
+                X=X.replace('nan',np.nan).fillna('0o0o0')
         unq_X = X.unique()
         # Build the n-grams counts matrix V for the string data to encode
-        unq_V = self.ngrams_count_.transform(unq_X)
+        unq_V = self.ngrams_count_.transform(unq_X.astype(str))
         if self.add_words:  # Add words counts
-            unq_V2 = self.word_count_.transform(unq_X)
+            unq_V2 = self.word_count_.transform(unq_X.astype(str))
             unq_V = sparse.hstack((unq_V, unq_V2), format="csr")
         # Add unseen strings in X to H_dict
         self._add_unseen_keys_to_H_dict(unq_X) ### need to get this back for transforming obviously
@@ -849,6 +856,8 @@ class GapEncoder(BaseEstimator, TransformerMixin):
         # self.math = math
         if gmem:
             self.gmem = gmem[0]
+        else:
+            self.gmem = 0
 
 
     def _more_tags(self) -> Dict[str, List[str]]:
