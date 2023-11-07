@@ -45,17 +45,19 @@ from ._utils import check_input, parse_version, get_gpu_memory, df_type
 from cu_cat import DepManager
 deps = DepManager()
 pyarrow = deps.pyarrow
-# sklearn = deps.sklearn
+
 cuml = deps.cuml  ## for cuml to run gap_encoder, following need to be loaded
 cp = deps.cupy
 cudf = deps.cudf
-
-sklearn = deps.sklearn
 cupyx_ = deps.cupyx
-if cuml and cp and cudf and cupyx_:
+if cupyx_:
     from cupyx.scipy import sparse
     from cupyx.scipy.sparse import csr_matrix as csr
     cuml.set_global_output_type('cupy')
+if not cupyx_:
+    cp = deps.numpy
+    cudf = deps.pandas
+    sklearn = deps.sklearn
 # import cupy as cp, cudf, pyarrow, cuml
 # from cupyx.scipy.sparse import csr_matrix as csr
 
@@ -126,27 +128,30 @@ def resolve_engine(
 ) -> EngineConcrete:  # noqa
     # if engine in ['cuml', 'sklearn']:
         # return engine  # type: ignore
-    if engine in ["auto", None, 'cuml']:
+    print(engine)
+    if engine in ["auto", None, "cuml"]:
+    # if engine == 'auto':
         # , _, _, _ = lazy_cuml_import_has_dependancy()
         cuml = deps.cuml  ## for cuml to run gap_encoder, following need to be loaded
         cp = deps.cupy
         cudf = deps.cudf
         cupyx_ = deps.cupyx
-        if cuml and cp and cudf and cupyx_:
+        if cupyx_:
             from cupyx.scipy import sparse
             from cupyx.scipy.sparse import csr_matrix as csr
             cuml.set_global_output_type('cupy')
-            # return 'cuml'
-            return 'cuml',cuml,cp,csr,sparse,cudf
-    elif engine in ['auto',None,'sklearn']:
-        # else:
-        sklearn = deps.sklearn
-        from scipy import sparse
-        from scipy.sparse import csr_matrix as csr
-        cp = deps.numpy
-        cudf = deps.pandas
-        # return 'sklearn'
-        return 'sklearn',sklearn,cp,csr,sparse,cudf
+            return 'cuml'
+            # return 'cuml',cuml,cp,csr,sparse,cudf
+    # if engine in ["auto", None, "sklearn"]: ## why isnt this working??
+    # else:
+        
+    sklearn = deps.sklearn
+    from scipy import sparse
+    from scipy.sparse import csr_matrix as csr
+    cp = deps.numpy
+    cudf = deps.pandas
+    return 'sklearn' ## wtf why wont this engine return work???
+        # return 'sklearn',sklearn,cp,csr,sparse,cudf
 
 
     raise ValueError(  # noqa
@@ -190,6 +195,7 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
         if 'sklearn' in engine_resolved:
             # _, _, engine = lazy_sklearn_import_has_dependancy()
             engine = deps.sklearn
+            gmem = None
             from sklearn.feature_extraction.text import CountVectorizer,HashingVectorizer
         elif  'cuml' in engine_resolved:
             # _, _, engine, gmem = lazy_cuml_import_has_dependancy()
@@ -218,7 +224,8 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
         self._CV = CountVectorizer
         self._HV = HashingVectorizer
         self.engine = engine_resolved[0]
-        self.gmem = gmem[0]
+        if gmem:
+            self.gmem = gmem[0]
 
     def _init_vars(self, X) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
         """
@@ -267,8 +274,14 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
         if self.add_words:  # Add word counts to unq_V
             unq_V2 = self.word_count_.fit_transform(unq_X)
             unq_V = sparse.hstack((unq_V, unq_V2), format="csr")
-
-        if not self.hashing:  # Build n-grams/word vocabulary
+        
+        if not self.hashing and not deps.cuml:  # Build n-grams/word vocabulary
+            self.vocabulary = self.ngrams_count_.get_feature_names_out()
+            if self.add_words:
+                self.vocabulary = np.concatenate(
+                    (self.vocabulary, self.word_count_.get_feature_names_out())
+                )
+        if not self.hashing and deps.cuml:  # Build n-grams/word vocabulary
             self.vocabulary = self.ngrams_count_.get_feature_names()
             if self.add_words:
                 self.vocabulary = np.concatenate(
@@ -320,15 +333,15 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
         If self.init='random', topics are initialized with a Gamma
         distribution.
         """
-        if self.init == "random":
-            W = self.random_state.gamma(
-                shape=self.gamma_shape_prior,
-                scale=self.gamma_scale_prior,
-                size=(self.n_components, self.n_vocab),
-            )
+        # if self.init == "random":
+        W = self.random_state.gamma(
+            shape=self.gamma_shape_prior,
+            scale=self.gamma_scale_prior,
+            size=(self.n_components, self.n_vocab),
+        )
         
-        else:
-            raise ValueError(f"Initialization method {self.init!r} does not exist. ")
+        # else:
+            # raise ValueError(f"Initialization method {self.init!r} does not exist. ")
         W = cp.array(W)
         W /= W.sum(axis=1, keepdims=True)
         A = cp.ones((self.n_components, self.n_vocab)) * 1e-10
@@ -359,7 +372,7 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
 
         # self.Xt_= df_type(X)
         # Make n-grams counts matrix unq_V
-        if parse_version(cuml.__version__) > parse_version("23.04"):
+        if cuml and parse_version(cuml.__version__) > parse_version("23.04"):
             X=X.replace('nan',np.nan).fillna('0o0o0')
         unq_X, unq_V, lookup = self._init_vars(X)
         n_batch = (len(X) - 1) // self.batch_size + 1
@@ -801,6 +814,7 @@ class GapEncoder(BaseEstimator, TransformerMixin):
             engine = deps.sklearn
             # math = deps.numpy
             cp = deps.numpy
+            gmem = None
             # _, _, engine = lazy_sklearn_import_has_dependancy()
             from sklearn.feature_extraction.text import CountVectorizer,HashingVectorizer
         elif 'cuml' in engine_resolved:
@@ -833,7 +847,8 @@ class GapEncoder(BaseEstimator, TransformerMixin):
         self._HV = HashingVectorizer
         self.engine = engine_resolved[0]
         # self.math = math
-        self.gmem = gmem[0]
+        if gmem:
+            self.gmem = gmem[0]
 
 
     def _more_tags(self) -> Dict[str, List[str]]:
@@ -878,7 +893,7 @@ class GapEncoder(BaseEstimator, TransformerMixin):
         if not deps.cudf:
             missing_mask = _object_dtype_isnan(X)
 
-            if missing_mask.any():
+            if missing_mask.any(axis=None):
                 if self.handle_missing == "error":
                     raise ValueError("Input data contains missing values. ")
                 elif self.handle_missing == "zero_impute":

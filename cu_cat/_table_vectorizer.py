@@ -44,7 +44,7 @@ def _has_missing_values(self, df: Union[pd.DataFrame, pd.Series]) -> bool:
     """
     Returns True if `array` contains missing values, False otherwise.
     """
-    if deps.cudf: # 'cudf' in self.Xt_:
+    if 'cudf' in self.Xt_:
         df=df.to_pandas()
     return any(df.isnull())
 
@@ -418,7 +418,7 @@ class TableVectorizer(ColumnTransformer):
         # We replace in all columns regardless of their type,
         # as we might have some false missing
         # in numerical columns for instance.
-        # self.Xt_= df_type(X)
+        self.Xt_= df_type(X)
         X = _replace_false_missing(X)
 
         # Handle missing values
@@ -635,8 +635,8 @@ class TableVectorizer(ColumnTransformer):
         # self.Xt_= df_type(X)
         if self.verbose:
             print(f"[TableVectorizer] Assigned transformers: {self.transformers}")
-        # if 'cudf' in self.Xt_ and 'cudf' not in str(getmodule(X)):
-        if deps.cudf and 'cudf' not in str(getmodule(X)):
+        if 'cudf' in self.Xt_ and 'cudf' not in str(getmodule(X)):
+        # if deps.cudf and 'cudf' not in str(getmodule(X)):
             X=cudf.from_pandas(X)#,nan_as_null=True) ### see how flag acts
         X.fillna(0.0,inplace=True)
         if (self.datetime_transformer_ == "passthrough") and (datetime_columns !=[]):
@@ -704,8 +704,8 @@ class TableVectorizer(ColumnTransformer):
             except:
                 pass
 
-        # if 'cudf' in self.Xt_:
-        if deps.cudf:
+        if 'cudf' in self.Xt_:
+        # if deps.cudf:
             cudf = deps.cudf
             X=cudf.from_pandas(X)
 
