@@ -7,6 +7,7 @@ from cu_cat import DepManager
 deps = DepManager()
 cp = deps.cupy
 cudf = deps.cudf
+import subprocess as sp
 # import cupy as cp
 
 try:
@@ -86,9 +87,11 @@ def df_type(df):
     """
 
     # try: 
-    X = str(getmodule(df))
+    if not cp:
+        X = str(getmodule(df))
     # except:
-    if X == 'None':
+    # if X == 'None':
+    if cp:
     # try:
         X = str(cp.get_array_module(df))
     # except:

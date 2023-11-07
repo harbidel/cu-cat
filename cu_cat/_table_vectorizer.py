@@ -368,7 +368,10 @@ class TableVectorizer(ColumnTransformer):
         if isinstance(self.low_card_cat_transformer, sklearn.base.TransformerMixin):
             self.low_card_cat_transformer_ = clone(self.low_card_cat_transformer)
         elif self.low_card_cat_transformer is None:
-            self.low_card_cat_transformer_ = OneHotEncoder(output_type= self.output_type, handle_unknown='ignore')
+            if deps.cuml:
+                self.low_card_cat_transformer_ = OneHotEncoder(output_type= self.output_type, handle_unknown='ignore')
+            else:
+                self.low_card_cat_transformer_ = OneHotEncoder( handle_unknown='ignore')
         elif self.low_card_cat_transformer == "remainder":
             self.low_card_cat_transformer_ = self.remainder
         else:
@@ -642,7 +645,8 @@ class TableVectorizer(ColumnTransformer):
 
         else:
             X_enc = super().fit_transform(X, y)
-        X_enc = cudf.DataFrame(X_enc)
+        if deps.cudf and 'cudf' not in str(getmodule(X)):
+            X_enc = cudf.DataFrame(X_enc)
         
         # For the "remainder" columns, the `ColumnTransformer` `transformers_`
         # attribute contains the index instead of the column name,
