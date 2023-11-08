@@ -87,9 +87,11 @@ def df_type(df):
     """
 
     # try: 
-    X = str(getmodule(df))
+    if not cp:
+        X = str(getmodule(df))
     # except:
-    if X == 'None':
+    # if X == 'None':
+    if cp:
     # try:
         X = str(cp.get_array_module(df))
     # except:

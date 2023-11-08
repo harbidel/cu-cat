@@ -44,7 +44,7 @@ def _has_missing_values(self, df: Union[pd.DataFrame, pd.Series]) -> bool:
     """
     Returns True if `array` contains missing values, False otherwise.
     """
-    if deps.cudf: # 'cudf' in self.Xt_:
+    if 'cudf' in self.Xt_:
         df=df.to_pandas()
     return any(df.isnull())
 
@@ -368,7 +368,10 @@ class TableVectorizer(ColumnTransformer):
         if isinstance(self.low_card_cat_transformer, sklearn.base.TransformerMixin):
             self.low_card_cat_transformer_ = clone(self.low_card_cat_transformer)
         elif self.low_card_cat_transformer is None:
-            self.low_card_cat_transformer_ = OneHotEncoder(output_type= self.output_type, handle_unknown='ignore')
+            if deps.cuml:
+                self.low_card_cat_transformer_ = OneHotEncoder(output_type= self.output_type, handle_unknown='ignore')
+            else:
+                self.low_card_cat_transformer_ = OneHotEncoder( handle_unknown='ignore')
         elif self.low_card_cat_transformer == "remainder":
             self.low_card_cat_transformer_ = self.remainder
         else:
@@ -415,7 +418,7 @@ class TableVectorizer(ColumnTransformer):
         # We replace in all columns regardless of their type,
         # as we might have some false missing
         # in numerical columns for instance.
-        # self.Xt_= df_type(X)
+        self.Xt_= df_type(X)
         X = _replace_false_missing(X)
 
         # Handle missing values
@@ -632,8 +635,8 @@ class TableVectorizer(ColumnTransformer):
         # self.Xt_= df_type(X)
         if self.verbose:
             print(f"[TableVectorizer] Assigned transformers: {self.transformers}")
-        # if 'cudf' in self.Xt_ and 'cudf' not in str(getmodule(X)):
-        if deps.cudf and 'cudf' not in str(getmodule(X)):
+        if 'cudf' in self.Xt_ and 'cudf' not in str(getmodule(X)):
+        # if deps.cudf and 'cudf' not in str(getmodule(X)):
             X=cudf.from_pandas(X)#,nan_as_null=True) ### see how flag acts
         X.fillna(0.0,inplace=True)
         if (self.datetime_transformer_ == "passthrough") and (datetime_columns !=[]):
@@ -642,7 +645,8 @@ class TableVectorizer(ColumnTransformer):
 
         else:
             X_enc = super().fit_transform(X, y)
-        X_enc = cudf.DataFrame(X_enc)
+        if deps.cudf and 'cudf' not in str(getmodule(X)):
+            X_enc = cudf.DataFrame(X_enc)
         
         # For the "remainder" columns, the `ColumnTransformer` `transformers_`
         # attribute contains the index instead of the column name,
@@ -700,8 +704,8 @@ class TableVectorizer(ColumnTransformer):
             except:
                 pass
 
-        # if 'cudf' in self.Xt_:
-        if deps.cudf:
+        if 'cudf' in self.Xt_:
+        # if deps.cudf:
             cudf = deps.cudf
             X=cudf.from_pandas(X)
 
