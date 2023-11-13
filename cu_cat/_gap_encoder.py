@@ -128,7 +128,6 @@ def resolve_engine(
 ) -> EngineConcrete:  # noqa
     # if engine in ['cuml', 'sklearn']:
         # return engine  # type: ignore
-    print(engine)
     if engine in ["auto", None, "cuml"]:
     # if engine == 'auto':
         # , _, _, _ = lazy_cuml_import_has_dependancy()
