@@ -528,9 +528,10 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
             encoding = (cp.asnumpy(encoding))
 
         else:
-            vectorizer.fit(list(self.H_dict_.keys()))
-            vocabulary = np.array(vectorizer.get_feature_names())
-            encoding = self.transform(pd.Series(vocabulary).reshape(-1))
+            A=pd.Series([(item) for item in self.H_dict_.keys()])
+            vectorizer.fit(A.astype(str))
+            vocabulary = (vectorizer.get_feature_names_out())
+            encoding = self.transform(pd.Series(vocabulary.reshape(-1)))
             encoding = abs(encoding)
 
         encoding = encoding / np.sum(encoding, axis=1, keepdims=True)
