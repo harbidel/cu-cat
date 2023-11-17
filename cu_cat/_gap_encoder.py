@@ -472,7 +472,7 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
         if deps.cudf:
             self.H_dict_.update(zip(unq_X.to_arrow(), unq_H))
         else:
-            self.H_dict_.update(zip(unq_X, unq_H))
+            self.H_dict_.update(zip(unq_X.astype(str), unq_H.astype(str)))
         logger.debug(
             f"--GapEncoder Fitting took {(time() - t) / 60:.2f} minutes\n"
         )
@@ -527,10 +527,9 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
             encoding = (cp.asnumpy(encoding))
 
         else:
-            A=pd.Series([(item) for item in self.H_dict_.keys()])
-            vectorizer.fit(A.astype(str))
-            vocabulary = (vectorizer.get_feature_names_out())
-            encoding = self.transform(pd.Series(vocabulary.reshape(-1)))
+            vectorizer.fit(list(self.H_dict_.keys()))
+            vocabulary = np.array(vectorizer.get_feature_names())
+            encoding = self.transform(pd.Series(vocabulary).reshape(-1))
             encoding = abs(encoding)
 
         encoding = encoding / np.sum(encoding, axis=1, keepdims=True)
