@@ -126,11 +126,8 @@ Engine = Literal[EngineConcrete, "auto"]
 def resolve_engine(
     engine: Engine,
 ) -> EngineConcrete:  # noqa
-    # if engine in ['cuml', 'sklearn']:
-        # return engine  # type: ignore
-    if engine in ["auto", None, "cuml"]:
+    if deps.cudf and engine in ["auto", None, "cuml"]:
     # if engine == 'auto':
-        # , _, _, _ = lazy_cuml_import_has_dependancy()
         cuml = deps.cuml  ## for cuml to run gap_encoder, following need to be loaded
         cp = deps.cupy
         cudf = deps.cudf
@@ -139,18 +136,14 @@ def resolve_engine(
             from cupyx.scipy import sparse
             from cupyx.scipy.sparse import csr_matrix as csr
             cuml.set_global_output_type('cupy')
-            return 'cuml'
-            # return 'cuml',cuml,cp,csr,sparse,cudf
-    # if engine in ["auto", None, "sklearn"]: ## why isnt this working??
-    # else:
-        
-    sklearn = deps.sklearn
-    from scipy import sparse
-    from scipy.sparse import csr_matrix as csr
-    cp = deps.numpy
-    cudf = deps.pandas
-    return 'sklearn' ## wtf why wont this engine return work???
-        # return 'sklearn',sklearn,cp,csr,sparse,cudf
+            return 'cuml',cuml,cp,csr,sparse,cudf
+    if not deps.cudf and engine in ["auto", None, "sklearn"]: 
+        sklearn = deps.sklearn
+        from scipy import sparse
+        from scipy.sparse import csr_matrix as csr
+        cp = deps.numpy
+        cudf = deps.pandas
+        return 'sklearn',sklearn,cp,csr,sparse,cudf
 
 
     raise ValueError(  # noqa
@@ -472,7 +465,7 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
         if deps.cudf:
             self.H_dict_.update(zip(unq_X.to_arrow(), unq_H))
         else:
-            self.H_dict_.update(zip(unq_X.astype(str), unq_H.astype(str)))
+            self.H_dict_.update(zip(unq_X, unq_H))
         logger.debug(
             f"--GapEncoder Fitting took {(time() - t) / 60:.2f} minutes\n"
         )
@@ -527,9 +520,10 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
             encoding = (cp.asnumpy(encoding))
 
         else:
-            vectorizer.fit(list(self.H_dict_.keys()))
-            vocabulary = np.array(vectorizer.get_feature_names())
-            encoding = self.transform(pd.Series(vocabulary).reshape(-1))
+            A=pd.Series([(item) for item in self.H_dict_.keys()])
+            vectorizer.fit(A.astype(str))
+            vocabulary = (vectorizer.get_feature_names_out())
+            encoding = self.transform(pd.Series(vocabulary.reshape(-1)))
             encoding = abs(encoding)
 
         encoding = encoding / np.sum(encoding, axis=1, keepdims=True)

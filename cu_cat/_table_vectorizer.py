@@ -644,7 +644,7 @@ class TableVectorizer(ColumnTransformer):
             X_enc = super().fit_transform(Z, y)
 
         else:
-            X_enc = super().fit_transform(X, y)
+            X_enc = super().fit_transform(X.astype(str), y)
         if deps.cudf and 'cudf' not in str(getmodule(X)):
             X_enc = cudf.DataFrame(X_enc)
         
@@ -722,7 +722,7 @@ class TableVectorizer(ColumnTransformer):
         typing.List[str]
             Feature names.
         """
-        if parse_version(sklearn_version) > parse_version("1.0"):
+        if parse_version(sklearn_version) < parse_version("1.0"):
             ct_feature_names = super().get_feature_names()
         else:
             ct_feature_names = super().get_feature_names_out()
@@ -736,7 +736,7 @@ class TableVectorizer(ColumnTransformer):
                     cols = self.columns_.to_list()
                     all_trans_feature_names.extend(cols)
                 continue
-            if parse_version(sklearn_version) > parse_version("1.0"):
+            if parse_version(sklearn_version) < parse_version("1.0"):
                 trans_feature_names = trans.get_feature_names(cols)
             else:
                 trans_feature_names = trans.get_feature_names_out(cols)
