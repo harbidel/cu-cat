@@ -73,7 +73,7 @@ def make_safe_gpu_dataframes(X, y, engine):
         new_kwargs = {}
         kwargs = {'X': X, 'y': y}
         for key, value in kwargs.items():
-            if isinstance(value, cudf.DataFrame) and engine in ["pandas"]:
+            if isinstance(value, cudf.DataFrame) and engine in ["pandas", "sklearn", "cpu"]:
                 new_kwargs[key] = value.to_pandas()
             elif isinstance(value, pd.DataFrame) and engine in ["cuml", "cuda", "gpu"]:
                 new_kwargs[key] = cudf.from_pandas(value)
