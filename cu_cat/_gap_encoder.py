@@ -66,58 +66,22 @@ if not cupyx_:
 
 logger = logging.getLogger()
 
-# def lazy_cuml_import_has_dependancy():
-#     try:
-#         import warnings
-
-#         warnings.filterwarnings("ignore")
-#         with warnings.catch_warnings():
-#             warnings.filterwarnings("ignore")
-#             import cuml  # type: ignore
-#             import subprocess as sp
-#             import os
-
-#             def get_gpu_memory():
-#                 command = "nvidia-smi --query-gpu=memory.free --format=csv"
-#                 memory_free_info = sp.check_output(command.split()).decode('ascii').split('\n')[:-1][1:]
-#                 memory_free_values = [int(x.split()[0]) for i, x in enumerate(memory_free_info)]
-#                 return memory_free_values
-
-#             # get_gpu_memory()
-
-#         return True, "ok", cuml,get_gpu_memory()
-#     except ModuleNotFoundError as e:
-#         return False, e, None, None
-    
-# def lazy_sklearn_import_has_dependancy():
-#     try:
-#         import warnings
-
-#         warnings.filterwarnings("ignore")
-#         import sklearn  # noqa
-
-
-
-#         return True, "ok", sklearn
-#     except ModuleNotFoundError as e:
-#         return False, e, None
-
-
-# def assert_imported():
-#     # has_dependancy_, import_exn, _ = lazy_sklearn_import_has_dependancy()
-#     sklearn = deps.sklearn
-#     if not sklearn:
-#         logger.error("SKLEARN not found, trying running " "`pip install sklearn`")
-#         # raise import_exn
-
-
-# def assert_imported_cuml():
-#     # has_cuml_dependancy_, import_cuml_exn, _, _ = lazy_cuml_import_has_dependancy()
-#     cuml = deps.cuml
-#     if not cuml:
-#         logger.warning("cuML not found, trying running " "`pip install cuml`")
-#         # raise import_cuml_exn
-
+def make_safe_gpu_dataframes(X, y, engine):
+    cudf = deps.cudf
+    if cudf:
+        assert cudf is not None
+        new_kwargs = {}
+        kwargs = {'X': X, 'y': y}
+        for key, value in kwargs.items():
+            if isinstance(value, cudf.DataFrame) and engine in ["pandas"]:
+                new_kwargs[key] = value.to_pandas()
+            elif isinstance(value, pd.DataFrame) and engine in ["cuml", "cuda", "gpu"]:
+                new_kwargs[key] = cudf.from_pandas(value)
+            else:
+                new_kwargs[key] = value
+        return new_kwargs['X'], new_kwargs['y']
+    else:
+        return X, y
 
 EngineConcrete = Literal['cuml', 'sklearn']
 Engine = Literal[EngineConcrete, "auto"]
@@ -194,6 +158,7 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
             engine = deps.cuml
             from cuml.feature_extraction.text import CountVectorizer,HashingVectorizer
             gmem = get_gpu_memory()
+            
 
         self.ngram_range = ngram_range
         self.n_components = n_components
@@ -259,6 +224,8 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
                 X=X.replace('nan',np.nan).fillna('0o0o0') ## must be string w/len >= 3 (otherwise wont pass to gap encoder)
             
         # Build the n-grams counts matrix unq_V on unique elements of X
+        X, y = make_safe_gpu_dataframes(X, None, self.engine)
+
         if 'cudf' not in str(getmodule(X)) and 'cuml' not in self.engine:
             unq_X, lookup = np.unique(X.astype(str), return_inverse=True)
         elif 'cudf' in str(getmodule(X)) and 'cuml' in self.engine:
@@ -823,7 +790,8 @@ class GapEncoder(BaseEstimator, TransformerMixin):
             gmem = get_gpu_memory()
             # math = deps.cupy
             from cuml.feature_extraction.text import CountVectorizer,HashingVectorizer
-        
+
+            
         self.ngram_range = ngram_range
         self.n_components = n_components
         self.gamma_shape_prior = gamma_shape_prior  # 'a' parameter
@@ -925,6 +893,8 @@ class GapEncoder(BaseEstimator, TransformerMixin):
         :class:`~cu_cat.GapEncoder`
             Fitted :class:`~cu_cat.GapEncoder` instance (self).
         """
+
+        X, y = make_safe_gpu_dataframes(X, None, self.engine)
 
         # Check that n_samples >= n_components
         if len(X) < self.n_components:
