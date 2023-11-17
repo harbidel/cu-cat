@@ -86,11 +86,9 @@ def df_type(df):
     Returns df type
     """
 
-    try: 
-    # if not cp:
+    try: # if not cp:
         X = str(getmodule(df))
-    except:
-    # else:
+    except: # if cp:
         X = str(cp.get_array_module(df))
     return X
 
