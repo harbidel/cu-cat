@@ -80,7 +80,8 @@ def _replace_false_missing(
         "NaN",
     ]  # taken from pandas.io.parsers (version 1.1.4)
     # Xt_= df_type(df)
-    if not deps.cudf: # 'cudf' not in Xt_:
+    # deps.cudf: # 
+    if not 'cudf' not in Xt_:
         df = df.replace(STR_NA_VALUES + [None, "?", "..."], np.nan)
         df = df.replace(r"^\s+$", np.nan, regex=True)  # Replace whitespaces
         
