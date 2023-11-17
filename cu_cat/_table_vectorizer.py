@@ -79,7 +79,7 @@ def _replace_false_missing(
         "#N/A",
         "NaN",
     ]  # taken from pandas.io.parsers (version 1.1.4)
-    # Xt_= df_type(df)
+    Xt_= df_type(df)
     # deps.cudf: # 
     if not 'cudf' not in Xt_:
         df = df.replace(STR_NA_VALUES + [None, "?", "..."], np.nan)
