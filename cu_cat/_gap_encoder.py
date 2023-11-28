@@ -859,6 +859,7 @@ class GapEncoder(BaseEstimator, TransformerMixin):
                 "handle_missing should be either 'error' or "
                 f"'zero_impute', got {self.handle_missing!r}. "
             )
+        self.Xt_= df_type(X)
         if 'cudf' not in self.Xt_:
         # if not deps.cudf:
             missing_mask = _object_dtype_isnan(X)
