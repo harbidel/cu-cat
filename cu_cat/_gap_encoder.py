@@ -351,16 +351,19 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
         if deps.cuml:
             logger.info(f"req gpu mem for fit=  `{(8*sh*sw)/1e3}`, free sys gmem= `{self.gmem}`")
         for n_iter_ in range(self.max_iter):
-            if ((8*sh*sw)/1e3)<self.gmem and self.engine =='cuml':
+            if ((8*sh*sw)/1e3)<self.gmem: # and self.engine =='cuml':
                 logger.debug(f"fitting smallfast-wise")
                 W_type = df_type(self.W_)
-                if 'cudf' not in W_type and 'cupy' not in W_type:
+                if 'cudf' not in W_type and 'cupy' not in W_type and self.engine =='cuml':
                 # if not deps.cudf and not deps.cupy: #'cupy' not in W_type:
                     logger.debug(f"moving to gpu")
                     self.W_= cp.array(self.W_);self.B_= cp.array(self.B_);self.A_= cp.array(self.A_)
-                elif 'cudf' in W_type:
+                if 'cudf' in W_type and self.engine =='cuml':
                     logger.debug(f"keeping on gpu via cupy")
                     self.W_= self.W_.to_cupy();self.B_= self.B_.to_cupy();self.A_= self.A_.to_cupy()
+                if not deps.cupy and ((8*sh*sw)/1e3)<self.mem and self.engine !='cuml':
+                    self.W_= self.W_.get();self.B_= self.B_.get();self.A_= self.A_.get();
+                    logger.debug(f"performing mat_mul speed trick on cpu")
                 W_last = self.W_.copy()
                 unq_H = _multiplicative_update_h_smallfast(
                     unq_V,
