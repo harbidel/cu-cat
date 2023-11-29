@@ -1045,21 +1045,9 @@ def _multiplicative_update_w(
     Multiplicative update step for the topics W.
     """
     if 'cudf' in df_type(Vt) or 'cupy' in df_type(Vt):
-    # if deps.cudf or deps.cupy:
-        A *= rho
-        A += cp.multiply(W, safe_sparse_dot(Ht.T, Vt.multiply(1 / (cp.dot(Ht, W) + 1e-10))))
-        B *= rho
-        B += Ht.sum(axis=0).reshape(-1, 1)
-        W=cp.multiply(A, cp.reciprocal(B))
-        if rescale_W:
-            _rescale_W(W, A)
-        gc.collect()
-        
+        cp = deps.cupy
     else:
-        # try:
-        #     W=W.get()
-        # except:
-        #     pass
+        cp = deps.numpy
         try:
             Ht=Ht.get()
         except:
@@ -1068,21 +1056,31 @@ def _multiplicative_update_w(
             Vt=Vt.get()
         except:
             pass
-        # try:
-        #     A=A.get()
-        # except:
-        #     pass
-        # try:
-        #     B=B.get()
-        # except:
-        #     pass
-        A *= rho
-        A += np.multiply(W, safe_sparse_dot(Ht.T, Vt.multiply(1 / (np.dot(Ht, W) + 1e-10))))
-        B *= rho
-        B += Ht.sum(axis=0).reshape(-1, 1)
-        W=np.multiply(A, np.reciprocal(B))#, out=W)
-        if rescale_W:
-            _rescale_W(W, A)
+    A *= rho
+    A += cp.multiply(W, safe_sparse_dot(Ht.T, Vt.multiply(1 / (cp.dot(Ht, W) + 1e-10))))
+    B *= rho
+    B += Ht.sum(axis=0).reshape(-1, 1)
+    W=cp.multiply(A, cp.reciprocal(B))
+    if rescale_W:
+        _rescale_W(W, A)
+    gc.collect()
+        
+    # else:
+    #     try:
+    #         Ht=Ht.get()
+    #     except:
+    #         pass
+    #     try:
+    #         Vt=Vt.get()
+    #     except:
+    #         pass
+    #     A *= rho
+    #     A += np.multiply(W, safe_sparse_dot(Ht.T, Vt.multiply(1 / (np.dot(Ht, W) + 1e-10))))
+    #     B *= rho
+    #     B += Ht.sum(axis=0).reshape(-1, 1)
+    #     W=np.multiply(A, np.reciprocal(B))#, out=W)
+    #     if rescale_W:
+    #         _rescale_W(W, A)
     return cp.array(W), cp.array(A), cp.array(B)
 
 def _multiplicative_update_w_smallfast(
@@ -1097,6 +1095,10 @@ def _multiplicative_update_w_smallfast(
     """
     Multiplicative update step for the topics W.
     """
+    if 'cudf' in df_type(Vt) or 'cupy' in df_type(Vt):
+        cp = deps.cupy
+    else:
+        cp = deps.numpy
     A *= rho
     C = cp.matmul(Ht, W)
     R = Vt.multiply(cp.reciprocal(C) + 1e-10)
@@ -1111,13 +1113,13 @@ def _multiplicative_update_w_smallfast(
     gc.collect()
     return W,A,B
 
+
 def _rescale_h(self, V: np.array, H: np.array) -> np.array:
     """
     Rescale the activations H.
     """
     epsilon = 1e-10  # in case of a document having length=0
 
-    # if 'cupy' in df_type(V):
     if deps.cupy:
         H = cp.array(H)
         H *= cp.maximum(epsilon, V.sum(axis=1))
@@ -1152,63 +1154,61 @@ def _multiplicative_update_h(
     squared_epsilon = epsilon #**2
 
     if 'cudf' in df_type(Vt) or 'cupy' in df_type(Vt):
-    # if deps.cudf or deps.cupy:
-        for vt, ht in zip(Vt, Ht):
-            vt_ = vt.data
-            idx = vt.indices
-            W_WT1_ = W_WT1[:, idx]
-            W_ = W[:, idx]
-            squared_norm = 1
-            for n_iter_ in range(max_iter):
-                if squared_norm <= squared_epsilon:
-                    break
-                aux = cp.dot(W_WT1_, cp.multiply(vt_,cp.reciprocal(cp.dot(ht, W_) + 1e-10)))
-                ht_out = cp.multiply(ht, aux) + const
-                squared_norm = cp.multiply(cp.dot(ht_out - ht, ht_out - ht), cp.reciprocal(cp.dot(ht, ht)))
-                ht[:] = ht_out
-        del Vt,W_,W_WT1,ht,ht_out,vt,vt_
-        gc.collect()
+        cp = deps.cupy
     else:
+        cp = deps.numpy
+        try:
+            ht=ht.get()
+        except:
+            pass
+        try:
+            vt_=vt_.get()
+        except:
+            pass
+    for vt, ht in zip(Vt, Ht):
+        vt_ = vt.data
+        idx = vt.indices
+        W_WT1_ = W_WT1[:, idx]
+        W_ = W[:, idx]
+        squared_norm = 1
+        for n_iter_ in range(max_iter):
+            if squared_norm <= squared_epsilon:
+                break
+            aux = cp.dot(W_WT1_, cp.multiply(vt_,cp.reciprocal(cp.dot(ht, W_) + 1e-10)))
+            ht_out = cp.multiply(ht, aux) + const
+            squared_norm = cp.multiply(cp.dot(ht_out - ht, ht_out - ht), cp.reciprocal(cp.dot(ht, ht)))
+            ht[:] = ht_out
+    del Vt,W_,W_WT1,ht,ht_out,vt,vt_
+    gc.collect()
+    # else:
 
-        for vt, ht in zip(Vt, Ht):
+    #     for vt, ht in zip(Vt, Ht):
             
-            # try:
-            #     idx=idx.get()
-            # except:
-            #     pass
-            # try:
-            #     W_WT1=W_WT1.get()
-            # except:
-            #     pass
-            # try:
-            #     W=W.get()
-            # except:
-            #     pass
-            try:
-                ht=ht.get()
-            except:
-                pass
-            try:
-                vt_=vt_.get()
-            except:
-                pass
+    #         try:
+    #             ht=ht.get()
+    #         except:
+    #             pass
+    #         try:
+    #             vt_=vt_.get()
+    #         except:
+    #             pass
             
-            vt_ = vt.data
-            idx = vt.indices
-            W_WT1_ = W_WT1[:, idx]
-            W_ = W[:, idx]
+    #         vt_ = vt.data
+    #         idx = vt.indices
+    #         W_WT1_ = W_WT1[:, idx]
+    #         W_ = W[:, idx]
             
 
-            for n_iter_ in range(max_iter):
-                R=np.dot(ht, W_)
-                S=np.multiply(vt_,np.reciprocal(R + 1e-10))
-                aux = np.dot(W_WT1_, S)
-                ht_out = np.multiply(ht, aux) + const
-                squared_norm = np.multiply(np.dot(ht_out - ht, ht_out - ht), np.reciprocal(np.dot(ht, ht)))
-                squared_norm_mask = squared_norm > squared_epsilon
-                ht[squared_norm_mask] = ht_out[squared_norm_mask]
-                if not np.any(squared_norm_mask):
-                    break
+    #         for n_iter_ in range(max_iter):
+    #             R=np.dot(ht, W_)
+    #             S=np.multiply(vt_,np.reciprocal(R + 1e-10))
+    #             aux = np.dot(W_WT1_, S)
+    #             ht_out = np.multiply(ht, aux) + const
+    #             squared_norm = np.multiply(np.dot(ht_out - ht, ht_out - ht), np.reciprocal(np.dot(ht, ht)))
+    #             squared_norm_mask = squared_norm > squared_epsilon
+    #             ht[squared_norm_mask] = ht_out[squared_norm_mask]
+    #             if not np.any(squared_norm_mask):
+    #                 break
     return Ht
 
 def _multiplicative_update_h_smallfast(
@@ -1234,7 +1234,11 @@ def _multiplicative_update_h_smallfast(
     squared_epsilon = epsilon #**2
 
     squared_norm = 1
-    Vt=csr(Vt);Ht=cp.array(Ht);W=cp.array(W);W_WT1=cp.array(W_WT1.T)#;Vt=cp.array(Vt)
+    if 'cudf' in df_type(Vt) or 'cupy' in df_type(Vt):
+        Vt=csr(Vt);Ht=cp.array(Ht);W=cp.array(W);W_WT1=cp.array(W_WT1.T)#;Vt=cp.array(Vt)
+        cp = deps.cupy
+    else: 
+        cp = deps.numpy
     for n_iter_ in range(max_iter):
         if squared_norm <= squared_epsilon:
             break
