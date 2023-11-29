@@ -7,6 +7,7 @@ from cu_cat import DepManager
 deps = DepManager()
 cp = deps.cupy
 cudf = deps.cudf
+psutil = deps.psutil
 import subprocess as sp
 # import cupy as cp
 
@@ -100,19 +101,22 @@ def get_gpu_memory():
     return memory_free_values
 
 def get_sys_memory():
-    """
-    Get node total memory and memory usage
-    """
-    with open('/proc/meminfo', 'r') as mem:
-        ret = {}
-        tmp = 0
-        for i in mem:
-            sline = i.split()
-            if str(sline[0]) == 'MemTotal:':
-                ret['total'] = int(sline[1])
-            elif str(sline[0]) in ('MemFree:', 'Buffers:', 'Cached:'):
-                tmp += int(sline[1])
-        ret['free'] = tmp
-        ret['used'] = int(ret['total']) - int(ret['free'])
-    return ret['free']
-
+    # """
+    # Get node total memory and memory usage
+    # """
+    # with open('/proc/meminfo', 'r') as mem:
+    #     ret = {}
+    #     tmp = 0
+    #     for i in mem:
+    #         sline = i.split()
+    #         if str(sline[0]) == 'MemTotal:':
+    #             ret['total'] = int(sline[1])
+    #         elif str(sline[0]) in ('MemFree:', 'Buffers:', 'Cached:'):
+    #             tmp += int(sline[1])
+    #     ret['free'] = tmp
+    #     ret['used'] = int(ret['total']) - int(ret['free'])
+    # return ret['free']
+    # psutil = deps.psutil
+    stats = psutil.virtual_memory()  # returns a named tuple
+    available = getattr(stats, 'available')
+    return available
