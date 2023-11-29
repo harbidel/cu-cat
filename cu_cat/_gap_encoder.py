@@ -20,18 +20,16 @@ This dynamicity is accomplished through get_gpu_memory() and the gmem variable, 
 If the gpu memory is too small, it will default to serializing dot products on the GPU, and in some (rare) cases the CPU will be faster until sufficient samples are provided to outcompete the parallelization of the CPU loops across features.
 """
 
-import warnings,sys,gc
+import warnings,sys,gc,os,logging
 from typing import Dict, Generator, List, Literal, Optional, Tuple, Union
 from inspect import getmodule
-import cupy as cp, cudf, pyarrow, cuml
+
 import numpy as np
 import pandas as pd
 from time import time
-
-from cupyx.scipy.sparse import csr_matrix as csr_gpu
 from numpy.random import RandomState
-from scipy import sparse
-from scipy.sparse import csr_matrix as csr_cpu
+# from scipy import sparse
+# from scipy.sparse import csr_matrix as csr_cpu
 from sklearn import __version__ as sklearn_version
 from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.neighbors import NearestNeighbors
@@ -39,67 +37,51 @@ from sklearn.utils import check_random_state, gen_batches
 from sklearn.utils.extmath import row_norms, safe_sparse_dot
 from sklearn.utils.fixes import _object_dtype_isnan
 from sklearn.utils.validation import check_is_fitted
-
-from ._utils import check_input, parse_version, df_type
-import logging
-
 from sklearn.decomposition._nmf import _beta_divergence
+
+from ._utils import check_input, parse_version, get_gpu_memory, df_type
+
+
+from cu_cat import DepManager
+deps = DepManager()
+pyarrow = deps.pyarrow
+
+cuml = deps.cuml  ## for cuml to run gap_encoder, following need to be loaded
+cp = deps.cupy
+cudf = deps.cudf
+cupyx_ = deps.cupyx
+if cupyx_:
+    from cupyx.scipy import sparse
+    from cupyx.scipy.sparse import csr_matrix as csr
+    cuml.set_global_output_type('cupy')
+if not cupyx_:
+    cp = deps.numpy
+    cudf = deps.pandas
+    sklearn = deps.sklearn
+# import cupy as cp, cudf, pyarrow, cuml
+    from scipy.sparse import csr_matrix as csr
 
 # Ignore lines too long, as some things in the docstring cannot be cut.
 # flake8: noqa: E501'
 
 logger = logging.getLogger()
 
-def lazy_cuml_import_has_dependancy():
-    try:
-        import warnings
-
-        warnings.filterwarnings("ignore")
-        with warnings.catch_warnings():
-            warnings.filterwarnings("ignore")
-            import cuml  # type: ignore
-            import subprocess as sp
-            import os
-
-            def get_gpu_memory():
-                command = "nvidia-smi --query-gpu=memory.free --format=csv"
-                memory_free_info = sp.check_output(command.split()).decode('ascii').split('\n')[:-1][1:]
-                memory_free_values = [int(x.split()[0]) for i, x in enumerate(memory_free_info)]
-                return memory_free_values
-
-            get_gpu_memory()
-
-        return True, "ok", cuml,get_gpu_memory()
-    except ModuleNotFoundError as e:
-        return False, e, None, None
-    
-def lazy_sklearn_import_has_dependancy():
-    try:
-        import warnings
-
-        warnings.filterwarnings("ignore")
-        import sklearn  # noqa
-
-
-
-        return True, "ok", sklearn
-    except ModuleNotFoundError as e:
-        return False, e, None
-
-
-def assert_imported():
-    has_dependancy_, import_exn, _ = lazy_sklearn_import_has_dependancy()
-    if not has_dependancy_:
-        logger.error("SKLEARN not found, trying running " "`pip install sklearn`")
-        raise import_exn
-
-
-def assert_imported_cuml():
-    has_cuml_dependancy_, import_cuml_exn, _, _ = lazy_cuml_import_has_dependancy()
-    if not has_cuml_dependancy_:
-        logger.warning("cuML not found, trying running " "`pip install cuml`")
-        raise import_cuml_exn
-
+def make_safe_gpu_dataframes(X, y, engine):
+    cudf = deps.cudf
+    if cudf:
+        assert cudf is not None
+        new_kwargs = {}
+        kwargs = {'X': X, 'y': y}
+        for key, value in kwargs.items():
+            if isinstance(value, cudf.DataFrame) and engine in ["pandas", "sklearn", "cpu"]:
+                new_kwargs[key] = value.to_pandas()
+            elif isinstance(value, pd.DataFrame) and engine in ["cuml", "cuda", "gpu"]:
+                new_kwargs[key] = cudf.from_pandas(value)
+            else:
+                new_kwargs[key] = value
+        return new_kwargs['X'], new_kwargs['y']
+    else:
+        return X, y
 
 EngineConcrete = Literal['cuml', 'sklearn']
 Engine = Literal[EngineConcrete, "auto"]
@@ -108,15 +90,25 @@ Engine = Literal[EngineConcrete, "auto"]
 def resolve_engine(
     engine: Engine,
 ) -> EngineConcrete:  # noqa
-    if engine in ['cuml', 'sklearn']:
-        return engine  # type: ignore
-    if engine in ["auto"]:
-        has_cuml_dependancy_, _, _, _ = lazy_cuml_import_has_dependancy()
-        if has_cuml_dependancy_:
-            return 'cuml'
-        has_sklearn_dependancy_, _, _ = lazy_sklearn_import_has_dependancy()
-        if has_sklearn_dependancy_:
-            return 'sklearn'
+    if deps.cudf and engine in ["auto", None, "cuml"]:
+    # if engine == 'auto':
+        cuml = deps.cuml  ## for cuml to run gap_encoder, following need to be loaded
+        cp = deps.cupy
+        cudf = deps.cudf
+        cupyx_ = deps.cupyx
+        if cupyx_:
+            from cupyx.scipy import sparse
+            from cupyx.scipy.sparse import csr_matrix as csr
+            cuml.set_global_output_type('cupy')
+            return 'cuml',cuml,cp,csr,sparse,cudf
+    if not deps.cudf and engine in ["auto", None, "sklearn"]: 
+        sklearn = deps.sklearn
+        from scipy import sparse
+        from scipy.sparse import csr_matrix as csr
+        cp = deps.numpy
+        cudf = deps.pandas
+        return 'sklearn',sklearn,cp,csr,sparse,cudf
+
 
     raise ValueError(  # noqa
         f'engine expected to be "auto", '
@@ -124,13 +116,12 @@ def resolve_engine(
         f"but received: {engine} :: {type(engine)}"
     )
 
-
 class GapEncoderColumn(BaseEstimator, TransformerMixin):
 
     """See GapEncoder's docstring."""
 
     rho_: float
-    H_dict_: Dict[pyarrow.StringScalar, cp.ndarray]
+    H_dict_: Dict[pyarrow.StringScalar, np.ndarray]
 
     def __init__(
         self,
@@ -157,13 +148,18 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
         
         engine_resolved = resolve_engine(engine)
         # FIXME remove as set_new_kwargs will always replace?
-        if engine_resolved == 'sklearn':
-            _, _, engine = lazy_sklearn_import_has_dependancy()
+        if 'sklearn' in engine_resolved:
+            # _, _, engine = lazy_sklearn_import_has_dependancy()
+            engine = deps.sklearn
+            gmem = None
             from sklearn.feature_extraction.text import CountVectorizer,HashingVectorizer
-        elif engine_resolved == 'cuml':
-            _, _, engine, gmem = lazy_cuml_import_has_dependancy()
+        elif  'cuml' in engine_resolved:
+            # _, _, engine, gmem = lazy_cuml_import_has_dependancy()
+            engine = deps.cuml
             from cuml.feature_extraction.text import CountVectorizer,HashingVectorizer
-        
+            gmem = get_gpu_memory()
+            
+
         self.ngram_range = ngram_range
         self.n_components = n_components
         self.gamma_shape_prior = gamma_shape_prior  # 'a' parameter
@@ -184,8 +180,11 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
         self.max_iter_e_step = max_iter_e_step
         self._CV = CountVectorizer
         self._HV = HashingVectorizer
-        self.engine = engine_resolved
-        self.gmem = gmem[0]
+        self.engine = engine_resolved[0]
+        if gmem:
+            self.gmem = gmem[0]
+        else:
+            self.gmem = 0
 
     def _init_vars(self, X) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
         """
@@ -193,7 +192,7 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
         the topics W.
         """
         self.Xt_ = df_type(X)
-        cuml.set_global_output_type('cupy')
+        # cuml.set_global_output_type('cupy')
         # Init n-grams counts vectorizer
         if self.hashing:
             self.ngrams_count_ = self._HV(
@@ -219,21 +218,31 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
 
         # Init H_dict_ with empty dict to train from scratch
         self.H_dict_ = dict()
-        if parse_version(cuml.__version__) > parse_version("23.04"):
-            X=X.replace('nan',np.nan).fillna('0o0o0') ## must be string w/len >= 3 (otherwise wont pass to gap encoder)
+        if 'cudf' == self.Xt_ and self.engine == 'cuml':
+        # if deps.cudf and self.engine == 'cuml':
+            if parse_version(cuml.__version__) > parse_version("23.04"):
+                X=X.replace('nan',np.nan).fillna('0o0o0') ## must be string w/len >= 3 (otherwise wont pass to gap encoder)
             
         # Build the n-grams counts matrix unq_V on unique elements of X
-        if 'cudf' not in str(getmodule(X)):
-            unq_X, lookup = np.unique(X, return_inverse=True)
-        elif 'cudf' in str(getmodule(X)):
+        X, y = make_safe_gpu_dataframes(X, None, self.engine)
+
+        if 'cudf' not in str(getmodule(X)) and 'cuml' not in self.engine:
+            unq_X, lookup = np.unique(X.astype(str), return_inverse=True)
+        elif 'cudf' in str(getmodule(X)) and 'cuml' in self.engine:
             unq_X = X.unique()
             tmp, lookup = np.unique(X.to_arrow(), return_inverse=True)
         unq_V = self.ngrams_count_.fit_transform(unq_X)
         if self.add_words:  # Add word counts to unq_V
             unq_V2 = self.word_count_.fit_transform(unq_X)
             unq_V = sparse.hstack((unq_V, unq_V2), format="csr")
-
-        if not self.hashing:  # Build n-grams/word vocabulary
+        
+        if not self.hashing and not deps.cuml:  # Build n-grams/word vocabulary
+            self.vocabulary = self.ngrams_count_.get_feature_names_out()
+            if self.add_words:
+                self.vocabulary = np.concatenate(
+                    (self.vocabulary, self.word_count_.get_feature_names_out())
+                )
+        if not self.hashing and deps.cuml:  # Build n-grams/word vocabulary
             self.vocabulary = self.ngrams_count_.get_feature_names()
             if self.add_words:
                 self.vocabulary = np.concatenate(
@@ -246,7 +255,7 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
         # Init the activations unq_H of each unique input string
         unq_H = _rescale_h(self, unq_V, np.ones((len(unq_X), self.n_components)))
         # Update self.H_dict_ with unique input strings and their activations
-        if self.engine == 'cuml' :
+        if 'cuml' in self.engine:
             self.H_dict_.update(zip(unq_X.to_arrow(), unq_H.values))
         else:
             self.H_dict_.update(zip(unq_X, unq_H))
@@ -259,11 +268,12 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
         """
         Return the bag-of-n-grams representation of X.
         """
-        if 'cudf' in df_type(X) or 'arrow' in df_type(self.H_dict_):
+        if 'cudf' in df_type(X) or 'arrow' in df_type(self.H_dict_): ## sadly i think all three are necessary
+        # if deps.cudf or 'arrow' in df_type(self.H_dict_):
             H_out = cp.empty((len(X), self.n_components))
-            for x, h_out in zip(X.to_arrow(), H_out): # from cupy back to cudf
+            for x, h_out in zip(X.to_arrow(), H_out): # from cupy to arrow back to cudf
                 h_out[:] = cp.asarray(self.H_dict_[x])
-        elif self.engine != 'cuml':
+        elif 'cuml' not in self.engine:
             H_out = np.empty((len(X), self.n_components))
 
             for x, h_out in zip(X, H_out):
@@ -271,7 +281,10 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
                     self.H_dict_[x]=self.H_dict_[x].get()
                 except:
                     pass
-                h_out[:] = self.H_dict_[x]
+                try:
+                    h_out[:] = self.H_dict_[x]
+                except:
+                    pass
         else:
             H_out = cp.empty((len(X), self.n_components))
             for x, h_out in zip(X, H_out): # from cupy back to cudf
@@ -284,15 +297,15 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
         If self.init='random', topics are initialized with a Gamma
         distribution.
         """
-        if self.init == "random":
-            W = self.random_state.gamma(
-                shape=self.gamma_shape_prior,
-                scale=self.gamma_scale_prior,
-                size=(self.n_components, self.n_vocab),
-            )
+        # if self.init == "random":
+        W = self.random_state.gamma(
+            shape=self.gamma_shape_prior,
+            scale=self.gamma_scale_prior,
+            size=(self.n_components, self.n_vocab),
+        )
         
-        else:
-            raise ValueError(f"Initialization method {self.init!r} does not exist. ")
+        # else:
+            # raise ValueError(f"Initialization method {self.init!r} does not exist. ")
         W = cp.array(W)
         W /= W.sum(axis=1, keepdims=True)
         A = cp.ones((self.n_components, self.n_vocab)) * 1e-10
@@ -318,34 +331,39 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
         t = time()
         # Copy parameter rho
         self.rho_ = self.rho
-        
+
         # Check if first item has str or np.str_ type
-        
+
         self.Xt_= df_type(X)
         # Make n-grams counts matrix unq_V
-        if parse_version(cuml.__version__) > parse_version("23.04"):
+        if cuml and parse_version(cuml.__version__) > parse_version("23.04"):
             X=X.replace('nan',np.nan).fillna('0o0o0')
         unq_X, unq_V, lookup = self._init_vars(X)
         n_batch = (len(X) - 1) // self.batch_size + 1
         # Get activations unq_H
         del X
         unq_H = self._get_H(unq_X)
-        unq_V = csr_gpu(unq_V)
+        unq_V = csr(unq_V)
         unq_H = cp.array(unq_H); # redundant
         sh=len(unq_H)
         sw=len(self.W_)
         
-        logger.info(f"req gpu mem for fit=  `{(8*sh*sw)/1e3}`, free sys gmem= `{self.gmem}`")
+        if deps.cuml:
+            logger.info(f"req gpu mem for fit=  `{(8*sh*sw)/1e3}`, free sys gmem= `{self.gmem}`")
         for n_iter_ in range(self.max_iter):
-            if ((8*sh*sw)/1e3)<self.gmem and self.engine =='cuml':
+            if ((8*sh*sw)/1e3)<self.gmem: # and self.engine =='cuml':
                 logger.debug(f"fitting smallfast-wise")
                 W_type = df_type(self.W_)
-                if 'cudf' not in W_type and 'cupy' not in W_type:
+                if 'cudf' not in W_type and 'cupy' not in W_type and self.engine =='cuml':
+                # if not deps.cudf and not deps.cupy: #'cupy' not in W_type:
                     logger.debug(f"moving to gpu")
                     self.W_= cp.array(self.W_);self.B_= cp.array(self.B_);self.A_= cp.array(self.A_)
-                elif 'cudf' in W_type:
+                if 'cudf' in W_type and self.engine =='cuml':
                     logger.debug(f"keeping on gpu via cupy")
                     self.W_= self.W_.to_cupy();self.B_= self.B_.to_cupy();self.A_= self.A_.to_cupy()
+                if not deps.cupy and ((8*sh*sw)/1e3)<self.mem and self.engine !='cuml':
+                    self.W_= self.W_.get();self.B_= self.B_.get();self.A_= self.A_.get();
+                    logger.debug(f"performing mat_mul speed trick on cpu")
                 W_last = self.W_.copy()
                 unq_H = _multiplicative_update_h_smallfast(
                     unq_V,
@@ -369,10 +387,11 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
             else:
                 W_type = df_type(self.W_)
                 if self.engine =='cuml' and ((8*sh*sw)/1e3)>self.gmem and ((8*sh)/1e3)<self.gmem and ((8*sw)/1e3)<self.gmem:
-                    if 'cudf' not in W_type and 'cupy' not in W_type:
+                    # if 'cudf' not in W_type and 'cupy' not in W_type:
+                    if not deps.cudf and not deps.cupy:
                         self.W_= cp.array(self.W_);self.B_= cp.array(self.B_);self.A_= cp.array(self.A_);
                         logger.debug(f"moving to cupy")
-                    elif 'cudf' in W_type:
+                    else: # 'cudf' in W_type:
                         self.W_= self.W_.to_cupy();self.B_= self.B_.to_cupy();self.A_= self.A_.to_cupy();
                         logger.debug(f"keeping on gpu via cupy")
                     # Loop over batches
@@ -413,6 +432,7 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
             if (W_change < self.tol) and (n_iter_ >= self.min_iter - 1):
                 break  # Stop if the change in W is smaller than the tolerance
         if 'cudf' in df_type(unq_X) :
+        # if deps.cudf:
             self.H_dict_.update(zip(unq_X.to_arrow(), unq_H))
         else:
             self.H_dict_.update(zip(unq_X, unq_H))
@@ -460,6 +480,7 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
         vectorizer = self._CV()
 
         if 'cudf'  in self.Xt_:
+        # if deps.cudf:
             A=cudf.Series([(item).as_py() for item in self.H_dict_.keys()])
             vectorizer.fit(A)
             vocabulary = (vectorizer.get_feature_names().to_arrow())
@@ -469,9 +490,10 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
             encoding = (cp.asnumpy(encoding))
 
         else:
-            vectorizer.fit(list(self.H_dict_.keys()))
-            vocabulary = np.array(vectorizer.get_feature_names())
-            encoding = self.transform(pd.Series(vocabulary).reshape(-1))
+            A=pd.Series([(item) for item in self.H_dict_.keys()])
+            vectorizer.fit(A.astype(str))
+            vocabulary = (vectorizer.get_feature_names_out())
+            encoding = self.transform(pd.Series(vocabulary.reshape(-1)))
             encoding = abs(encoding)
 
         encoding = encoding / np.sum(encoding, axis=1, keepdims=True)
@@ -492,11 +514,12 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
         """
 
         if 'cudf' in self.Xt_:
+        # if deps.cudf:
             A=np.array([(item).as_py() for item in self.H_dict_])
             unseen_X = np.setdiff1d(X.to_arrow(), A, assume_unique=True) 
             unseen_X = cudf.Series(unseen_X)
         else:
-            unseen_X = np.setdiff1d(X, np.array([*self.H_dict_]))
+            unseen_X = np.setdiff1d(X.astype(str), np.array([*self.H_dict_]))
         if unseen_X.size > 0:
             unseen_V = self.ngrams_count_.transform(unseen_X)
             if self.add_words:
@@ -506,6 +529,7 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
             unseen_H = _rescale_h(self,unseen_V, np.ones((unseen_V.shape[0], self.n_components)))
             
             if 'cudf' in df_type(unseen_X) :
+            # if deps.cudf:
                 self.H_dict_.update(zip(unseen_X.to_arrow(), unseen_H.values))
             else:
                 self.H_dict_.update(zip(unseen_X, unseen_H))
@@ -528,13 +552,14 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
         t = time()
         check_is_fitted(self, "H_dict_")
         # Check if first item has str or np.str_ type
-        if parse_version(cuml.__version__) > parse_version("23.04"):
-            X=X.replace('nan',np.nan).fillna('0o0o0')
+        if deps.cuml:
+            if parse_version(cuml.__version__) > parse_version("23.04"):
+                X=X.replace('nan',np.nan).fillna('0o0o0')
         unq_X = X.unique()
         # Build the n-grams counts matrix V for the string data to encode
-        unq_V = self.ngrams_count_.transform(unq_X)
+        unq_V = self.ngrams_count_.transform(unq_X.astype(str))
         if self.add_words:  # Add words counts
-            unq_V2 = self.word_count_.transform(unq_X)
+            unq_V2 = self.word_count_.transform(unq_X.astype(str))
             unq_V = sparse.hstack((unq_V, unq_V2), format="csr")
         # Add unseen strings in X to H_dict
         self._add_unseen_keys_to_H_dict(unq_X) ### need to get this back for transforming obviously
@@ -561,7 +586,7 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
             if self.engine =='cuml' and ((8*sh*sw)/1e3)>self.gmem and ((8*sh)/1e3)<self.gmem and ((8*sw)/1e3)<self.gmem:
                 logger.debug(f"cupy transform")
                 if 'cudf' not in W_type and 'cupy' not in W_type:
-                    self.W_=cp.array(self.W_);unq_V=csr_gpu(unq_V);unq_H=cp.array(unq_H);
+                    self.W_=cp.array(self.W_);unq_V=csr(unq_V);unq_H=cp.array(unq_H);
                     logger.debug(f"moving to cupy")
                 if 'cudf' in W_type:
                     self.W_=self.W_.to_cupy(); unq_V=unq_V.to_cupy();unq_H=unq_H.to_cupy();
@@ -584,6 +609,7 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
                     gamma_scale_prior=self.gamma_scale_prior,
                 )
         if 'cudf' in df_type(unq_X) :
+        # if deps.cudf:
             self.H_dict_.update(zip(unq_X.to_arrow(), unq_H))
         else:
             self.H_dict_.update(zip(unq_X, unq_H))
@@ -754,13 +780,21 @@ class GapEncoder(BaseEstimator, TransformerMixin):
     ):
         engine_resolved = resolve_engine(engine)
         # FIXME remove as set_new_kwargs will always replace?
-        if engine_resolved == 'sklearn':
-            _, _, engine = lazy_sklearn_import_has_dependancy()
+        if 'sklearn' in engine_resolved:
+            engine = deps.sklearn
+            # math = deps.numpy
+            cp = deps.numpy
+            gmem = None
+            # _, _, engine = lazy_sklearn_import_has_dependancy()
             from sklearn.feature_extraction.text import CountVectorizer,HashingVectorizer
-        elif engine_resolved == 'cuml':
-            _, _, engine, gmem = lazy_cuml_import_has_dependancy()
+        elif 'cuml' in engine_resolved:
+            # _, _, engine, gmem = lazy_cuml_import_has_dependancy()
+            engine = deps.cuml
+            gmem = get_gpu_memory()
+            # math = deps.cupy
             from cuml.feature_extraction.text import CountVectorizer,HashingVectorizer
-        
+
+            
         self.ngram_range = ngram_range
         self.n_components = n_components
         self.gamma_shape_prior = gamma_shape_prior  # 'a' parameter
@@ -782,8 +816,12 @@ class GapEncoder(BaseEstimator, TransformerMixin):
         self.handle_missing = handle_missing
         self._CV = CountVectorizer
         self._HV = HashingVectorizer
-        self.engine = engine_resolved
-        self.gmem = gmem[0]
+        self.engine = engine_resolved[0]
+        # self.math = math
+        if gmem:
+            self.gmem = gmem[0]
+        else:
+            self.gmem = 0
 
 
     def _more_tags(self) -> Dict[str, List[str]]:
@@ -824,10 +862,12 @@ class GapEncoder(BaseEstimator, TransformerMixin):
                 "handle_missing should be either 'error' or "
                 f"'zero_impute', got {self.handle_missing!r}. "
             )
+        self.Xt_= df_type(X)
         if 'cudf' not in self.Xt_:
+        # if not deps.cudf:
             missing_mask = _object_dtype_isnan(X)
-        
-            if missing_mask.any():
+
+            if missing_mask.any(axis=None):
                 if self.handle_missing == "error":
                     raise ValueError("Input data contains missing values. ")
                 elif self.handle_missing == "zero_impute":
@@ -858,6 +898,8 @@ class GapEncoder(BaseEstimator, TransformerMixin):
             Fitted :class:`~cu_cat.GapEncoder` instance (self).
         """
 
+        X, y = make_safe_gpu_dataframes(X, None, self.engine)
+
         # Check that n_samples >= n_components
         if len(X) < self.n_components:
             raise ValueError(
@@ -870,7 +912,9 @@ class GapEncoder(BaseEstimator, TransformerMixin):
             self.column_names_ = list(X.columns)
         # Check input data shape
         self.Xt_ = df_type(X)
-        if 'cudf' not in self.Xt_ or 'cuml' != self.engine:
+        # if 'cudf' not in self.Xt_ or 'cuml' != self.engine:
+        if not deps.cudf or 'cuml' != self.engine:
+        # if deps.cuml or 'cuml' != self.engine:
             X = check_input(X)
             try:
                 X = X.to_pandas()
@@ -878,7 +922,7 @@ class GapEncoder(BaseEstimator, TransformerMixin):
                 pass
             X = self._handle_missing(X)
             self.fitted_models_ = []
-            
+
             for k in range(X.shape[1]):
                 col_enc = self._create_column_gap_encoder()
                 self.fitted_models_.append(col_enc.fit(X.iloc[:, k]))
@@ -1004,20 +1048,9 @@ def _multiplicative_update_w(
     Multiplicative update step for the topics W.
     """
     if 'cudf' in df_type(Vt) or 'cupy' in df_type(Vt):
-        A *= rho
-        A += cp.multiply(W, safe_sparse_dot(Ht.T, Vt.multiply(1 / (cp.dot(Ht, W) + 1e-10))))
-        B *= rho
-        B += Ht.sum(axis=0).reshape(-1, 1)
-        W=cp.multiply(A, cp.reciprocal(B))
-        if rescale_W:
-            _rescale_W(W, A)
-        gc.collect()
-        
+        cp = deps.cupy
     else:
-        try:
-            W=W.get()
-        except:
-            pass
+        cp = deps.numpy
         try:
             Ht=Ht.get()
         except:
@@ -1026,21 +1059,31 @@ def _multiplicative_update_w(
             Vt=Vt.get()
         except:
             pass
-        try:
-            A=A.get()
-        except:
-            pass
-        try:
-            B=B.get()
-        except:
-            pass
-        A *= rho
-        A += np.multiply(W, safe_sparse_dot(Ht.T, Vt.multiply(1 / (np.dot(Ht, W) + 1e-10))))
-        B *= rho
-        B += Ht.sum(axis=0).reshape(-1, 1)
-        W=np.multiply(A, np.reciprocal(B))#, out=W)
-        if rescale_W:
-            _rescale_W(W, A)
+    A *= rho
+    A += cp.multiply(W, safe_sparse_dot(Ht.T, Vt.multiply(1 / (cp.dot(Ht, W) + 1e-10))))
+    B *= rho
+    B += Ht.sum(axis=0).reshape(-1, 1)
+    W=cp.multiply(A, cp.reciprocal(B))
+    if rescale_W:
+        _rescale_W(W, A)
+    gc.collect()
+        
+    # else:
+    #     try:
+    #         Ht=Ht.get()
+    #     except:
+    #         pass
+    #     try:
+    #         Vt=Vt.get()
+    #     except:
+    #         pass
+    #     A *= rho
+    #     A += np.multiply(W, safe_sparse_dot(Ht.T, Vt.multiply(1 / (np.dot(Ht, W) + 1e-10))))
+    #     B *= rho
+    #     B += Ht.sum(axis=0).reshape(-1, 1)
+    #     W=np.multiply(A, np.reciprocal(B))#, out=W)
+    #     if rescale_W:
+    #         _rescale_W(W, A)
     return cp.array(W), cp.array(A), cp.array(B)
 
 def _multiplicative_update_w_smallfast(
@@ -1055,6 +1098,10 @@ def _multiplicative_update_w_smallfast(
     """
     Multiplicative update step for the topics W.
     """
+    if 'cudf' in df_type(Vt) or 'cupy' in df_type(Vt):
+        cp = deps.cupy
+    else:
+        cp = deps.numpy
     A *= rho
     C = cp.matmul(Ht, W)
     R = Vt.multiply(cp.reciprocal(C) + 1e-10)
@@ -1069,13 +1116,14 @@ def _multiplicative_update_w_smallfast(
     gc.collect()
     return W,A,B
 
+
 def _rescale_h(self, V: np.array, H: np.array) -> np.array:
     """
     Rescale the activations H.
     """
     epsilon = 1e-10  # in case of a document having length=0
 
-    if 'cupy' in df_type(V):
+    if deps.cupy:
         H = cp.array(H)
         H *= cp.maximum(epsilon, V.sum(axis=1))
     else:
@@ -1107,64 +1155,63 @@ def _multiplicative_update_h(
         W_WT1 = W / WT1.reshape(-1, 1)
     const = (gamma_shape_prior - 1) / WT1
     squared_epsilon = epsilon #**2
-    
+
     if 'cudf' in df_type(Vt) or 'cupy' in df_type(Vt):
-        for vt, ht in zip(Vt, Ht):
-            vt_ = vt.data
-            idx = vt.indices
-            W_WT1_ = W_WT1[:, idx]
-            W_ = W[:, idx]
-            squared_norm = 1
-            for n_iter_ in range(max_iter):
-                if squared_norm <= squared_epsilon:
-                    break
-                aux = cp.dot(W_WT1_, cp.multiply(vt_,cp.reciprocal(cp.dot(ht, W_) + 1e-10)))
-                ht_out = cp.multiply(ht, aux) + const
-                squared_norm = cp.multiply(cp.dot(ht_out - ht, ht_out - ht), cp.reciprocal(cp.dot(ht, ht)))
-                ht[:] = ht_out
-        del Vt,W_,W_WT1,ht,ht_out,vt,vt_
-        gc.collect()
+        cp = deps.cupy
     else:
+        cp = deps.numpy
+        try:
+            ht=ht.get()
+        except:
+            pass
+        try:
+            vt_=vt_.get()
+        except:
+            pass
+    for vt, ht in zip(Vt, Ht):
+        vt_ = vt.data
+        idx = vt.indices
+        W_WT1_ = W_WT1[:, idx]
+        W_ = W[:, idx]
+        squared_norm = 1
+        for n_iter_ in range(max_iter):
+            if squared_norm <= squared_epsilon:
+                break
+            aux = cp.dot(W_WT1_, cp.multiply(vt_,cp.reciprocal(cp.dot(ht, W_) + 1e-10)))
+            ht_out = cp.multiply(ht, aux) + const
+            squared_norm = cp.multiply(cp.dot(ht_out - ht, ht_out - ht), cp.reciprocal(cp.dot(ht, ht)))
+            ht[:] = ht_out
+    del Vt,W_,W_WT1,ht,ht_out,vt,vt_
+    gc.collect()
+    # else:
 
-        for vt, ht in zip(Vt, Ht):
+    #     for vt, ht in zip(Vt, Ht):
             
-            try:
-                idx=idx.get()
-            except:
-                pass
-            try:
-                W_WT1=W_WT1.get()
-            except:
-                pass
-            try:
-                W=W.get()
-            except:
-                pass
-            try:
-                ht=ht.get()
-            except:
-                pass
-            try:
-                vt_=vt_.get()
-            except:
-                pass
+    #         try:
+    #             ht=ht.get()
+    #         except:
+    #             pass
+    #         try:
+    #             vt_=vt_.get()
+    #         except:
+    #             pass
             
-            vt_ = vt.data
-            idx = vt.indices
-            W_WT1_ = W_WT1[:, idx]
-            W_ = W[:, idx]
+    #         vt_ = vt.data
+    #         idx = vt.indices
+    #         W_WT1_ = W_WT1[:, idx]
+    #         W_ = W[:, idx]
             
 
-            for n_iter_ in range(max_iter):
-                R=np.dot(ht, W_)
-                S=np.multiply(vt_,np.reciprocal(R + 1e-10))
-                aux = np.dot(W_WT1_, S)
-                ht_out = np.multiply(ht, aux) + const
-                squared_norm = np.multiply(np.dot(ht_out - ht, ht_out - ht), np.reciprocal(np.dot(ht, ht)))
-                squared_norm_mask = squared_norm > squared_epsilon
-                ht[squared_norm_mask] = ht_out[squared_norm_mask]
-                if not np.any(squared_norm_mask):
-                    break
+    #         for n_iter_ in range(max_iter):
+    #             R=np.dot(ht, W_)
+    #             S=np.multiply(vt_,np.reciprocal(R + 1e-10))
+    #             aux = np.dot(W_WT1_, S)
+    #             ht_out = np.multiply(ht, aux) + const
+    #             squared_norm = np.multiply(np.dot(ht_out - ht, ht_out - ht), np.reciprocal(np.dot(ht, ht)))
+    #             squared_norm_mask = squared_norm > squared_epsilon
+    #             ht[squared_norm_mask] = ht_out[squared_norm_mask]
+    #             if not np.any(squared_norm_mask):
+    #                 break
     return Ht
 
 def _multiplicative_update_h_smallfast(
@@ -1190,7 +1237,11 @@ def _multiplicative_update_h_smallfast(
     squared_epsilon = epsilon #**2
 
     squared_norm = 1
-    Vt=csr_gpu(Vt);Ht=cp.array(Ht);W=cp.array(W);W_WT1=cp.array(W_WT1.T)#;Vt=cp.array(Vt)
+    if 'cudf' in df_type(Vt) or 'cupy' in df_type(Vt):
+        Vt=csr(Vt);Ht=cp.array(Ht);W=cp.array(W);W_WT1=cp.array(W_WT1.T)#;Vt=cp.array(Vt)
+        cp = deps.cupy
+    else: 
+        cp = deps.numpy
     for n_iter_ in range(max_iter):
         if squared_norm <= squared_epsilon:
             break
