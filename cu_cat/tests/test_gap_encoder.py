@@ -1,16 +1,20 @@
 import numpy as np
-import cupy as cp
-import cudf
 import pandas as pd
 import pytest
-from sklearn import __version__ as sklearn_version
-from sklearn.exceptions import NotFittedError
 from time import time
 
-from cu_cat import GapEncoder
+from cu_cat import GapEncoder, DepManager
 from cu_cat._utils import parse_version
 from cu_cat.tests.utils import generate_data #, generate_cudata
 
+deps = DepManager()
+cudf = deps.cudf
+cp = deps.cupy
+StandardScaler = deps.cuml.preprocessing.StandardScaler
+sklearn = deps.sklearn
+if sklearn:
+    from sklearn import __version__ as sklearn_version
+    from sklearn.exceptions import NotFittedError
 
 # def test_analyzer():
 #     """

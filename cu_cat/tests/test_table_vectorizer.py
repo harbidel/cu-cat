@@ -2,16 +2,17 @@ from typing import Any, Tuple
 
 import numpy as np
 import pandas as pd
-import cudf
 import pytest
-import sklearn
 from sklearn.exceptions import NotFittedError
-from cuml.preprocessing import StandardScaler
 from sklearn.utils.validation import check_is_fitted
 
-from cu_cat import GapEncoder, SuperVectorizer, TableVectorizer
+from cu_cat import GapEncoder, SuperVectorizer, TableVectorizer, DepManager
 from cu_cat._utils import parse_version
-
+deps = DepManager()
+cudf = deps.cudf
+cp = deps.cupy
+StandardScaler = deps.cuml.preprocessing.StandardScaler
+sklearn = deps.sklearn
 
 def check_same_transformers(expected_transformers: dict, actual_transformers: list):
     # Construct the dict from the actual transformers
@@ -152,6 +153,7 @@ def set_to_datetime(df: pd.DataFrame, cols: List, new_col: str):
         df[new_col] = pd.to_datetime(df[cols], errors="coerce").fillna(0)
     else:
         # _, _, cudf = lazy_import_has_dependancy_cuda()
+        cudf = deps.cudf
         # assert cudf is not None
         for col in df.columns:
             try:
