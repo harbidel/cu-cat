@@ -2,17 +2,35 @@ from typing import Callable, Optional
 
 import numpy as np
 import numpy.testing
+import pandas as pd
 import pytest
 from sklearn import __version__ as sklearn_version
 from sklearn.exceptions import NotFittedError
 
+<<<<<<< HEAD:cu_cat/tests/test_similarity_encoder.py
 from cu_cat import SimilarityEncoder
 from cu_cat._similarity_encoder import get_kmeans_prototypes, ngram_similarity_matrix
 from cu_cat._string_distances import ngram_similarity
 from cu_cat._utils import parse_version
+=======
+from skrub import SimilarityEncoder
+from skrub._dataframe._polars import POLARS_SETUP
+from skrub._dataframe._test_utils import is_module_polars
+from skrub._similarity_encoder import ngram_similarity_matrix
+from skrub._string_distances import ngram_similarity
+>>>>>>> master:skrub/tests/test_similarity_encoder.py
+
+MODULES = [pd]
+INPUT_TYPES = ["list", "numpy", "pandas"]
+
+if POLARS_SETUP:
+    import polars as pl
+
+    MODULES.append(pl)
+    INPUT_TYPES.append("polars")
 
 
-def test_specifying_categories() -> None:
+def test_specifying_categories():
     # When creating a new SimilarityEncoder:
     # - if categories = 'auto', the categories are the sorted, unique training
     # set observations (for each column)
@@ -37,7 +55,7 @@ def test_specifying_categories() -> None:
     assert np.allclose(feature_matrix_auto_cat, feature_matrix_with_cat)
 
 
-def test_fast_ngram_similarity() -> None:
+def test_fast_ngram_similarity():
     vocabulary = [["bar", "foo"]]
     observations = [["foo"], ["baz"]]
 
@@ -69,8 +87,13 @@ def test_parameters():
         sim.transform(X2)
 
 
+<<<<<<< HEAD:cu_cat/tests/test_similarity_encoder.py
 def _test_missing_values(input_type, missing):
     observations = [["a", "b"], ["b", "a"], ["b", np.nan], ["a", "c"], [np.nan, "a"]]
+=======
+def _test_missing_values(input_type: str, missing: str):
+    observations = [["a", "b"], ["b", "a"], ["b", None], ["a", "c"], [np.nan, "a"]]
+>>>>>>> master:skrub/tests/test_similarity_encoder.py
     encoded = np.array(
         [
             [0.0, 1.0, 0.0, 0.0, 0.0, 1.0, 0.0],
@@ -84,8 +107,9 @@ def _test_missing_values(input_type, missing):
     if input_type == "numpy":
         observations = np.array(observations, dtype=object)
     elif input_type == "pandas":
-        pd = pytest.importorskip("pandas")
         observations = pd.DataFrame(observations)
+    elif input_type == "polars":
+        observations = pl.DataFrame(observations)
 
     sim_enc = SimilarityEncoder(handle_missing=missing)
     if missing == "error":
@@ -100,12 +124,12 @@ def _test_missing_values(input_type, missing):
         return
 
 
-def _test_missing_values_transform(input_type: str, missing: str) -> None:
+def _test_missing_values_transform(input_type: str, missing: str):
     observations = [["a", "b"], ["b", "a"], ["b", "b"], ["a", "c"], ["c", "a"]]
     test_observations = [
         ["a", "b"],
         ["b", "a"],
-        ["b", np.nan],
+        ["b", None],
         ["a", "c"],
         [np.nan, "a"],
     ]
@@ -122,8 +146,9 @@ def _test_missing_values_transform(input_type: str, missing: str) -> None:
     if input_type == "numpy":
         test_observations = np.array(test_observations, dtype=object)
     elif input_type == "pandas":
-        pd = pytest.importorskip("pandas")
         test_observations = pd.DataFrame(test_observations)
+    elif input_type == "polars":
+        observations = pl.DataFrame(test_observations)
 
     sim_enc = SimilarityEncoder(handle_missing=missing)
     if missing == "error":
@@ -140,11 +165,17 @@ def _test_similarity(
     similarity_f: Callable,
     hashing_dim: Optional[int] = None,
     categories: str = "auto",
+<<<<<<< HEAD:cu_cat/tests/test_similarity_encoder.py
     n_prototypes: int = None,
 ) -> None:
     if n_prototypes is None:
         X = np.array(["aa", "aaa", "aaab"]).reshape(-1, 1)
         X_test = np.array([["Aa", "aAa", "aaa", "aaab", " aaa  c"]]).reshape(-1, 1)
+=======
+):
+    X = np.array(["aa", "aaa", "aaab"]).reshape(-1, 1)
+    X_test = np.array([["Aa", "aAa", "aaa", "aaab", " aaa  c"]]).reshape(-1, 1)
+>>>>>>> master:skrub/tests/test_similarity_encoder.py
 
         model = SimilarityEncoder(
             hashing_dim=hashing_dim,
@@ -205,6 +236,7 @@ def _test_similarity(
         numpy.testing.assert_almost_equal(encoder, ans)
 
 
+<<<<<<< HEAD:cu_cat/tests/test_similarity_encoder.py
 def test_similarity_encoder() -> None:
     categories = ["auto", "most_frequent", "k-means"]
     for category in categories:
@@ -233,15 +265,34 @@ def test_similarity_encoder() -> None:
                     categories=category,
                     n_prototypes=i,
                 )
+=======
+@pytest.mark.parametrize("input_type", INPUT_TYPES)
+@pytest.mark.parametrize("missing", ["aaa", "error", ""])
+def test_similarity_encoder(input_type, missing):
+    if input_type == "polars":
+        pytest.xfail(
+            reason=(
+                "Using Polars raises the following error 'TypeError: '<' not supported"
+                " between instances of 'NoneType' and 'str''"
+            )
+        )
+    _test_similarity(
+        ngram_similarity,
+        categories="auto",
+    )
+    _test_similarity(
+        ngram_similarity,
+        hashing_dim=2**16,
+        categories="auto",
+    )
+    _test_similarity(ngram_similarity, categories="auto")
+>>>>>>> master:skrub/tests/test_similarity_encoder.py
 
-    input_types = ["list", "numpy", "pandas"]
-    handle_missing = ["aaa", "error", ""]
-    for input_type in input_types:
-        for missing in handle_missing:
-            _test_missing_values(input_type, missing)
-            _test_missing_values_transform(input_type, missing)
+    _test_missing_values(input_type, missing)
+    _test_missing_values_transform(input_type, missing)
 
 
+<<<<<<< HEAD:cu_cat/tests/test_similarity_encoder.py
 def test_kmeans_protoypes() -> None:
     X_test = np.array(["cbbba", "baaac", "accc"])
     proto = get_kmeans_prototypes(X_test, 3, sparse=True)
@@ -252,13 +303,21 @@ def test_kmeans_protoypes() -> None:
 
 
 def test_ngram_similarity_matrix() -> None:
+=======
+@pytest.mark.parametrize("analyzer", ["char", "char_wb", "word"])
+def test_ngram_similarity_matrix(analyzer):
+>>>>>>> master:skrub/tests/test_similarity_encoder.py
     X1 = np.array(["cat1", "cat2", "cat3"])
     X2 = np.array(["cata1", "caat2", "ccat3"])
     sim = ngram_similarity_matrix(X1, X2, ngram_range=(2, 2), hashing_dim=5)
     assert sim.shape == (len(X1), len(X2))
 
 
+<<<<<<< HEAD:cu_cat/tests/test_similarity_encoder.py
 def test_reproducibility() -> None:
+=======
+def test_determinist():
+>>>>>>> master:skrub/tests/test_similarity_encoder.py
     sim_enc = SimilarityEncoder(
         categories="k-means",
         n_prototypes=10,
@@ -280,9 +339,15 @@ def test_fit_transform():
     assert np.array_equal(tr1, tr2)
 
 
+<<<<<<< HEAD:cu_cat/tests/test_similarity_encoder.py
 def test_get_features() -> None:
     # See https://github.com/cu-cat/cu_cat/issues/168
     sim_enc = SimilarityEncoder(random_state=435)
+=======
+def test_get_features():
+    # See https://github.com/skrub-data/skrub/issues/168
+    sim_enc = SimilarityEncoder()
+>>>>>>> master:skrub/tests/test_similarity_encoder.py
     X = np.array(["%s" % chr(i) for i in range(32, 127)]).reshape((-1, 1))
     sim_enc.fit(X)
     if parse_version(sklearn_version) < parse_version("1.0"):
@@ -387,6 +452,10 @@ def test_get_features() -> None:
         "x0_~",
     ]
 
+<<<<<<< HEAD:cu_cat/tests/test_similarity_encoder.py
+=======
+
+>>>>>>> master:skrub/tests/test_similarity_encoder.py
 def test_check_fitted_super_vectorizer():
     """Test that calling transform before fit raises an error"""
     sim_enc = SimilarityEncoder()
@@ -397,6 +466,7 @@ def test_check_fitted_super_vectorizer():
     sim_enc.transform(X)
 
 
+<<<<<<< HEAD:cu_cat/tests/test_similarity_encoder.py
 def test_perf():
     """Test gpu speed boost and correctness"""
     askHN = pd.read_csv('https://storage.googleapis.com/cohere-assets/blog/text-clustering/data/askhn3k_df.csv', index_col=0)
@@ -415,3 +485,23 @@ def test_perf():
     intersect=np.sum(np.sum(pd.DataFrame(CW)==pd.DataFrame(GW)))
     union=pd.DataFrame(CW).shape[0]*pd.DataFrame(CW).shape[1]
     assert(intersect==union)
+=======
+@pytest.mark.parametrize("px", MODULES)
+def test_inverse_transform(px):
+    if is_module_polars(px):
+        pytest.xfail(reason="Setting output to polars is not possible yet.")
+    encoder = SimilarityEncoder()
+    encoder.set_output(transform="pandas")
+    X = pd.DataFrame({"A": ["aaa", "aax", "xxx"], "B": ["bbb", "bby", "yyy"]})
+    encoder.fit(X)
+    assert encoder.get_feature_names_out().tolist() == [
+        "x0_aaa",
+        "x0_aax",
+        "x0_xxx",
+        "x1_bbb",
+        "x1_bby",
+        "x1_yyy",
+    ]
+    inverse = encoder.inverse_transform([[1, 0, 0, 1, 0, 0]])
+    numpy.testing.assert_array_equal(inverse, [["aaa", "bbb"]])
+>>>>>>> master:skrub/tests/test_similarity_encoder.py

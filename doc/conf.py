@@ -237,6 +237,8 @@ html_js_files = []
 # Project logo, to place at the top of the sidebar.
 html_logo = "_static/cu_cat.svg"
 
+# Icon to put in the browser tab.
+html_favicon = "_static/skrub.svg"
 
 # Modify the title to get good social-media links
 html_title = "cu_cat"
@@ -307,14 +309,15 @@ texinfo_documents = [
 # Configuration for intersphinx
 intersphinx_mapping = {
     "python": ("https://docs.python.org/3", None),
-    "numpy": ("https://docs.scipy.org/doc/numpy", None),
-    "scipy": ("https://docs.scipy.org/doc/scipy/reference", None),
-    "matplotlib": ("https://matplotlib.org", None),
+    "numpy": ("https://numpy.org/doc/stable", None),
+    "scipy": ("https://docs.scipy.org/doc/scipy", None),
+    "matplotlib": ("https://matplotlib.org/stable", None),
     "sklearn": ("https://scikit-learn.org/stable", None),
-    "skimage": ("http://scikit-image.org/docs/stable", None),
+    "skimage": ("https://scikit-image.org/docs/stable", None),
     "mayavi": ("http://docs.enthought.com/mayavi/mayavi", None),
-    "statsmodels": ("http://www.statsmodels.org/stable", None),
+    "statsmodels": ("https://www.statsmodels.org/stable", None),
     "pandas": ("http://pandas.pydata.org/pandas-docs/stable", None),
+    "polars": ("https://pola-rs.github.io/polars/py-polars/html", None),
     "seaborn": ("http://seaborn.pydata.org", None),
 }
 
@@ -490,6 +493,7 @@ numpydoc_xref_aliases = {
     "pandas.Index": "pandas.Index",
     "read_csv": "pandas.read_csv",
     "pandas.merge": "pandas.merge",
+<<<<<<< HEAD
     # cu_cat
     "fetch_ken_table_aliases": "cu_cat.datasets.fetch_ken_table_aliases",
     "fetch_ken_types": "cu_cat.datasets.fetch_ken_types",
@@ -505,7 +509,26 @@ numpydoc_xref_aliases = {
     "DatasetInfoOnly": "cu_cat.datasets._fetching.DatasetInfoOnly",
     "DatasetAll": "cu_cat.datasets._fetching.DatasetAll",
     "_replace_false_missing": "cu_cat._table_vectorizer._replace_false_missing",
+=======
+    # Skrub
+    "fetch_ken_table_aliases": "skrub.datasets.fetch_ken_table_aliases",
+    "fetch_ken_types": "skrub.datasets.fetch_ken_types",
+    "fetch_ken_embeddings": "skrub.datasets.fetch_ken_embeddings",
+    "fuzzy_join": "skrub.fuzzy_join",
+    "Joiner": "skrub.Joiner",
+    "GapEncoder": "skrub.GapEncoder",
+    "MinHashEncoder": "skrub.MinHashEncoder",
+    "SimilarityEncoder": "skrub.SimilarityEncoder",
+    "DatetimeEncoder": "skrub.DatetimeEncoder",
+    "deduplicate": "skrub.deduplicate",
+    "to_datetime": "skrub.to_datetime",
+    "TableVectorizer": "skrub.TableVectorizer",
+    "DatasetInfoOnly": "skrub.datasets._fetching.DatasetInfoOnly",
+    "DatasetAll": "skrub.datasets._fetching.DatasetAll",
+    "_replace_false_missing": "skrub._table_vectorizer._replace_false_missing",
+>>>>>>> master
 }
+numpydoc_xref_ignore = "all"
 
 # -- sphinx.ext.autodoc configuration -----------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/extensions/autodoc.html
