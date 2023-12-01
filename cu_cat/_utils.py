@@ -116,7 +116,7 @@ def get_sys_memory():
     #     ret['free'] = tmp
     #     ret['used'] = int(ret['total']) - int(ret['free'])
     # return ret['free']
-    # psutil = deps.psutil
+    psutil = deps.psutil
     stats = psutil.virtual_memory()  # returns a named tuple
     available = getattr(stats, 'available')
     return available
