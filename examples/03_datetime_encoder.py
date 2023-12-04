@@ -64,7 +64,7 @@ X
 ###############################################################################
 # We convert the dataframe date columns using |to_datetime|. Notice how
 # we don't need to specify the columns to convert.
-from skrub import to_datetime
+from cu_cat import to_datetime
 
 X = to_datetime(X)
 X.dtypes
@@ -84,7 +84,7 @@ X.dtypes
 
 from sklearn.preprocessing import OneHotEncoder
 from sklearn.compose import make_column_transformer
-from skrub import DatetimeEncoder
+from cu_cat import DatetimeEncoder
 
 encoder = make_column_transformer(
     (OneHotEncoder(handle_unknown="ignore"), ["city"]),
@@ -107,7 +107,7 @@ pprint(encoder.get_feature_names_out())
 # As mentioned earlier, the |TableVectorizer| makes use of the
 # |DatetimeEncoder| by default.
 
-from skrub import TableVectorizer
+from cu_cat import TableVectorizer
 
 table_vec = TableVectorizer().fit(X)
 pprint(table_vec.get_feature_names_out())

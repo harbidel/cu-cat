@@ -64,7 +64,7 @@ this example, we showcase hyper-parameter optimization on the whole pipeline.
 # Note that we use the light version (100k rows).
 import pandas as pd
 
-from skrub.datasets import fetch_movielens
+from cu_cat.datasets import fetch_movielens
 
 
 ratings = fetch_movielens(dataset_id="ratings")
@@ -84,7 +84,7 @@ X.head()
 # Our first step is to extract features from the timestamp, using the
 # |TableVectorizer|. Natively, it uses the |DatetimeEncoder| on datetime
 # columns, and doesn't interact with numerical columns.
-from skrub import TableVectorizer, DatetimeEncoder
+from cu_cat import TableVectorizer, DatetimeEncoder
 
 
 table_vectorizer = TableVectorizer(
@@ -158,7 +158,7 @@ make_barplot(
 #
 # This feature answer questions like
 # *"How many times has this user given a bad, medium or good rate to movies?"*.
-from skrub import AggTarget
+from cu_cat import AggTarget
 
 
 agg_target_user = AggTarget(

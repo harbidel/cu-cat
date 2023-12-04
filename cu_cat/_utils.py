@@ -3,7 +3,13 @@ from typing import Any, Hashable
 from inspect import getmodule
 import numpy as np
 from sklearn.utils import check_array
-import cupy as cp
+from cu_cat import DepManager
+deps = DepManager()
+cp = deps.cupy
+cudf = deps.cudf
+psutil = deps.psutil
+import subprocess as sp
+# import cupy as cp
 
 try:
     # Works for sklearn >= 1.0
@@ -60,7 +66,7 @@ def check_input(X) -> np.ndarray:
         if X_.dtype.kind in {"U", "S"}:  # contains strings
             if np.any(X_ == "nan"):  # missing value converted to string
                 return check_array(
-                    cp.array(X, dtype=object),
+                    np.array(X, dtype=object),  ## had been using cp here, but not necessary
                     dtype=None,
                     ensure_2d=True,
                     force_all_finite=False,
@@ -81,11 +87,36 @@ def df_type(df):
     Returns df type
     """
 
-    # try: 
-    X = str(getmodule(df))
-    # except:
-    if X == 'None':
-    # try:
+    try: # if not cp:
+        X = str(getmodule(df))
+    except: # if cp:
         X = str(cp.get_array_module(df))
-    # except:
     return X
+
+
+def get_gpu_memory():
+    command = "nvidia-smi --query-gpu=memory.free --format=csv"
+    memory_free_info = sp.check_output(command.split()).decode('ascii').split('\n')[:-1][1:]
+    memory_free_values = [int(x.split()[0]) for i, x in enumerate(memory_free_info)]
+    return memory_free_values
+
+def get_sys_memory():
+    # """
+    # Get node total memory and memory usage
+    # """
+    # with open('/proc/meminfo', 'r') as mem:
+    #     ret = {}
+    #     tmp = 0
+    #     for i in mem:
+    #         sline = i.split()
+    #         if str(sline[0]) == 'MemTotal:':
+    #             ret['total'] = int(sline[1])
+    #         elif str(sline[0]) in ('MemFree:', 'Buffers:', 'Cached:'):
+    #             tmp += int(sline[1])
+    #     ret['free'] = tmp
+    #     ret['used'] = int(ret['total']) - int(ret['free'])
+    # return ret['free']
+    psutil = deps.psutil
+    stats = psutil.virtual_memory()  # returns a named tuple
+    available = getattr(stats, 'available')
+    return available

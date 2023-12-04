@@ -1,284 +1,37 @@
-.. _changes:
-
-========
-Changes
-========
+:orphan:
 
 .. currentmodule:: cu_cat
 
-Ongoing development
-=====================
+Release 0.5.0
+==============
 
-cu_cat has not been released yet. It is currently undergoing fast
-development and backward compatibility is not ensured.
-
-Major changes
--------------
-* :class:`TargetEncoder` has been removed in favor of
-  :class:`sklearn.preprocessing.TargetEncoder`, available since scikit-learn 1.3.
-
-* :class:`InterpolationJoiner` was added to join two tables by using
-  machine-learning to infer the matching rows from the second table.
-  :pr:`742` by :user:`Jérôme Dockès <jeromedockes>`.
-
-* Pipelines including :class:`TableVectorizer` can now be grid-searched, since
-  we can now call `set_params` on the default transformers of :class:`TableVectorizer`.
-  :pr:`814` by :user:`Vincent Maladiere <Vincent-Maladiere>`
-
-* :func:`to_datetime` is now available to support pandas.to_datetime
-  over dataframes and 2d arrays.
-  :pr:`784` by :user:`Vincent Maladiere <Vincent-Maladiere>`
-
-* Some parameters of :class:`Joiner` have changed. The goal is to harmonize
-  parameters across all estimator that perform join(-like) operations, as
-  discussed in `#751 <https://github.com/skrub-data/skrub/discussions/751>`_.
-  :pr:`757` by :user:`Jérôme Dockès <jeromedockes>`.
-
-* :func:`dataframe.pd_join`, :func:`dataframe.pd_aggregate`,
-  :func:`dataframe.pl_join` and :func:`dataframe.pl_aggregate`
-  are now available in the dataframe submodule.
-  :pr:`733` by :user:`Vincent Maladiere <Vincent-Maladiere>`
-
-* :class:`FeatureAugmenter` is renamed to :class:`Joiner`.
-  :pr:`674` by :user:`Jovan Stojanovic <jovan-stojanovic>`
-
-* :func:`fuzzy_join` and :class:`FeatureAugmenter` can now join on datetime columns.
-  :pr:`552` by :user:`Jovan Stojanovic <jovan-stojanovic>`
-
-* :class:`Joiner` now supports joining on multiple column keys.
-  :pr:`674` by :user:`Jovan Stojanovic <jovan-stojanovic>`
-
-* The signatures of all encoders and functions have been revised to enforce
-  cleaner calls. This means that some arguments that could previously be passed
-  positionally now have to be passed as keywords.
-  :pr:`514` by :user:`Lilian Boulard <LilianBoulard>`.
-
-* Parallelized the :class:`GapEncoder` column-wise. Parameters `n_jobs` and `verbose`
-  added to the signature. :pr:`582` by :user:`Lilian Boulard <LilianBoulard>`
-
-* Introducing :class:`AggJoiner`, a transformer performing
-  aggregation on auxiliary tables followed by left-joining on a base table.
-  :pr:`600` by :user:`Vincent Maladiere <Vincent-Maladiere>`.
-
-* Introducing :class:`AggTarget`, a transformer performing
-  aggregation on the target y, followed by left-joining on a base table.
-  :pr:`600` by :user:`Vincent Maladiere <Vincent-Maladiere>`.
-
-* Added the :class:`SelectCols` and :class:`DropCols` transformers that allow
-  selecting a subset of a dataframe's columns inside of a pipeline. :pr:`804` by
-  :user:`Jérôme Dockès <jeromedockes>`.
-
-
-Minor changes
--------------
-* :class:`DatetimeEncoder` doesn't remove constant features anymore.
-  It also supports an 'errors' argument to raise or coerce errors during
-  transform, and a 'add_total_seconds' argument to include the number of
-  seconds since Epoch.
-  :pr:`784` by :user:`Vincent Maladiere <Vincent-Maladiere>`
-
-* Scaling of ``matching_score`` in :func:`fuzzy_join` is now between 0 and 1; it used to be between 0.5 and 1. Moreover, the division by 0 error that occurred when all rows had a perfect match has been fixed. :pr:`802` by :user:`Jérôme Dockès <jeromedockes>`.
-
-* :class:`TableVectorizer` is now able to apply parallelism at the column level rather than the transformer level. This is the default for univariate transformers, like :class:`MinHashEncoder`, and :class:`GapEncoder`.
-  :pr:`592` by :user:`Leo Grinsztajn <LeoGrin>`
-
-* ``inverse_transform`` in :class:`SimilarityEncoder` now works as expected; it used to raise an exception. :pr:`801` by :user:`Jérôme Dockès <jeromedockes>`.
-
-* :class:`TableVectorizer` propagate the `n_jobs` parameter to the underlying
-  transformers except if the underlying transformer already set explicitly `n_jobs`.
-  :pr:`761` by :user:`Leo Grinsztajn <LeoGrin>`, :user:`Guillaume Lemaitre <glemaitre>`,
-  and :user:`Jerome Dockes <jeromedockes>`.
-
-
-* Parallelized the :func:`deduplicate` function. Parameter `n_jobs`
-  added to the signature. :pr:`618` by :user:`Jovan Stojanovic <jovan-stojanovic>`
-  and :user:`Lilian Boulard <LilianBoulard>`
-
-* Functions :func:`datasets.fetch_ken_embeddings`, :func:`datasets.fetch_ken_table_aliases`
-  and :func:`datasets.fetch_ken_types` have been renamed.
-  :pr:`602` by :user:`Jovan Stojanovic <jovan-stojanovic>`
-
-* Make `pyarrow` an optional dependencies to facilitate the integration
-  with `pyodide`.
-  :pr:`639` by :user:`Guillaume Lemaitre <glemaitre>`.
-
-* Bumped minimal required Python version to 3.10. :pr:`606` by
-  :user:`Gael Varoquaux <GaelVaroquaux>`
-
-* Bumped minimal required versions for the dependencies:
-  - numpy >= 1.23.5
-  - scipy >= 1.9.3
-  - scikit-learn >= 1.2.1
-  - pandas >= 1.5.3 :pr:`613` by :user:`Lilian Boulard <LilianBoulard>`
-
-* You can now pass column-specific transformers to :class:`TableVectorizer`
-  using the `specific_transformers` argument.
-  :pr:`583` by :user:`Lilian Boulard <LilianBoulard>`.
-
-* Do not support 1-D array (and pandas Series) in :class:`TableVectorizer`. Pass a
-  2-D array (or a pandas DataFrame) with a single column instead. This change is for
-  compliance with the scikit-learn API.
-  :pr:`647` by :user:`Guillaume Lemaitre <glemaitre>`
-
-* Fixes a bug in :class:`TableVectorizer` with `remainder`: it is now cloned if it's
-  a transformer so that the same instance is not shared between different
-  transformers.
-  :pr:`678` by :user:`Guillaume Lemaitre <glemaitre>`
-
-* :class:`GapEncoder` speedup :pr:`680` by :user:`Leo Grinsztajn <LeoGrin>`
-
-  - Improved :class:`GapEncoder`'s early stopping logic. The parameters `tol` and `min_iter`
-    have been removed. The parameter `max_no_improvement` can now be used to control the
-    early stopping.
-    :pr:`663` by :user:`Simona Maggio <simonamaggio>`
-    :pr:`593` by  :user:`Lilian Boulard <LilianBoulard>`
-    :pr:`681` by  :user:`Leo Grinsztajn <LeoGrin>`
-
-  - Implementation improvement leading to a ~x5 speedup for each iteration.
-
-  - Better default hyperparameters: `batch_size` now defaults to 1024, and `max_iter_e_steps`
-    to 1.
-
-Minor changes
--------------
-
-* Removed the `most_frequent` and `k-means` strategies from the :class:`SimilarityEncoder`.
-  These strategy were used for scalability reasons, but we recommend using the :class:`MinHashEncoder`
-  or the :class:`GapEncoder` instead. :pr:`596` by :user:`Leo Grinsztajn <LeoGrin>`
-
-* Removed the `similarity` argument from the :class:`SimilarityEncoder` constructor,
-  as we only support the ngram similarity. :pr:`596` by :user:`Leo Grinsztajn <LeoGrin>`
-
-* Added the `analyzer` parameter to the :class:`SimilarityEncoder` to allow word counts
-  for similarity measures. :pr:`619` by :user:`Jovan Stojanovic <jovan-stojanovic>`
-
-* cu_cat now uses modern type hints introduced in PEP 585.
-  :pr:`609` by :user:`Lilian Boulard <LilianBoulard>`
-
-* Some bug fixes for :class:`TableVectorizer` ( :pr:`579`):
-
-  - `check_is_fitted` now looks at `"transformers_"` rather than `"columns_"`
-  - the default of the `remainder` parameter in the docstring is now `"passthrough"`
-    instead of `"drop"` to match the implementation.
-  - uint8 and int8 dtypes are now considered as numerical columns.
-
-* Removed the leading "<" and trailing ">" symbols from KEN entities
-  and types.
-  :pr:`601` by :user:`Jovan Stojanovic <jovan-stojanovic>`
-
-* Add `get_feature_names_out` method to :class:`MinHashEncoder`.
-  :pr:`616` by :user:`Leo Grinsztajn <LeoGrin>`
-
-* Removed `requests` from the requirements. :pr:`613` by :user:`Lilian Boulard <LilianBoulard>`
-
-* :class:`TableVectorizer` now handles mixed types columns without failing
-  by converting them to string before type inference.
-  :pr:`623`by :user:`Leo Grinsztajn <LeoGrin>`
-
-* Moved the default storage location of data to the user's home folder.
-  :pr:`652` by :user:`Felix Lefebvre <flefebv>` and
-  :user:`Gael Varoquaux <GaelVaroquaux>`
-
-* Fixed bug when using :class:`TableVectorizer`'s `transform` method on
-  categorical columns with missing values.
-  :pr:`644` by :user:`Leo Grinsztajn <LeoGrin>`
-
-* :class:`TableVectorizer` never output a sparse matrix by default. This can be changed by
-  increasing the `sparse_threshold` parameter. :pr:`646` by :user:`Leo Grinsztajn <LeoGrin>`
-
-* :class:`TableVectorizer` doesn't fail anymore if an infered type doesn't work during transform.
-  The new entries not matching the type are replaced by missing values. :pr:`666` by :user:`Leo Grinsztajn <LeoGrin>`
-
-- Dataset fetcher :func:`datasets.fetch_employee_salaries` now has a parameter
-  `overload_job_titles` to allow overloading the job titles
-  (`employee_position_title`) with the column `underfilled_job_title`,
-  which provides some more information about the job title.
-  :pr:`581` by :user:`Lilian Boulard <LilianBoulard>`
-
-<<<<<<< HEAD
-Before cu_cat: dirty_cat
-=======
-* Fix bugs which was triggered when `extract_until` was "year", "month", "microseconds"
-  or "nanoseconds", and add the option to set it to `None` to only extract `total_time`,
-  the time from epoch. :class:`DatetimeEncoder`. :pr:`743` by :user:`Leo Grinsztajn <LeoGrin>`
-
-Before skrub: dirty_cat
->>>>>>> master
-========================
-
-cu_cat was born from the `dirty_cat <http://dirty-cat.github.io>`__
-package.
-
-Dirty-cat release 0.4.1
-==========================
+Release 0.4.0 (beta 2)
+======================
 
 Major changes
 -------------
-* :func:`fuzzy_join` and :class:`FeatureAugmenter` can now join on numerical columns based on the euclidean distance.
-  :pr:`530` by :user:`Jovan Stojanovic <jovan-stojanovic>`
 
-* :func:`fuzzy_join` and :class:`FeatureAugmenter` can perform many-to-many joins on lists of numerical or string key columns.
-  :pr:`530` by :user:`Jovan Stojanovic <jovan-stojanovic>`
-
-* :func:`GapEncoder.transform` will not continue fitting of the instance anymore.
-  It makes functions that depend on it (:func:`~GapEncoder.get_feature_names_out`,
-  :func:`~GapEncoder.score`, etc.) deterministic once fitted.
-  :pr:`548` by :user:`Lilian Boulard <LilianBoulard>`
-
-* :func:`fuzzy_join` and :class:`FeatureAugmenter` now perform joins on missing values as in `pandas.merge`
-  but raises a warning. :pr:`522` and :pr:`529` by :user:`Jovan Stojanovic <jovan-stojanovic>`
-
-* Added :func:`get_ken_table_aliases` and :func:`get_ken_types` for exploring
-  KEN embeddings. :pr:`539` by :user:`Lilian Boulard <LilianBoulard>`.
-
-
-Minor changes
--------------
-* Improvement of date column detection and date format inference in :class:`TableVectorizer`. The
-  format inference now tries to find a format which works for all non-missing values of the column, and only
-  tries pandas default inference if it fails.
-  :pr:`543` by :user:`Leo Grinsztajn <LeoGrin>`
-  :pr:`587` by :user:`Leo Grinsztajn <LeoGrin>`
-
-
-
-Dirty-cat Release 0.4.0
-=========================
-
-Major changes
--------------
 * `SuperVectorizer` is renamed as :class:`TableVectorizer`, a warning is raised when using the old name.
-  :pr:`484` by :user:`Jovan Stojanovic <jovan-stojanovic>`
-
+:pr:`484` by :user:`Jovan Stojanovic <jovan-stojanovic>`
 * New experimental feature: joining tables using :func:`fuzzy_join` by approximate key matching. Matches are based
   on string similarities and the nearest neighbors matches are found for each category.
   :pr:`291` by :user:`Jovan Stojanovic <jovan-stojanovic>` and :user:`Leo Grinsztajn <LeoGrin>`
-
 * New experimental feature: :class:`FeatureAugmenter`, a transformer
-  that augments with :func:`fuzzy_join` the number of features in a main table by using information from auxiliary tables.
+  that augments with :func:`fuzzy_join` the number of features in a main table by using information from auxilliary tables.
   :pr:`409` by :user:`Jovan Stojanovic <jovan-stojanovic>`
-
+* **datasets.fetching**: contains a new function :func:`fetch_world_bank_indicator` that can be used to download any indicator
+  from the World Bank Open Data platform, the indicator ID that can be found there.
+  :pr:`291` by :user:`Jovan Stojanovic <jovan-stojanovic>`
 * Unnecessary API has been made private: everything (files, functions, classes)
   starting with an underscore shouldn't be imported in your code. :pr:`331` by :user:`Lilian Boulard <LilianBoulard>`
-
 * The :class:`MinHashEncoder` now supports a `n_jobs` parameter to parallelize
   the hashes computation. :pr:`267` by :user:`Leo Grinsztajn <LeoGrin>` and :user:`Lilian Boulard <LilianBoulard>`.
-
 * New experimental feature: deduplicating misspelled categories using :func:`deduplicate` by clustering string distances.
   This function works best when there are significantly more duplicates than underlying categories.
   :pr:`339` by :user:`Moritz Boos <mjboos>`.
 
 Minor changes
 -------------
-* Add example `Wikipedia embeddings to enrich the data`. :pr:`487` by :user:`Jovan Stojanovic <jovan-stojanovic>`
-
-* **datasets.fetching**: contains a new function :func:`get_ken_embeddings` that can be used to download Wikipedia
-  embeddings and filter them by type.
-
-* **datasets.fetching**: contains a new function :func:`fetch_world_bank_indicator` that can be used to download indicators
-  from the World Bank Open Data platform.
-  :pr:`291` by :user:`Jovan Stojanovic <jovan-stojanovic>`
-
 * Removed example `Fitting scalable, non-linear models on data with dirty categories`. :pr:`386` by :user:`Jovan Stojanovic <jovan-stojanovic>`
 
 * :class:`MinHashEncoder`'s :func:`minhash` method is no longer public. :pr:`379` by :user:`Jovan Stojanovic <jovan-stojanovic>`
@@ -287,22 +40,14 @@ Minor changes
   which can be used to specify where to save and load from datasets.
   :pr:`432` by :user:`Lilian Boulard <LilianBoulard>`
 
-* Fetching functions now have an additional argument ``directory``,
-  which can be used to specify where to save and load from datasets.
-  :pr:`432` and :pr:`453` by :user:`Lilian Boulard <LilianBoulard>`
-
-* The :class:`TableVectorizer`'s default `OneHotEncoder` for low cardinality categorical variables now defaults
-  to `handle_unknown="ignore"` instead of `handle_unknown="error"` (for sklearn >= 1.0.0).
-  This means that categories seen only at test time will be encoded by a vector of zeroes instead of raising an error. :pr:`473` by :user:`Leo Grinsztajn <LeoGrin>`
-
 Bug fixes
 ---------
 
 * The :class:`MinHashEncoder` now considers `None` and empty strings as missing values, rather
   than raising an error. :pr:`378` by :user:`Gael Varoquaux <GaelVaroquaux>`
 
-Dirty-cat Release 0.3.0
-==========================
+Release 0.3.0
+=============
 
 Major changes
 -------------
@@ -345,8 +90,8 @@ Notes
   names instead of column indices for the "remainder" columns. :pr:`266` by :user:`Leo Grinsztajn <LeoGrin>`
 
 
-Dirty-cat Release 0.2.2
-=========================
+Release 0.2.2
+=============
 
 Bug fixes
 ---------
@@ -355,8 +100,8 @@ Bug fixes
   when using the :func:`get_feature_names_out` method. :pr:`262` by :user:`Lilian Boulard <LilianBoulard>`
 
 
-Dirty-cat Release 0.2.1
-==========================
+Release 0.2.1
+=============
 
 Major changes
 -------------
@@ -396,8 +141,8 @@ Notes
 
 * Documentation of the :class:`TableVectorizer` and the :class:`SimilarityEncoder` improved.
 
-Dirty-cat Release 0.2.0
-=========================
+Release 0.2.0
+=============
 
 Also see pre-release 0.2.0a1 below for additional changes.
 
@@ -416,7 +161,7 @@ Major changes
     End users should not see any difference regarding this.
   - The frontend, however, changed a little: the fetching functions stay the same
     but their return values were modified in favor of a more Pythonic interface.
-    Refer to the docstrings of functions `dirty_cat.datasets.fetch_*`
+    Refer to the docstrings of functions `cu_cat.datasets.fetch_*`
     for more information.
   - The example notebooks were updated to reflect these changes. :pr:`155` by :user:`Lilian Boulard <LilianBoulard>`
 
@@ -437,7 +182,7 @@ Major changes
 Notes
 -----
 
-* Removed hard-coded CSV file `dirty_cat/data/FiveThirtyEight_Midwest_Survey.csv`.
+* Removed hard-coded CSV file `cu_cat/data/FiveThirtyEight_Midwest_Survey.csv`.
 
 
 * Improvements to the :class:`TableVectorizer`
@@ -448,17 +193,17 @@ Notes
 
   :pr:`201` by :user:`Lilian Boulard <LilianBoulard>`
 
-Dirty-cat Release 0.2.0a1
-============================
+Release 0.2.0a1
+===============
 
 Version 0.2.0a1 is a pre-release.
 To try it, you have to install it manually using::
 
-    pip install --pre dirty_cat==0.2.0a1
+    pip install --pre cu_cat==0.2.0a1
 
 or from the GitHub repository::
 
-    pip install git+https://github.com/dirty-cat/dirty_cat.git
+    pip install git+https://github.com/cu-cat/cu_cat.git
 
 Major changes
 -------------
@@ -489,8 +234,8 @@ Bug-fixes
 * Fix `get_feature_names` for scikit-learn > 0.21. :pr:`216` by :user:`Alexis Cvetkov <alexis-cvetkov>`
 
 
-Dirty-cat Release 0.1.1
-========================
+Release 0.1.1
+=============
 
 Major changes
 -------------
@@ -501,8 +246,8 @@ Bug-fixes
 * RuntimeWarnings due to overflow in :class:`GapEncoder`. :pr:`161` by :user:`Alexis Cvetkov <alexis-cvetkov>`
 
 
-Dirty-cat Release 0.1.0
-=========================
+Release 0.1.0
+=============
 
 Major changes
 -------------
@@ -518,8 +263,8 @@ Bug-fixes
 * Multiprocessing exception in notebook. :pr:`154` by :user:`Lilian Boulard <LilianBoulard>`
 
 
-Dirty-cat Release 0.0.7
-========================
+Release 0.0.7
+=============
 
 * **MinHashEncoder**: Added ``minhash_encoder.py`` and ``fast_hast.py`` files
   that implement minhash encoding through the :class:`MinHashEncoder` class.
@@ -545,8 +290,8 @@ Dirty-cat Release 0.0.7
 * **MinHashEncoder**: Added a `handle_missing` attribute to allow encoding
   with missing values.
 
-Dirty-cat Release 0.0.6
-=========================
+Release 0.0.6
+=============
 
 * **SimilarityEncoder**: Accelerate ``SimilarityEncoder.transform``, by:
 
@@ -560,8 +305,8 @@ Dirty-cat Release 0.0.6
 * **SimilarityEncoder**: Set the dtype passed to the ngram similarity
   to float32, which reduces memory consumption during encoding.
 
-Dirty-cat Release 0.0.5
-========================
+Release 0.0.5
+=============
 
 * **SimilarityEncoder**: Change the default ngram range to (2, 4) which
   performs better empirically.

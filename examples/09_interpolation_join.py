@@ -25,7 +25,7 @@ We train supervised machine-learning models using the weather table, then query 
 # We join the table containing the measurements to the table that contains the weather stations’ latitude and longitude.
 # We subsample these large tables for the example to run faster.
 
-from skrub.datasets import fetch_figshare
+from cu_cat.datasets import fetch_figshare
 
 weather = fetch_figshare("41771457").X
 weather = weather.sample(100_000, random_state=0, ignore_index=True)
@@ -62,7 +62,7 @@ aux_table.head()
 # Now we join our two tables and check how well the :class:`~skrub.InterpolationJoiner` can reconstruct the matching rows that are missing from the right side table.
 # To avoid clashes in the column names, we use the ``suffix`` parameter to append ``"predicted"`` to the right side table column names.
 
-from skrub import InterpolationJoiner
+from cu_cat import InterpolationJoiner
 
 joiner = InterpolationJoiner(
     aux_table,

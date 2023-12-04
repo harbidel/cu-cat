@@ -16,15 +16,26 @@ import sklearn
 from pandas.core.dtypes.base import ExtensionDtype
 from sklearn import __version__ as sklearn_version
 from sklearn.base import TransformerMixin, clone
-from cuml.compose import ColumnTransformer
-from cuml.preprocessing import OneHotEncoder
 from sklearn.utils.deprecation import deprecated
 from sklearn.utils.validation import check_is_fitted
 
-from cu_cat import GapEncoder
+from cu_cat import GapEncoder, DepManager
 from cu_cat._utils import parse_version, df_type
-import cuml,cudf
-cuml.set_global_output_type('cupy')
+
+deps = DepManager()
+cuml = deps.cuml
+if cuml:
+    from cuml.compose import ColumnTransformer
+    from cuml.preprocessing import OneHotEncoder
+else:
+    from sklearn.compose import ColumnTransformer
+    from sklearn.preprocessing import OneHotEncoder
+# import cuml,cudf
+# from cuml.compose import ColumnTransformer
+# from cuml.preprocessing import OneHotEncoder
+cudf = deps.cudf
+if cudf:
+    cuml.set_global_output_type('cupy')
 
 # Required for ignoring lines too long in the docstrings
 # flake8: noqa: E501
@@ -69,6 +80,7 @@ def _replace_false_missing(
         "NaN",
     ]  # taken from pandas.io.parsers (version 1.1.4)
     Xt_= df_type(df)
+    # deps.cudf: # 
     if 'cudf' not in Xt_:
         df = df.replace(STR_NA_VALUES + [None, "?", "..."], np.nan)
         df = df.replace(r"^\s+$", np.nan, regex=True)  # Replace whitespaces
@@ -357,7 +369,10 @@ class TableVectorizer(ColumnTransformer):
         if isinstance(self.low_card_cat_transformer, sklearn.base.TransformerMixin):
             self.low_card_cat_transformer_ = clone(self.low_card_cat_transformer)
         elif self.low_card_cat_transformer is None:
-            self.low_card_cat_transformer_ = OneHotEncoder(output_type= self.output_type, handle_unknown='ignore')
+            if deps.cuml:
+                self.low_card_cat_transformer_ = OneHotEncoder(output_type= self.output_type, handle_unknown='ignore')
+            else:
+                self.low_card_cat_transformer_ = OneHotEncoder( handle_unknown='ignore')
         elif self.low_card_cat_transformer == "remainder":
             self.low_card_cat_transformer_ = self.remainder
         else:
@@ -618,10 +633,11 @@ class TableVectorizer(ColumnTransformer):
         # missing values or not.
         if self.imputed_columns_ and self.auto_cast:
             X = self._auto_cast(X)
-        self.Xt_= df_type(X)
+        # self.Xt_= df_type(X)
         if self.verbose:
             print(f"[TableVectorizer] Assigned transformers: {self.transformers}")
         if 'cudf' in self.Xt_ and 'cudf' not in str(getmodule(X)):
+        # if deps.cudf and 'cudf' not in str(getmodule(X)):
             X=cudf.from_pandas(X)#,nan_as_null=True) ### see how flag acts
         X.fillna(0.0,inplace=True)
         if (self.datetime_transformer_ == "passthrough") and (datetime_columns !=[]):
@@ -629,8 +645,9 @@ class TableVectorizer(ColumnTransformer):
             X_enc = super().fit_transform(Z, y)
 
         else:
-            X_enc = super().fit_transform(X, y)
-        X_enc = cudf.DataFrame(X_enc)
+            X_enc = super().fit_transform(X.astype(str), y)
+        if deps.cudf and 'cudf' not in str(getmodule(X)):
+            X_enc = cudf.DataFrame(X_enc)
         
         # For the "remainder" columns, the `ColumnTransformer` `transformers_`
         # attribute contains the index instead of the column name,
@@ -689,11 +706,9 @@ class TableVectorizer(ColumnTransformer):
                 pass
 
         if 'cudf' in self.Xt_:
-            try:
-                import cudf
-                X=cudf.from_pandas(X)
-            except:
-                pass
+        # if deps.cudf:
+            cudf = deps.cudf
+            X=cudf.from_pandas(X)
 
         return super().transform(X)
 
@@ -708,10 +723,16 @@ class TableVectorizer(ColumnTransformer):
         typing.List[str]
             Feature names.
         """
-        if parse_version(sklearn_version) > parse_version("1.0"):
-            ct_feature_names = super().get_feature_names()
+        if 'cudf' not in self.Xt_:
+            if parse_version(sklearn_version) < parse_version("1.0"):
+                ct_feature_names = super().get_feature_names()
+            else:
+                ct_feature_names = super().get_feature_names_out()
         else:
-            ct_feature_names = super().get_feature_names_out()
+            if parse_version(sklearn_version) > parse_version("1.0"):
+                ct_feature_names = super().get_feature_names()
+            else:
+                ct_feature_names = super().get_feature_names_out()
         all_trans_feature_names = []
 
         for name, trans, cols, _ in self._iter(fitted=True):
@@ -722,10 +743,16 @@ class TableVectorizer(ColumnTransformer):
                     cols = self.columns_.to_list()
                     all_trans_feature_names.extend(cols)
                 continue
-            if parse_version(sklearn_version) > parse_version("1.0"):
-                trans_feature_names = trans.get_feature_names(cols)
+            if 'cudf' not in self.Xt_:
+                if parse_version(sklearn_version) < parse_version("1.0"):
+                    trans_feature_names = trans.get_feature_names(cols)
+                else:
+                    trans_feature_names = trans.get_feature_names_out(cols)
             else:
-                trans_feature_names = trans.get_feature_names_out(cols)
+                if parse_version(sklearn_version) > parse_version("1.0"):
+                    trans_feature_names = trans.get_feature_names(cols)
+                else:
+                    trans_feature_names = trans.get_feature_names_out(cols)
             all_trans_feature_names.extend(trans_feature_names)
 
         if len(ct_feature_names) != len(all_trans_feature_names):

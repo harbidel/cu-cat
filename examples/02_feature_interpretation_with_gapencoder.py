@@ -23,7 +23,7 @@ provided by skrub.
 # First, let's retrieve the
 # `employee salaries dataset <https://www.openml.org/d/42125>`_:
 
-from skrub.datasets import fetch_employee_salaries
+from cu_cat.datasets import fetch_employee_salaries
 
 dataset = fetch_employee_salaries()
 
@@ -57,7 +57,7 @@ X_dirty.sort_values(by="employee_position_title").tail(15)
 # This means that the encoder will attempt to extract 10 latent topics
 # from the input data:
 
-from skrub import GapEncoder
+from cu_cat import GapEncoder
 
 enc = GapEncoder(n_components=10, random_state=1)
 

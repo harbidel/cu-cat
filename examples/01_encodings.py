@@ -40,7 +40,7 @@ using the `employee salaries <https://www.openml.org/d/42125>`_ dataset.
 #
 # Let's first retrieve the dataset:
 
-from skrub.datasets import fetch_employee_salaries
+from cu_cat.datasets import fetch_employee_salaries
 
 dataset = fetch_employee_salaries()
 
@@ -66,7 +66,7 @@ X
 
 from sklearn.ensemble import HistGradientBoostingRegressor
 from sklearn.pipeline import make_pipeline
-from skrub import TableVectorizer
+from cu_cat import TableVectorizer
 
 pipeline = make_pipeline(TableVectorizer(), HistGradientBoostingRegressor())
 pipeline.fit(X, y)

@@ -39,7 +39,7 @@ from sklearn.utils.fixes import _object_dtype_isnan
 from sklearn.utils.validation import check_is_fitted
 from sklearn.decomposition._nmf import _beta_divergence
 
-from ._utils import check_input, parse_version, get_gpu_memory, df_type
+from ._utils import check_input, parse_version, get_gpu_memory, get_sys_memory, df_type
 
 
 from cu_cat import DepManager
@@ -158,6 +158,7 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
             engine = deps.cuml
             from cuml.feature_extraction.text import CountVectorizer,HashingVectorizer
             gmem = get_gpu_memory()
+        smem = get_sys_memory()
             
 
         self.ngram_range = ngram_range
@@ -185,6 +186,7 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
             self.gmem = gmem[0]
         else:
             self.gmem = 0
+        self.smem = smem
 
     def _init_vars(self, X) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
         """
@@ -361,7 +363,7 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
                 if 'cudf' in W_type and self.engine =='cuml':
                     logger.debug(f"keeping on gpu via cupy")
                     self.W_= self.W_.to_cupy();self.B_= self.B_.to_cupy();self.A_= self.A_.to_cupy()
-                if not deps.cupy and ((8*sh*sw)/1e3)<self.mem and self.engine !='cuml':
+                if not deps.cupy and ((8*sh*sw)/1e3)<self.smem and self.engine !='cuml':
                     self.W_= self.W_.get();self.B_= self.B_.get();self.A_= self.A_.get();
                     logger.debug(f"performing mat_mul speed trick on cpu")
                 W_last = self.W_.copy()
@@ -1238,8 +1240,8 @@ def _multiplicative_update_h_smallfast(
 
     squared_norm = 1
     if 'cudf' in df_type(Vt) or 'cupy' in df_type(Vt):
-        Vt=csr(Vt);Ht=cp.array(Ht);W=cp.array(W);W_WT1=cp.array(W_WT1.T)#;Vt=cp.array(Vt)
         cp = deps.cupy
+        Vt=csr(Vt);Ht=cp.array(Ht);W=cp.array(W);W_WT1=cp.array(W_WT1.T)#;Vt=cp.array(Vt)
     else: 
         cp = deps.numpy
     for n_iter_ in range(max_iter):

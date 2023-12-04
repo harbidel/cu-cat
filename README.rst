@@ -2,7 +2,7 @@
 ===========
 
 `cu_cat` is an end-to-end gpu Python library that encodes categorical variables into machine-learnable numerics.
-It is a cuda accelerated port of what was dirty_cat, now rebranded as `cu_cat <https://github.com/cu_cat-data/cu_cat>`_
+It is a cuda accelerated port of what was dirty_cat, now rebranded as `skrub <https://github.com/skrub-data/skrub>`_
 
 What can `cu_cat` do?
 ------------------------
@@ -38,36 +38,10 @@ cu_cat v 0.04 can be easily installed via `pip`::
 Dependencies
 ~~~~~~~~~~~~
 
-Major dependencies the cuml and cudf libraries, as well as `standard python libraries <https://github.com/cu_cat-data/cu_cat/blob/main/setup.cfg>`_
+Major dependencies the cuml and cudf libraries, as well as `standard python libraries <https://github.com/skrub-data/skrub/blob/main/setup.cfg>`_
 
 Related projects
 ----------------
 
-dirty_cat is now rebranded as part of the sklearn family as `cu_cat <https://github.com/cu_cat-data/cu_cat>`_
+dirty_cat is now rebranded as part of the sklearn family as `skrub <https://github.com/skrub-data/skrub>`_
 
-<<<<<<< HEAD
-=======
-Contributing
-------------
-
-The best way to support the development of skrub is to spread the word!
-
-Also, if you already are a skrub user, we would love to hear about your use cases and challenges in the `Discussions <https://github.com/skrub-data/skrub/discussions>`_ section.
-
-To report a bug or suggest enhancements, please
-`open an issue <https://docs.github.com/en/issues/tracking-your-work-with-issues/creating-an-issue>`_ and/or
-`submit a pull request <https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/proposing-changes-to-your-work-with-pull-requests/creating-a-pull-request>`_.
-
-Additional resources
---------------------
-
-* `Introductory video (YouTube) <https://youtu.be/_GNaaeEI2tg>`_
-* `JupyterCon 2023 talk (YouTube) <https://youtu.be/lvDN0wgTpeI>`_
-* `EuroSciPy 2023 poster (Dropbox) <https://www.dropbox.com/scl/fi/89tapbshxtw0kh5uzx8dc/Poster-Euroscipy-2023.pdf?rlkey=u4ycpiyftk7rzttrjll9qlrkx&dl=0>`_
-
-References
-----------
-
-.. [1] Patricio Cerda, Gaël Varoquaux, Balázs Kégl. Similarity encoding for learning with dirty categorical variables. 2018. Machine Learning journal, Springer.
-.. [2] Patricio Cerda, Gaël Varoquaux. Encoding high-cardinality string categorical variables. 2020. IEEE Transactions on Knowledge & Data Engineering.
->>>>>>> master

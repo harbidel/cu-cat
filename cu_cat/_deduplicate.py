@@ -1,14 +1,12 @@
 """
 Implements deduplication based on clustering string distance matrices.
+This works best if there is a number of underlying categories that
+sometimes appear in the data with small variations and/or misspellings.
 """
-
-from collections.abc import Sequence
-from typing import Literal
+from typing import List, Literal, Optional, Sequence, Tuple, Union
 
 import numpy as np
 import pandas as pd
-from joblib import Parallel, delayed
-from numpy.typing import NDArray
 from scipy.cluster.hierarchy import fcluster, linkage
 from scipy.spatial.distance import pdist, squareform
 from sklearn.feature_extraction.text import TfidfVectorizer
@@ -16,34 +14,32 @@ from sklearn.metrics import silhouette_score
 
 
 def compute_ngram_distance(
-    unique_words: Sequence[str] | NDArray,
-    ngram_range: tuple[int, int] = (2, 4),
+    unique_words: Union[Sequence[str], np.ndarray],
+    ngram_range: Tuple[int, int] = (2, 4),
     analyzer: str = "char_wb",
-) -> NDArray:
+) -> np.ndarray:
     """Compute the condensed pair-wise n-gram distance between `unique_words`.
 
     Parameters
     ----------
-    unique_words : sequence of str
+    unique_words : Union[Sequence[str], np.ndarray]
         Sequence or array of unique words from the original data.
-    ngram_range : 2-tuple of int, default=(2,4)
-        The lower and upper boundaries of the range of n-values for different
-        n-grams used in the string similarity. All values of `n` such
-        that ``min_n <= n <= max_n`` will be used.
-    analyzer : str, default='char_wb'
+    ngram_range : Tuple[int, int], optional, default=(2,4)
+        The n-gram range to compute the distance in.
+    analyzer : str, optional, default=`char_wb`
         Analyzer to extract n-grams.
 
     Returns
     -------
-    ndarray
+    np.ndarray
         An n-times-(n-1)/2 array of n-gram tf-idf distances between `unique_words`.
 
     Notes
     -----
     Extracts n-grams of all elements in `unique_words`, calculates the
-    term frequency-inverse document frequency (TF-IDF) for each n-gram, then
-    computes the pair-wise Euclidean distance between elements based on their
-    n-gram TF-IDF representation.
+    term frequency-inverse document frequency (tf-idf) for each n-gram, then
+    computes the pair-wise euclidean distance between elements based on their n-gram
+    tf-idf representation.
     """
     encoded = TfidfVectorizer(ngram_range=ngram_range, analyzer=analyzer).fit_transform(
         unique_words
@@ -53,23 +49,15 @@ def compute_ngram_distance(
     return distance_mat
 
 
-def _get_silhouette_avg(Z: NDArray, n_clust: int, redundant_dist: NDArray) -> float:
-    labels = fcluster(Z, n_clust, criterion="maxclust")
-    silhouette_avg = silhouette_score(redundant_dist, labels, metric="precomputed")
-    return silhouette_avg
-
-
-def _guess_clusters(
-    Z: NDArray, distance_mat: NDArray, n_jobs: int | None = None
-) -> int:
+def _guess_clusters(Z: np.ndarray, distance_mat: np.ndarray) -> int:
     """Finds the number of clusters that maximize the silhouette score
     when clustering `distance_mat`.
 
     Parameters
     ----------
-    Z : numpy ndarray
+    Z : np.ndarray
         hierarchical linkage matrix, specifies which clusters to merge.
-    distance_mat : numpy ndarray
+    distance_mat : np.ndarray
         distance matrix either in square or condensed form.
 
     Returns
@@ -81,31 +69,31 @@ def _guess_clusters(
     n_clusters = np.arange(2, max_clusters)
     # silhouette score needs a redundant distance matrix
     redundant_dist = squareform(distance_mat)
-    silhouette_scores = Parallel(n_jobs=n_jobs, prefer="processes")(
-        delayed(_get_silhouette_avg)(Z, n_clust, redundant_dist)
-        for n_clust in n_clusters
-    )
+    silhouette_scores = []
+    for n_clust in n_clusters:
+        labels = fcluster(Z, n_clust, criterion="maxclust")
+        silhouette_avg = silhouette_score(redundant_dist, labels, metric="precomputed")
+        silhouette_scores.append(silhouette_avg)
     return n_clusters[np.argmax(silhouette_scores)]
 
 
 def _create_spelling_correction(
-    unique_words: Sequence[str] | NDArray[np.str_],
-    counts: Sequence[int] | NDArray[np.int_],
+    unique_words: Union[Sequence[str], np.ndarray],
+    counts: Union[Sequence[int], np.ndarray],
     clusters: Sequence[int],
 ) -> pd.Series:
-    """
-    Creates a pandas Series that map each cluster member to the most
+    """Creates a pandas Series that map each cluster member to the most
     frequent cluster member. The assumption is that the most common spelling
     is the correct one.
 
     Parameters
     ----------
-    unique_words : sequence of str
+    unique_words : Union[Sequence[str], np.ndarray]
         A sequence or array of unique words in the original data.
-    counts : sequence of int
+    counts : Union[Sequence[int], np.ndarray]
         A sequence or array of counts of how often each unique word appears in
         the original data.
-    clusters : sequence of int
+    clusters : Sequence[int]
         A sequence of ints, indicating cluster membership of each unique word
         in `count_series`.
 
@@ -116,8 +104,8 @@ def _create_spelling_correction(
         corrected spelling of each word as values.
     """
     count_series = pd.Series(counts, index=unique_words)
-    original_spelling: list[str] = []
-    corrected_spelling: list[str] = []
+    original_spelling: List[str] = []
+    corrected_spelling: List[str] = []
     for cluster in np.unique(clusters):
         sorted_spellings = (
             count_series.loc[clusters == cluster]
@@ -133,60 +121,51 @@ def _create_spelling_correction(
 
 def deduplicate(
     data: Sequence[str],
-    *,
-    n_clusters: int | None = None,
-    ngram_range: tuple[int, int] = (2, 4),
+    n_clusters: Optional[int] = None,
+    ngram_range: Tuple[int, int] = (2, 4),
     analyzer: Literal["word", "char", "char_wb"] = "char_wb",
     method: Literal[
         "single", "complete", "average", "centroid", "median", "ward"
     ] = "average",
-    n_jobs: int | None = None,
-) -> list[str]:
-    """Deduplicate categorical data by hierarchically clustering similar strings.
-
-    This works best if there is a number of underlying categories that
-    sometimes appear in the data with small variations and/or misspellings.
+) -> List[str]:
+    """Deduplicate data by hierarchically clustering similar strings.
 
     Parameters
     ----------
-    data : sequence of str
+    data : Sequence[str]
         The data to be deduplicated.
-    n_clusters : int, optional
-        Number of clusters to use for hierarchical clustering, if `None` use the
+    n_clusters : Optional[int], optional, default=None
+        Number of clusters to use for hierarchical clustering, if None use the
         number of clusters that lead to the lowest silhouette score.
-    ngram_range : 2-tuple of int, default=(2, 4)
-        The lower and upper boundaries of the range of n-values for different
-        n-grams used in the string similarity. All values of `n` such
-        that ``min_n <= n <= max_n`` will be used.
-    analyzer : {'word', 'char', 'char_wb'}, default=`char_wb`
-        Analyzer parameter for the CountVectorizer
-        used for the string similarities.
-        Describes whether the matrix `V` to factorize should be made of
-        word counts or character n-gram counts.
+    ngram_range : Tuple[int, int], optional, default=(2, 4)
+        Range to use for computing n-gram distance.
+    analyzer : typing.Literal["word", "char", "char_wb"], optional, default=`char_wb`
+        Analyzer parameter for the CountVectorizer used for the string
+        similarities.
+        Options: {`word`, `char`, `char_wb`}, describing whether the matrix V
+        to factorize should be made of word counts or character n-gram counts.
         Option `char_wb` creates character n-grams only from text inside word
         boundaries; n-grams at the edges of words are padded with space.
-    method : {`single`, `complete`, `average`, `centroid`, `median`, `ward`},
-        default=`average`
-        Linkage method parameter to use for merging clusters via
-        :func:`scipy.cluster.hierarchy.linkage`.
-        Option `average` calculates the distance between two clusters as the
-        average distance between data points in the first and second cluster.
-    n_jobs : int, optional
-        The number of jobs to run in parallel.
+    method : str, optional, default=`average`
+        Linkage method parameter to use for merging clusters via scipy's
+        `linkage` method.
+        Options: {`single`, `complete`, `average`, `centroid`, `median`, `ward`},
+        describing different methods to calculate the distance between two clusters.
+        Option `average` calculates the distance between two clusters as the average
+        distance between data points in the first and second cluster.
 
     Returns
     -------
-    list of str
+    List[str]
        The deduplicated data.
 
     See Also
     --------
-    GapEncoder :
-        Encodes dirty categories (strings) by constructing latent topics with
-        continuous encoding.
-    MinHashEncoder :
+    :class:`~cu_cat.GapEncoder` :
+        Encodes dirty categories (strings) by constructing latent topics with continuous encoding.
+    :class:`~cu_cat.MinHashEncoder` :
         Encode string columns as a numeric array with the minhash method.
-    SimilarityEncoder :
+    :class:`~cu_cat.SimilarityEncoder` :
         Encode string columns as a numeric array with n-gram string similarity.
 
     Notes
@@ -201,24 +180,24 @@ def deduplicate(
     --------
     >>> from cu_cat.datasets import make_deduplication_data
     >>> duplicated = make_deduplication_data(examples=['black', 'white'],
-    ...                                      entries_per_example=[5, 5],
-    ...                                      prob_mistake_per_letter=0.3,
-    ...                                      random_state=42)
+                                             entries_per_example=[5, 5],
+                                             prob_mistake_per_letter=0.3,
+                                             random_state=42)
 
     >>> duplicated
-    ['blacs', 'black', 'black', 'black', 'black', \
-'uhibe', 'white', 'white', 'white', 'white']
+    ['blacn', 'black', 'black', 'black', 'black',
+     'hvite', 'white', 'white', 'white', 'white']
 
-    To deduplicate the data, we can build a correspondence matrix:
+    To deduplicate the data, we can build a correspondance matrix:
 
     >>> deduplicate_correspondence = deduplicate(duplicated)
     >>> deduplicate_correspondence
-    blacs    black
+    blacn    black
     black    black
     black    black
     black    black
     black    black
-    uhibe    white
+    hvite    white
     white    white
     white    white
     white    white
@@ -231,8 +210,8 @@ def deduplicate(
 
     >>> deduplicated = list(deduplicate_correspondence)
     >>> deduplicated
-    ['black', 'black', 'black', 'black', 'black', \
-'white', 'white', 'white', 'white', 'white']
+    ['black', 'black', 'black', 'black', 'black',
+    'white', 'white', 'white', 'white', 'white']
 
     We have our dirty categories deduplicated.
     """
@@ -243,7 +222,7 @@ def deduplicate(
 
     Z = linkage(distance_mat, method=method, optimal_ordering=True)
     if n_clusters is None:
-        n_clusters = _guess_clusters(Z, distance_mat, n_jobs)
+        n_clusters = _guess_clusters(Z, distance_mat)
     clusters = fcluster(Z, n_clusters, criterion="maxclust")
 
     translation_table = _create_spelling_correction(unique_words, counts, clusters)

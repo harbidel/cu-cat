@@ -65,7 +65,7 @@ df = df[["Country", "Happiness score"]]
 # Interesting tables can be found on `the World Bank open data platform
 # <https://data.worldbank.org/>`_, for which we have a downloading
 # function:
-from skrub.datasets import fetch_world_bank_indicator
+from cu_cat.datasets import fetch_world_bank_indicator
 
 ###############################################################################
 # We extract the table containing GDP per capita by country:
@@ -117,7 +117,7 @@ gdppc.sort_values(by="Country Name").tail(7)
 # ...............................
 #
 # To join them with skrub, we only need to do the following:
-from skrub import fuzzy_join
+from cu_cat import fuzzy_join
 
 df1 = fuzzy_join(
     df,  # our table to join
@@ -359,7 +359,7 @@ print(f"Mean R² score is {cv_r2_t.mean():.2f} +- {cv_r2_t.std():.2f}")
 y = df["Happiness score"]
 df = df.drop("Happiness score", axis=1)
 
-from skrub import Joiner, SelectCols, DropCols
+from cu_cat import Joiner, SelectCols, DropCols
 from sklearn.pipeline import make_pipeline
 
 # We create a selector that we will insert at the end of our pipeline, to
