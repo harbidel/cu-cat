@@ -1240,8 +1240,8 @@ def _multiplicative_update_h_smallfast(
 
     squared_norm = 1
     if 'cudf' in df_type(Vt) or 'cupy' in df_type(Vt):
-        Vt=csr(Vt);Ht=cp.array(Ht);W=cp.array(W);W_WT1=cp.array(W_WT1.T)#;Vt=cp.array(Vt)
         cp = deps.cupy
+        Vt=csr(Vt);Ht=cp.array(Ht);W=cp.array(W);W_WT1=cp.array(W_WT1.T)#;Vt=cp.array(Vt)
     else: 
         cp = deps.numpy
     for n_iter_ in range(max_iter):
