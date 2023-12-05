@@ -1051,3 +1051,23 @@ def test_pandas_sparse_array():
     match = r"(?=.*sparse Pandas series)(?=.*'a', 'b')"
     with pytest.raises(TypeError, match=match):
         TableVectorizer().fit(df)
+
+
+def test_check_same_transformers():
+    expected_transformers = {"trans1": ["col1", "col2"], "trans2": ["col3", "col4"]}
+    actual_transformers = [("trans1", None, ["col1", "col2"]), ("trans2", None, ["col3", "col4"])]
+
+    check_same_transformers(expected_transformers, actual_transformers)
+
+def test_check_same_transformers_fail():
+    expected_transformers = {"trans1": ["col1", "col2"], "trans2": ["col3", "col4"]}
+    actual_transformers = [("trans1", None, ["col1", "col2"]), ("trans3", None, ["col3", "col4"])]
+
+    with pytest.raises(AssertionError):
+        check_same_transformers(expected_transformers, actual_transformers)
+
+def test_check_same_transformers_empty():
+    expected_transformers = {}
+    actual_transformers = []
+
+    check_same_transformers(expected_transformers, actual_transformers)

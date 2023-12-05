@@ -334,3 +334,56 @@ def test_max_no_improvements_none():
     X = generate_data(300, random_state=0)
     enc_none = GapEncoder(n_components=2, max_no_improvement=None, random_state=42)
     enc_none.fit(X)
+
+
+
+def test_multiplicative_update_h_smallfast():
+    Vt = np.array([[1, 2], [3, 4]])
+    W = np.array([[1, 2], [3, 4]])
+    Ht = np.array([[1, 2], [3, 4]])
+    epsilon = 1e-2
+    max_iter = 10
+    rescale_W = False
+    gamma_shape_prior = 1.1
+    gamma_scale_prior = 1.0
+
+    result = _gap_encoder._multiplicative_update_h_smallfast(
+        Vt, W, Ht, epsilon, max_iter, rescale_W, gamma_shape_prior, gamma_scale_prior
+    )
+
+    assert isinstance(result, np.ndarray)
+    assert result.shape == Ht.shape
+
+def test_multiplicative_update_h_smallfast_rescale_W():
+    Vt = np.array([[1, 2], [3, 4]])
+    W = np.array([[1, 2], [3, 4]])
+    Ht = np.array([[1, 2], [3, 4]])
+    epsilon = 1e-2
+    max_iter = 10
+    rescale_W = True
+    gamma_shape_prior = 1.1
+    gamma_scale_prior = 1.0
+
+    result = _gap_encoder._multiplicative_update_h_smallfast(
+        Vt, W, Ht, epsilon, max_iter, rescale_W, gamma_shape_prior, gamma_scale_prior
+    )
+
+    assert isinstance(result, np.ndarray)
+    assert result.shape == Ht.shape
+
+def test_multiplicative_update_h_smallfast_max_iter():
+    Vt = np.array([[1, 2], [3, 4]])
+    W = np.array([[1, 2], [3, 4]])
+    Ht = np.array([[1, 2], [3, 4]])
+    epsilon = 1e-2
+    max_iter = 1
+    rescale_W = False
+    gamma_shape_prior = 1.1
+    gamma_scale_prior = 1.0
+
+    result = _gap_encoder._multiplicative_update_h_smallfast(
+        Vt, W, Ht, epsilon, max_iter, rescale_W, gamma_shape_prior, gamma_scale_prior
+    )
+
+    assert isinstance(result, np.ndarray)
+    assert result.shape == Ht.shape
