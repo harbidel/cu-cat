@@ -34,9 +34,9 @@ from sphinx_gallery.notebook import add_code_cell, add_markdown_cell
 #
 # We avoid duplicating the information, but we do not use symlinks to be
 # able to build the docs on Windows
-shutil.copyfile("../RELEASE_PROCESS.rst", "RELEASE_PROCESS.rst")
-shutil.copyfile("../CHANGES.rst", "CHANGES.rst")
-shutil.copyfile("../CONTRIBUTING.rst", "CONTRIBUTING.rst")
+shutil.copyfile("../RELEASE_PROCESS.md", "RELEASE_PROCESS.md")
+shutil.copyfile("../CHANGES.md", "CHANGES.md")
+shutil.copyfile("../CONTRIBUTING.md", "CONTRIBUTING.md")
 
 # -- General configuration ------------------------------------------------
 
@@ -91,8 +91,8 @@ templates_path = ["_templates"]
 # The suffix(es) of source filenames.
 # You can specify multiple suffix as a list of string:
 #
-# source_suffix = ['.rst', '.md']
-source_suffix = ".rst"
+# source_suffix = ['.md', '.md']
+source_suffix = ".md"
 
 # The master toctree document.
 master_doc = "index"
@@ -175,7 +175,7 @@ html_theme_options = {
         },
         {
             "name": "GitHub",
-            "url": "https://github.com/cu_cat-data/cu_cat/",
+            "url": "https://github.com/graphistry/cu-cat/",
             "icon": "fa-brands fa-github",
         },
         {
@@ -194,7 +194,7 @@ html_theme_options = {
     # "navbar_center": ["version-switcher", "navbar-nav"],
     "navbar_center": ["navbar-nav"],
     "announcement": (
-        "https://raw.githubusercontent.com/cu_cat-data/cu_cat/main/doc/announcement.html"
+        "https://raw.githubusercontent.com/graphistry/cu_cat/main/doc/announcement.html"
     ),
     # "show_nav_level": 2,
     # "navbar_start": ["navbar-logo"],
@@ -359,7 +359,7 @@ def notebook_modification_function(notebook_content, notebook_filename):
             "The main difference is that imports will take a lot longer than usual, "
             "for example the first `import cu_cat` can take roughly 10-20s.\n\n"
             "If you notice problems, feel free to open an "
-            "[issue](https://github.com/cu_cat-data/cu_cat/issues/new/choose) about it."
+            "[issue](https://github.com/graphistry/cu-cat/issues/new/choose) about it."
         )
 
     markdown = warning_template.format(message_class=message_class, message=message)
@@ -540,12 +540,12 @@ favicons = {"rel": "icon", "href": "_static/cu_cat.svg", "type": "image/svg+xml"
 # -- github links -------------------------------------------------------------
 
 # we use the issues path for PRs since the issues URL will forward
-issues_github_path = "cu_cat-data/cu_cat"
+issues_github_path = "graphistry/cu_cat"
 
 # The following is used by sphinx.ext.linkcode to provide links to GitHub
 linkcode_resolve = make_linkcode_resolve(
     "cu_cat",
-    "https://github.com/cu_cat-data/cu_cat/blob/{revision}/{package}/{path}#L{lineno}",
+    "https://github.com/graphistry/cu-cat/blob/{revision}/{package}/{path}#L{lineno}",
 )
 
 # -- Sphinx-Copybutton configuration -----------------------------------------

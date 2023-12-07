@@ -7,8 +7,8 @@ body:
     attributes:
       value: >
         #### Before submitting a feature request, please make sure it hasn't been already
-        addressed by searching through [the past issues](https://github.com/cu_cat-data/cu_cat/issues)
-        and the [pull requests](https://github.com/cu_cat-data/cu_cat/pulls).
+        addressed by searching through [the past issues](https://github.com/graphistry/cu-cat/issues)
+        and the [pull requests](https://github.com/graphistry/cu-cat/pulls).
   - type: textarea
     id: description
     attributes:

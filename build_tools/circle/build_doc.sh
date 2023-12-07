@@ -131,7 +131,7 @@ python setup.py develop
 #if [[ "$CIRCLE_BRANCH" =~ ^main$ && -z "$CI_PULL_REQUEST" ]]
 #then
 #    # List available documentation versions if on default branch
-#    python build_tools/circle/list_versions.py > doc/versions.rst
+#    python build_tools/circle/list_versions.py > doc/versions.md
 #fi
 
 # The pipefail is requested to propagate exit code
@@ -142,7 +142,7 @@ set +o pipefail
 
 affected_doc_paths() {
     files=$(git diff --name-only origin/main...$CIRCLE_SHA1)
-    echo "$files" | grep ^doc/.*\.rst | sed 's/^doc\/\(.*\)\.rst$/\1.html/'
+    echo "$files" | grep ^doc/.*\.md | sed 's/^doc\/\(.*\)\.md$/\1.html/'
     echo "$files" | grep ^examples/.*.py | sed 's/^\(.*\)\.py$/auto_\1.html/'
     project_files=$(echo "$files" | grep '^cu_cat/')
     if [ -n "$project_files" ]
