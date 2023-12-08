@@ -1,12 +1,12 @@
 
 # **cu-cat** 
 
-
 ****cu-cat**** is an end-to-end gpu Python library that encodes
 categorical variables into machine-learnable numerics. It is a cuda
 accelerated port of what was dirty_cat, now rebranded as
 [skrub](https://github.com/skrub-data/skrub), and allows more ambitious interactive analysis & real-time pipelines!
 
+[Loom video walkthru](https://www.loom.com/share/d7fd4980b31949b7b840b230937a636f?sid=6d56b82e-9f50-4059-af9f-bfdc32cd3509)
 
 # What can **cu-cat** do?
 
@@ -17,13 +17,16 @@ Hinted by its name, cu_cat is our GPU-accelerated open source fork of the popula
 
 ## Startup Code:
 
-    ! pip install graphistry[ai]
+    # !pip install graphistry[ai] ## future releases will have this by default
+    !pip install git+https://github.com/graphistry/pygraphistry.git@dev/depman_gpufeat
+
     import cudf
     import graphistry
     df = cudf.read_csv(...)
     g = graphistry.nodes(df).featurize(feature_engine='cu_cat')
     print(g._node_features.describe()) # friendly dataframe interfaces
     g.umap().plot() # ML/AI embedding model using the features
+
 
 ## Example notebooks 
 
@@ -39,9 +42,9 @@ Hinted by its name, cu_cat is our GPU-accelerated open source fork of the popula
 
 # Installation
 
-**cu-cat** v 0.06.01 can be easily installed via \`pip\`:
+**cu-cat** v 0.06.05 can be easily installed via \`pip\`:
 
-    pip install git+http://github.com/graphistry/cu-cat.git@v0.06.01
+    pip install git+http://github.com/graphistry/cu-cat.git@v0.06.05
 
 ## Dependencies
 
@@ -55,8 +58,3 @@ dirty_cat is now rebranded as part of the sklearn family as
 [skrub](https://github.com/skrub-data/skrub)
 
 
-# [Loom video walkthru](https://www.loom.com/share/d7fd4980b31949b7b840b230937a636f?sid=6d56b82e-9f50-4059-af9f-bfdc32cd3509)
-
-
-
-<div style="position: relative; padding-bottom: 62.7177700348432%; height: 0;"><iframe src="https://www.loom.com/embed/d7fd4980b31949b7b840b230937a636f?sid=334f1440-e876-4370-a0c0-0a0891fede83" frameborder="0" webkitallowfullscreen mozallowfullscreen allowfullscreen style="position: absolute; top: 0; left: 0; width: 100%; height: 100%;"></iframe></div>

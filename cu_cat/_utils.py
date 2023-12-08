@@ -75,7 +75,6 @@ def check_input(X) -> np.ndarray:
         for k in range(X.shape[1]):
             try:
                 X.iloc[:,k]=cudf.to_numeric(X.iloc[:,k], downcast='float').to_cupy()
-                print('passing from cudf to cupy')
             except:
                 pass
         X_ = X
