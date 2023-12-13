@@ -42,8 +42,7 @@ from sklearn.decomposition._nmf import _beta_divergence
 from ._utils import check_input, parse_version, get_gpu_memory, get_sys_memory, df_type
 
 
-from cu_cat import DepManager
-deps = DepManager()
+from ._dep_manager import deps
 pyarrow = deps.pyarrow
 
 cuml = deps.cuml  ## for cuml to run gap_encoder, following need to be loaded
@@ -1061,6 +1060,7 @@ def _multiplicative_update_w(
             Vt=Vt.get()
         except:
             pass
+        
     A *= rho
     A += cp.multiply(W, safe_sparse_dot(Ht.T, Vt.multiply(1 / (cp.dot(Ht, W) + 1e-10))))
     B *= rho

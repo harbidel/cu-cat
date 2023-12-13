@@ -493,7 +493,6 @@ numpydoc_xref_aliases = {
     "pandas.Index": "pandas.Index",
     "read_csv": "pandas.read_csv",
     "pandas.merge": "pandas.merge",
-<<<<<<< HEAD
     # cu_cat
     "fetch_ken_table_aliases": "cu_cat.datasets.fetch_ken_table_aliases",
     "fetch_ken_types": "cu_cat.datasets.fetch_ken_types",
@@ -509,24 +508,7 @@ numpydoc_xref_aliases = {
     "DatasetInfoOnly": "cu_cat.datasets._fetching.DatasetInfoOnly",
     "DatasetAll": "cu_cat.datasets._fetching.DatasetAll",
     "_replace_false_missing": "cu_cat._table_vectorizer._replace_false_missing",
-=======
-    # Skrub
-    "fetch_ken_table_aliases": "skrub.datasets.fetch_ken_table_aliases",
-    "fetch_ken_types": "skrub.datasets.fetch_ken_types",
-    "fetch_ken_embeddings": "skrub.datasets.fetch_ken_embeddings",
-    "fuzzy_join": "skrub.fuzzy_join",
-    "Joiner": "skrub.Joiner",
-    "GapEncoder": "skrub.GapEncoder",
-    "MinHashEncoder": "skrub.MinHashEncoder",
-    "SimilarityEncoder": "skrub.SimilarityEncoder",
-    "DatetimeEncoder": "skrub.DatetimeEncoder",
-    "deduplicate": "skrub.deduplicate",
-    "to_datetime": "skrub.to_datetime",
-    "TableVectorizer": "skrub.TableVectorizer",
-    "DatasetInfoOnly": "skrub.datasets._fetching.DatasetInfoOnly",
-    "DatasetAll": "skrub.datasets._fetching.DatasetAll",
-    "_replace_false_missing": "skrub._table_vectorizer._replace_false_missing",
->>>>>>> master
+
 }
 numpydoc_xref_ignore = "all"
 

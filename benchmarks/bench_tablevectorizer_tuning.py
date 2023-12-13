@@ -18,7 +18,7 @@ from sklearn.ensemble import (
 )
 from sklearn.model_selection import cross_val_score
 from sklearn.pipeline import Pipeline
-from utils import (
+from benchmarks.utils import (
     default_parser,
     find_result,
     get_classification_datasets,
@@ -26,7 +26,7 @@ from utils import (
     monitor,
 )
 
-from cu_cat import MinHashEncoder, TableVectorizer
+from cu_cat import GapEncoder,TableVectorizer
 
 ###############################################
 # Benchmarking TableVectorizer parameters
@@ -59,7 +59,7 @@ def benchmark(
 ):
     tv = TableVectorizer(
         cardinality_threshold=tv_cardinality_threshold,
-        high_card_cat_transformer=MinHashEncoder(n_components=minhash_n_components),
+        high_card_cat_transformer=GapEncoder(),
     )
 
     dataset = dataset_map[dataset_name]

@@ -3,8 +3,8 @@ from typing import Any, Hashable
 from inspect import getmodule
 import numpy as np
 from sklearn.utils import check_array
-from cu_cat import DepManager
-deps = DepManager()
+from ._dep_manager import deps
+
 cp = deps.cupy
 cudf = deps.cudf
 psutil = deps.psutil

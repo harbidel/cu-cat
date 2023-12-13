@@ -1,5 +1,5 @@
-import pkg_resources
-
+# import pkg_resources
+import importlib.resources as pkg_resources
 
 def check_dependencies():
     package_name = "cu-cat"

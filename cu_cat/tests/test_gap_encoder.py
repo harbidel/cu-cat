@@ -6,18 +6,10 @@ from sklearn.exceptions import NotFittedError
 from sklearn.model_selection import train_test_split
 
 from cu_cat import GapEncoder, TableVectorizer
-from cu_cat._dataframe._polars import POLARS_SETUP
-from cu_cat._dataframe._test_utils import is_module_polars
-from cu_cat.datasets import fetch_midwest_survey
+from cu_cat.datasets._fetching import fetch_midwest_survey
 from cu_cat.tests.utils import generate_data
 
 MODULES = [pd]
-
-if POLARS_SETUP:
-    import polars as pl
-
-    MODULES.append(pl)
-
 
 @pytest.mark.parametrize(
     ["hashing", "init", "rescale_W", "rescale_rho", "add_words"],
@@ -263,13 +255,6 @@ def test_score(n_samples: int = 70):
 )
 def test_missing_values(px, missing: str):
     """Test what happens when missing values are in the data"""
-    if is_module_polars(px):
-        pytest.xfail(
-            reason=(
-                "'TypeError: '<' not supported between instances of 'DataTypeClass' and"
-                " 'str'' raised because of pl.Null"
-            )
-        )
     observations = [
         ["alice", "bob"],
         [pd.NA, "alice"],

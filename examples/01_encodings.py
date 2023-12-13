@@ -40,7 +40,7 @@ using the `employee salaries <https://www.openml.org/d/42125>`_ dataset.
 #
 # Let's first retrieve the dataset:
 
-from cu_cat.datasets import fetch_employee_salaries
+from cu_cat.datasets._fetching import fetch_employee_salaries
 
 dataset = fetch_employee_salaries()
 
@@ -107,7 +107,7 @@ tv.named_transformers_["high_card_cat"].get_feature_names_out()
 #     - The |DatetimeEncoder| to the ``'date_first_hired'`` column. The |DatetimeEncoder|
 #       can encode datetime columns for machine learning.
 
-tv.named_transformers_["datetime"].get_feature_names_out()
+# tv.named_transformers_["datetime"].get_feature_names_out() ## passthru to pyg for plotting
 
 ###############################################################################
 # As we can see, it gave us interpretable column names.

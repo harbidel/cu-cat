@@ -5,7 +5,7 @@ Get the Wikipedia embeddings for feature augmentation.
 import pandas as pd
 from sklearn.decomposition import PCA
 
-from cu_cat.datasets import fetch_figshare
+from cu_cat.datasets._fetching import fetch_figshare
 
 # Required for ignoring lines too long in the docstrings
 # flake8: noqa: E501

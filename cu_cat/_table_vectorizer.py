@@ -19,10 +19,10 @@ from sklearn.base import TransformerMixin, clone
 from sklearn.utils.deprecation import deprecated
 from sklearn.utils.validation import check_is_fitted
 
-from cu_cat import GapEncoder, DepManager
+from cu_cat import GapEncoder
+from ._dep_manager import deps
 from cu_cat._utils import parse_version, df_type
 
-deps = DepManager()
 cuml = deps.cuml
 if cuml:
     from cuml.compose import ColumnTransformer
@@ -39,6 +39,69 @@ if cudf:
 
 # Required for ignoring lines too long in the docstrings
 # flake8: noqa: E501
+
+def _infer_date_format(date_column: pd.Series, n_trials: int = 100) -> Optional[str]:
+    """Infer the date format of a date column,
+    by finding a format which should work for all dates in the column.
+
+    Parameters
+    ----------
+    date_column : :obj:`~pandas.Series`
+        A column of dates, as strings.
+    n_trials : int, default=100
+        Number of rows to use to infer the date format.
+
+    Returns
+    -------
+    str or None
+        The date format inferred from the column.
+        If no format could be inferred, returns None.
+    """
+    if len(date_column) == 0:
+        return
+    date_column_sample = date_column.dropna().sample(
+        frac=min(n_trials / len(date_column), 1), random_state=42
+    )
+    # try to infer the date format
+    # see if either dayfirst or monthfirst works for all the rows
+    with warnings.catch_warnings():
+        # pandas warns when dayfirst is not strictly applied
+        warnings.simplefilter("ignore")
+        date_format_monthfirst = date_column_sample.apply(
+            lambda x: guess_datetime_format(x)
+        )
+        date_format_dayfirst = date_column_sample.apply(
+            lambda x: guess_datetime_format(x, dayfirst=True),
+        )
+    # if one row could not be parsed, return None
+    if date_format_monthfirst.isnull().any() or date_format_dayfirst.isnull().any():
+        return
+    # even with dayfirst=True, monthfirst format can be inferred
+    # so we need to check if the format is the same for all the rows
+    elif date_format_monthfirst.nunique() == 1:
+        # one monthfirst format works for all the rows
+        # check if another format works for all the rows
+        # if so, raise a warning
+        if date_format_dayfirst.nunique() == 1:
+            # check if monthfirst and dayfirst haven't found the same format
+            if date_format_monthfirst.iloc[0] != date_format_dayfirst.iloc[0]:
+                warnings.warn(
+                    f"""
+                    Both {date_format_monthfirst.iloc[0]} and {date_format_dayfirst.iloc[0]} are valid
+                    formats for the dates in column {date_column.name}.
+                    Format {date_format_monthfirst.iloc[0]} will be used.
+                    """,
+                    UserWarning,
+                    stacklevel=2,
+                )
+        return date_format_monthfirst.iloc[0]
+    elif date_format_dayfirst.nunique() == 1:
+        # only this format works for all the rows
+        return date_format_dayfirst.iloc[0]
+    else:
+        # more than two different formats were found
+        # TODO: maybe we could deal with this case
+        return
 
 def _has_missing_values(self, df: Union[pd.DataFrame, pd.Series]) -> bool:
     """
@@ -583,7 +646,7 @@ class TableVectorizer(ColumnTransformer):
         else:
             all_transformers: List[Tuple[str, OptionalTransformer, List[str]]] = [
             ("numeric", self.numerical_transformer, numeric_columns),
-            # ("datetime", self.datetime_transformer_, datetime_columns),
+            # ("datetime", self.datetime_transformer_, datetime_columns), ## commented out if in dt format so pyg can handle
             ("low_card_cat", self.low_card_cat_transformer_, low_card_cat_columns),
             ("high_card_cat", self.high_card_cat_transformer_, high_card_cat_columns),
         ]

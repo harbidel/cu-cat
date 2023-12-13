@@ -1,8 +1,13 @@
 from typing import Dict, List, Literal, Optional
 from warnings import warn
 
-import cupy as cp, numpy as np
-import cudf, pandas as pd
+from ._dep_manager import deps
+cudf = deps.cudf
+if cudf is None:
+    cudf = deps.pandas
+    np = deps.numpy
+else:
+    np = deps.cupy
 from sklearn import __version__ as sklearn_version
 from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.utils.validation import check_is_fitted

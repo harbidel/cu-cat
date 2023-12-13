@@ -7,8 +7,7 @@ from sklearn.preprocessing import FunctionTransformer, OneHotEncoder, StandardSc
 from sklearn.utils._testing import assert_array_equal, skip_if_no_parallel
 from sklearn.utils.validation import check_is_fitted
 
-from cu_cat import GapEncoder, MinHashEncoder, TableVectorizer
-from cu_cat._datetime_encoder import _is_pandas_format_mixed_available
+from cu_cat import GapEncoder, TableVectorizer
 from cu_cat._table_vectorizer import _infer_date_format
 from cu_cat.tests.utils import transformers_list_equal
 
@@ -657,27 +656,27 @@ def test__infer_date_format() -> None:
     assert _infer_date_format(date_column) is None
 
 
-@pytest.mark.parametrize(
-    ["specific_transformers", "expected_transformers_"],
-    [
-        (
-            (MinHashEncoder(), ["str1", "str2"]),
-            [
-                ("numeric", "passthrough", ["int", "float"]),
-                ("minhashencoder", "MinHashEncoder", ["str1", "str2"]),
-                ("low_card_cat", "OneHotEncoder", ["cat1", "cat2"]),
-            ],
-        ),
-        (
-            ("mh_cat1", MinHashEncoder(), ["cat1"]),
-            [
-                ("numeric", "passthrough", ["int", "float"]),
-                ("mh_cat1", "MinHashEncoder", ["cat1"]),
-                ("low_card_cat", "OneHotEncoder", ["str1", "str2", "cat2"]),
-            ],
-        ),
-    ],
-)
+# @pytest.mark.parametrize(
+#     ["specific_transformers", "expected_transformers_"],
+#     [
+#         (
+#             (MinHashEncoder(), ["str1", "str2"]),
+#             [
+#                 ("numeric", "passthrough", ["int", "float"]),
+#                 ("minhashencoder", "MinHashEncoder", ["str1", "str2"]),
+#                 ("low_card_cat", "OneHotEncoder", ["cat1", "cat2"]),
+#             ],
+#         ),
+#         (
+#             ("mh_cat1", MinHashEncoder(), ["cat1"]),
+#             [
+#                 ("numeric", "passthrough", ["int", "float"]),
+#                 ("mh_cat1", "MinHashEncoder", ["cat1"]),
+#                 ("low_card_cat", "OneHotEncoder", ["str1", "str2", "cat2"]),
+#             ],
+#         ),
+#     ],
+# )
 def test_specifying_specific_column_transformer(
     specific_transformers, expected_transformers_
 ) -> None:
@@ -721,20 +720,20 @@ def test_specific_transformers_unexpected_behavior():
         ).fit(X)
 
 
-@pytest.mark.parametrize(
-    "pipeline",
-    [
-        TableVectorizer(),
-        TableVectorizer(
-            specific_transformers=[
-                (MinHashEncoder(), ["cat1", "cat2"]),
-            ],
-        ),
-        TableVectorizer(
-            low_cardinality_transformer=MinHashEncoder(),
-        ),
-    ],
-)
+# @pytest.mark.parametrize(
+#     "pipeline",
+#     [
+#         TableVectorizer(),
+#         TableVectorizer(
+#             specific_transformers=[
+#                 (MinHashEncoder(), ["cat1", "cat2"]),
+#             ],
+#         ),
+#         TableVectorizer(
+#             low_cardinality_transformer=MinHashEncoder(),
+#         ),
+#     ],
+# )
 def test_deterministic(pipeline) -> None:
     """
     Tests that running the same TableVectorizer multiple times with the same
@@ -817,10 +816,6 @@ def test_mixed_types() -> None:
                         np.nan,
                     ]
                 }
-            ),
-            marks=pytest.mark.skipif(
-                not _is_pandas_format_mixed_available(),
-                reason=MSG_PANDAS_DEPRECATED_WARNING,
             ),
         ),
     ],
@@ -905,13 +900,12 @@ def test_column_by_column() -> None:
 @skip_if_no_parallel
 @pytest.mark.parametrize(
     "high_cardinality_transformer",
-    # the gap encoder and the minhashencoder
+    # the gap encoder
     # should be parallelized on all columns
     # the one hot encoder should not be parallelized
     [
         GapEncoder(n_components=2, random_state=0),
         OneHotEncoder(),
-        MinHashEncoder(n_components=2),
     ],
 )
 def test_parallelism(high_cardinality_transformer) -> None:
