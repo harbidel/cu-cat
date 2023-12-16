@@ -20,6 +20,7 @@ from sklearn.utils.deprecation import deprecated
 from sklearn.utils.validation import check_is_fitted
 
 from cu_cat import GapEncoder
+from cu_cat._gap_encoder import make_safe_gpu_dataframes
 from ._dep_manager import deps
 from cu_cat._utils import parse_version, df_type
 
@@ -702,16 +703,21 @@ class TableVectorizer(ColumnTransformer):
         if 'cudf' in self.Xt_ and 'cudf' not in str(getmodule(X)):
         # if deps.cudf and 'cudf' not in str(getmodule(X)):
             X=cudf.from_pandas(X)#,nan_as_null=True) ### see how flag acts
+        if 'cudf' in self.Xt_:
+            self.engine = 'cuml'
+        else:
+            self.engine = 'pandas'
         X.fillna(0.0,inplace=True)
+        # X, y = make_safe_gpu_dataframes(X, None, self.engine)
         if (self.datetime_transformer_ == "passthrough") and (datetime_columns !=[]):
             Z=X.drop(columns=datetime_columns)
             X_enc = super().fit_transform(Z, y)
 
         else:
-            X_enc = super().fit_transform(X.astype(str), y)
+            X_enc = super().fit_transform(X, y)
         if deps.cudf and 'cudf' not in str(getmodule(X)):
             X_enc = cudf.DataFrame(X_enc)
-        
+
         # For the "remainder" columns, the `ColumnTransformer` `transformers_`
         # attribute contains the index instead of the column name,
         # so we convert the values to the appropriate column names
@@ -721,10 +727,10 @@ class TableVectorizer(ColumnTransformer):
                 # In this case, "cols" is a list of ints (the indices)
                 cols: List[int]
                 self.transformers_[i] = (name, enc, [self.columns_[j] for j in cols])
-                
+
         if (self.datetime_transformer_ == "passthrough") & (datetime_columns != []):
             X_enc = cudf.concat([X_enc, X[datetime_columns]], axis=1, ignore_index=True)
-            
+
         return X_enc
 
     def transform(self, X) -> np.ndarray:

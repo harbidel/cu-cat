@@ -27,7 +27,7 @@ from datetime import datetime
 # is relative to the documentation root, use os.path.abspath to make it
 # absolute, like shown here.
 sys.path.insert(0, os.path.abspath("sphinxext"))
-from github_link import make_linkcode_resolve
+# from github_link import make_linkcode_resolve
 from sphinx_gallery.notebook import add_code_cell, add_markdown_cell
 
 # -- Copy files for docs --------------------------------------------------
