@@ -40,12 +40,6 @@ Hinted by its name, cu_cat is our GPU-accelerated open source fork of the popula
 - Metagenomic Analysis [generically](https://github.com/dcolinmorgan/grph/blob/main/generic_metagenomic_demo.ipynb) and Metagenomic Analysis [accelerated with **cu-cat**](https://github.com/dcolinmorgan/grph/blob/main/accelerating_metagenomic_demo.ipynb)
 
 
-# Installation
-
-**cu-cat** v 0.06.05 can be easily installed via \`pip\`:
-
-    pip install git+http://github.com/graphistry/cu-cat.git@v0.06.05
-
 ## Dependencies
 
 Major dependencies the cuml and cudf libraries, as well as [standard

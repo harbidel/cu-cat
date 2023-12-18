@@ -3,7 +3,7 @@ from setuptools import setup
 # if __name__ == "__main__":
 setup(
     name='cu-cat',
-    version='v0.06.08',
+    version='v0.07.00',
     # cmdclass=versioneer.get_cmdclass(),
     # packages = find_packages(),
     platforms='any',
