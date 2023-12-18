@@ -711,7 +711,8 @@ class TableVectorizer(ColumnTransformer):
         if (self.datetime_transformer_ == "passthrough") and (datetime_columns !=[]):
             Z=X.drop(columns=datetime_columns)
             X_enc = super().fit_transform(Z, y)
-
+        elif 'cudf' not in str(getmodule(X)):
+            X_enc = super().fit_transform(X.astype(str), y)
         else:
             X_enc = super().fit_transform(X, y)
         if deps.cudf and 'cudf' not in str(getmodule(X)):
