@@ -79,13 +79,13 @@ def make_safe_gpu_dataframes(X, y, engine):
             else:
                 new_kwargs[key] = value
 
-            if isinstance(new_kwargs[key], cudf.DataFrame):
-                if parse_version(cudf.__version__) >= parse_version("23.10"):
-                    new_kwargs[key] = new_kwargs[key].convert_dtypes()
-                else:
+            try:
+                if 'cudf' in str(getmodule(X)) and parse_version(cudf.__version__) < parse_version("23.10"):
                     new_kwargs[key] = cudf.from_pandas(new_kwargs[key].to_pandas().convert_dtypes())
-            elif isinstance(value, pd.DataFrame):
-                new_kwargs[key] = new_kwargs[key].convert_dtypes()
+                else:
+                    new_kwargs[key] = new_kwargs[key].convert_dtypes()
+            except:
+                pass
                     
         return new_kwargs['X'], new_kwargs['y']
     else:
@@ -235,9 +235,6 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
         # X.convert_dtypes(inplace=True)
         # Build the n-grams counts matrix unq_V on unique elements of X
         X, y = make_safe_gpu_dataframes(X, None, self.engine)
-        
-        print(str(getmodule(X)))
-        
         if 'cudf' not in str(getmodule(X)) and 'cuml' not in self.engine:
             unq_X, lookup = np.unique(X.astype(str), return_inverse=True)
         elif 'cudf' in str(getmodule(X)) and 'cuml' in self.engine:
@@ -564,9 +561,9 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
         t = time()
         check_is_fitted(self, "H_dict_")
         # Check if first item has str or np.str_ type
-        if deps.cuml:
-            if parse_version(cuml.__version__) > parse_version("23.04"):
-                X=X.replace('nan',np.nan).fillna('0o0o0')
+        # if deps.cuml:
+            # if parse_version(cuml.__version__) > parse_version("23.04"):
+                # X=X.replace('nan',np.nan).fillna('0o0o0')
         unq_X = X.unique()
         # Build the n-grams counts matrix V for the string data to encode
         unq_V = self.ngrams_count_.transform(unq_X)#.astype(str))

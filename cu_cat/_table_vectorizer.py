@@ -144,11 +144,10 @@ def _replace_false_missing(
         "NaN",
     ]  # taken from pandas.io.parsers (version 1.1.4)
     Xt_= df_type(df)
-    # deps.cudf: # 
     if 'cudf' not in Xt_:
         df = df.replace(STR_NA_VALUES + [None, "?", "..."], np.nan)
         df = df.replace(r"^\s+$", np.nan, regex=True)  # Replace whitespaces
-        
+
     else:
         for i in df.columns:
             if 'int' in str(df[i].dtype):
@@ -484,6 +483,10 @@ class TableVectorizer(ColumnTransformer):
         # as we might have some false missing
         # in numerical columns for instance.
         self.Xt_= df_type(X)
+        if 'cudf' in self.Xt_ or deps.cudf:
+            self.engine_ = 'cuml'
+        else:
+            self.engine_ = 'pandas'
         X = _replace_false_missing(X)
 
         # Handle missing values
@@ -697,18 +700,14 @@ class TableVectorizer(ColumnTransformer):
         # missing values or not.
         if self.imputed_columns_ and self.auto_cast:
             X = self._auto_cast(X)
-        # self.Xt_= df_type(X)
         if self.verbose:
             print(f"[TableVectorizer] Assigned transformers: {self.transformers}")
-        if 'cudf' in self.Xt_ and 'cudf' not in str(getmodule(X)):
+        if 'cudf' not in str(getmodule(X)) and deps.cudf:
         # if deps.cudf and 'cudf' not in str(getmodule(X)):
             X=cudf.from_pandas(X)#,nan_as_null=True) ### see how flag acts
-        if 'cudf' in self.Xt_:
-            self.engine = 'cuml'
-        else:
-            self.engine = 'pandas'
-        X.fillna(0.0,inplace=True)
-        # X, y = make_safe_gpu_dataframes(X, None, self.engine)
+        X.fillna(0.0,inplace=True)    
+        X, y = make_safe_gpu_dataframes(X, None, self.engine_)
+        
         if (self.datetime_transformer_ == "passthrough") and (datetime_columns !=[]):
             Z=X.drop(columns=datetime_columns)
             X_enc = super().fit_transform(Z, y)
@@ -758,8 +757,8 @@ class TableVectorizer(ColumnTransformer):
                 f"array seen during fit. Got {X.shape[1]} "
                 f"columns, expected {len(self.columns_)}"
             )
-
-        if not isinstance(X, pd.DataFrame) and not 'cudf' in str(getmodule(X)):
+        X, y = make_safe_gpu_dataframes(X, None, self.engine_)
+        if not isinstance(X, pd.DataFrame) and not 'cudf' in self.Xt_:
             X = pd.DataFrame(X)
         else:
             # Create a copy to avoid altering the original data.
@@ -774,11 +773,9 @@ class TableVectorizer(ColumnTransformer):
             except:
                 pass
 
-        if 'cudf' in self.Xt_:
-        # if deps.cudf:
+        if isinstance(X, pd.DataFrame) and 'cudf' in self.Xt_:
             cudf = deps.cudf
-            X=cudf.from_pandas(X)
-
+            X = cudf.from_pandas(X)
         return super().transform(X)
 
     def get_feature_names_out(self, input_features=None) -> List[str]:
@@ -792,7 +789,7 @@ class TableVectorizer(ColumnTransformer):
         typing.List[str]
             Feature names.
         """
-        if 'cudf' not in self.Xt_:
+        if 'cudf' not in self.Xt_ and not deps.cudf:
             if parse_version(sklearn_version) < parse_version("1.0"):
                 ct_feature_names = super().get_feature_names()
             else:
@@ -812,7 +809,7 @@ class TableVectorizer(ColumnTransformer):
                     cols = self.columns_.to_list()
                     all_trans_feature_names.extend(cols)
                 continue
-            if 'cudf' not in self.Xt_:
+            if 'cudf' not in self.Xt_ and not deps.cudf:
                 if parse_version(sklearn_version) < parse_version("1.0"):
                     trans_feature_names = trans.get_feature_names(cols)
                 else:
