@@ -16,6 +16,8 @@ class DepManager:
             pkg_val = importlib.import_module(pkg)
             self.pkgs[pkg] = pkg_val
             setattr(self, pkg, pkg_val)
+            if pkg is 'cuml' and cuml.__version__ < "24.02.00" and cuml.__version__ > "23.06.00":
+                cuml.internals.base_return_types._process_generic = cuml.internals.base_helpers._process_generic
         except:
             pass
 
@@ -28,3 +30,5 @@ class DepManager:
 
 
 deps = DepManager()
+
+
