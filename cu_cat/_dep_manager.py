@@ -23,8 +23,6 @@ class DepManager:
         try:
             module = __import__(pkg, fromlist=[name])
             self.pkgs[name] = module
-            if pkg == 'cuml' and cuml.__version__ < "24.02.00" and cuml.__version__ > "23.06.00": 
-                cuml.internals.base_return_types._process_generic = cuml.internals.base_helpers._process_generic
         except:
             pass
 
