@@ -1,4 +1,4 @@
-import joblib
+import joblib, subprocess
 import numpy as np
 import pandas as pd
 import pytest
@@ -10,6 +10,7 @@ from sklearn.utils.validation import check_is_fitted
 from cu_cat import GapEncoder, TableVectorizer
 from cu_cat._table_vectorizer import _infer_date_format
 from cu_cat.tests.utils import transformers_list_equal
+from cu_cat._dep_manager import deps
 
 MSG_PANDAS_DEPRECATED_WARNING = "Skip deprecation warning"
 
@@ -1065,3 +1066,17 @@ def test_check_same_transformers_empty():
     actual_transformers = []
 
     check_same_transformers(expected_transformers, actual_transformers)
+
+
+def test_winlogs():
+    import subprocess
+    subprocess.run(["l!wget -nc https://www.dropbox.com/s/31dx1g6g59exoc3/part.88.parquet"])
+    winlogsA=pd.read_parquet('part.88.parquet')
+    winlogs=winlogsA[['LogonID','UserName','LogHost','Time','DomainName','LogonType','SubjectLogonID','Status','Destination','ServiceName']]#.convert_dtypes() #.replace('nan',np.nan).fillna('0o0o0')
+    winlogs=winlogs.sample(10000,replace=False)
+
+    table_vec = TableVectorizer()
+    aa=table_vec.fit_transform((winlogs))
+    if deps.cudf:
+        bb=table_vec.fit_transform(cudf.from_pandas(winlogs))
+        assert aa == bb
