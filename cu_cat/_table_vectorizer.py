@@ -25,6 +25,8 @@ from ._dep_manager import deps
 from cu_cat._utils import parse_version, df_type
 
 cuml = deps.cuml
+if pkg == 'cuml' and cuml.__version__ < "24.02.00" and cuml.__version__ > "23.06.00": 
+    cuml.internals.base_return_types._process_generic = cuml.internals.base_helpers._process_generic
 if cuml:
     from cuml.compose import ColumnTransformer
     from cuml.preprocessing import OneHotEncoder
