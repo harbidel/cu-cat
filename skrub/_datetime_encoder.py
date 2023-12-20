@@ -767,3 +767,4 @@ class DatetimeEncoder(TransformerMixin, BaseEstimator):
             "allow_nan": True,
             "_xfail_checks": {"check_dtype_object": "Specific datetime error."},
         }
+

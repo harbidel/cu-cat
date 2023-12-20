@@ -539,3 +539,4 @@ def test_preserve_dtypes():
 
     X_trans = to_datetime(X)
     assert_frame_equal(X_trans[non_datetime_columns], X[non_datetime_columns])
+
