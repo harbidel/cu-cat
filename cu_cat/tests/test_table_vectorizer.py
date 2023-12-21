@@ -1080,3 +1080,6 @@ def test_winlogs():
     if deps.cudf:
         bb=table_vec.fit_transform(cudf.from_pandas(winlogs))
         assert aa == bb
+
+
+    if cudf.__version__ > 23.06
