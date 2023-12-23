@@ -320,55 +320,43 @@ def test_max_no_improvements_none():
     enc_none = GapEncoder(n_components=2, max_no_improvement=None, random_state=42)
     enc_none.fit(X)
 
-
-
-def test_multiplicative_update_h_smallfast():
-    Vt = np.array([[1, 2], [3, 4]])
-    W = np.array([[1, 2], [3, 4]])
-    Ht = np.array([[1, 2], [3, 4]])
-    epsilon = 1e-2
-    max_iter = 10
-    rescale_W = False
-    gamma_shape_prior = 1.1
-    gamma_scale_prior = 1.0
-
-    result = _gap_encoder._multiplicative_update_h_smallfast(
-        Vt, W, Ht, epsilon, max_iter, rescale_W, gamma_shape_prior, gamma_scale_prior
+def test_gpu_gap_encoder(
+    hashing: bool,
+    init: str,
+    analyzer: str,
+    add_words: bool,
+    verbose: bool,
+    n_samples: int = 70,
+):
+    X = generate_data(n_samples, random_state=0)
+    n_components = 10
+    # Test output shape
+    encoder = GapEncoder(
+        n_components=n_components,
+        hashing=hashing,
+        init=init,
+        engine='cuml',
+        analyzer=analyzer,
+        add_words=add_words,
+        verbose=verbose,
+        random_state=42,
+        rescale_W=True,
     )
+    encoder.fit(X)
+    y = encoder.transform(X)
 
-    assert isinstance(result, np.ndarray)
-    assert result.shape == Ht.shape
-
-def test_multiplicative_update_h_smallfast_rescale_W():
-    Vt = np.array([[1, 2], [3, 4]])
-    W = np.array([[1, 2], [3, 4]])
-    Ht = np.array([[1, 2], [3, 4]])
-    epsilon = 1e-2
-    max_iter = 10
-    rescale_W = True
-    gamma_shape_prior = 1.1
-    gamma_scale_prior = 1.0
-
-    result = _gap_encoder._multiplicative_update_h_smallfast(
-        Vt, W, Ht, epsilon, max_iter, rescale_W, gamma_shape_prior, gamma_scale_prior
+    encoder = GapEncoder(
+        n_components=n_components,
+        hashing=hashing,
+        init=init,
+        engine='sklearn',
+        analyzer=analyzer,
+        add_words=add_words,
+        verbose=verbose,
+        random_state=42,
+        rescale_W=True,
     )
-
-    assert isinstance(result, np.ndarray)
-    assert result.shape == Ht.shape
-
-def test_multiplicative_update_h_smallfast_max_iter():
-    Vt = np.array([[1, 2], [3, 4]])
-    W = np.array([[1, 2], [3, 4]])
-    Ht = np.array([[1, 2], [3, 4]])
-    epsilon = 1e-2
-    max_iter = 1
-    rescale_W = False
-    gamma_shape_prior = 1.1
-    gamma_scale_prior = 1.0
-
-    result = _gap_encoder._multiplicative_update_h_smallfast(
-        Vt, W, Ht, epsilon, max_iter, rescale_W, gamma_shape_prior, gamma_scale_prior
-    )
-
-    assert isinstance(result, np.ndarray)
-    assert result.shape == Ht.shape
+    encoder.fit(X)
+    y2 = encoder.transform(X)
+    
+    np.testing.assert_array_equal(y, y2)

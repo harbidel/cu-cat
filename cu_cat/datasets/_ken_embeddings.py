@@ -2,6 +2,7 @@
 Get the Wikipedia embeddings for feature augmentation.
 """
 
+from __future__ import annotations
 import pandas as pd
 from sklearn.decomposition import PCA
 

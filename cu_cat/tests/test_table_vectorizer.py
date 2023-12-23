@@ -1,3 +1,4 @@
+from __future__ import annotations
 import joblib, subprocess
 import numpy as np
 import pandas as pd
@@ -1082,4 +1083,50 @@ def test_winlogs():
         assert aa == bb
 
 
-    if cudf.__version__ > 23.06
+
+def test_gpu_F_T_table_vectorizer(
+    hashing: bool,
+    init: str,
+):
+    X = generate_data(n_samples, random_state=0)
+    n_components = 10
+    # Test output shape
+    encoder = TableVectorizer(
+        hashing=hashing,
+        init=init,
+    )
+    encoder.fit(X)
+    y = encoder.transform(X)
+    dc=deps.dirty_cat
+    
+    encoder = dc.TableVectorizer(
+        hashing=hashing,
+        init=init,
+    )
+    encoder.fit(X)
+    y2 = encoder.transform(X)
+    
+    np.testing.assert_array_equal(y, y2)
+
+    
+def test_gpu_FT_table_vectorizer(
+    hashing: bool,
+    init: str,
+):
+    X = generate_data(n_samples, random_state=0)
+    n_components = 10
+    # Test output shape
+    encoder = TableVectorizer(
+        hashing=hashing,
+        init=init,
+    )
+    y=encoder.fit_transform(X)
+    import dirty_cat.TableVectorizer as tv 
+    
+    encoder = tv(
+        hashing=hashing,
+        init=init,
+    )
+    y2=encoder.fit_transform(X)
+    
+    np.testing.assert_array_equal(y, y2)
