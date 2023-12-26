@@ -13,22 +13,22 @@ on:
         - "main"
 
 jobs:
-  check_skip:
-    runs-on: ubuntu-latest
-    outputs:
-      skip: ${{ steps.result_step.outputs.ci-skip }}
-    steps:
-      - uses: actions/checkout@v3
-        with:
-          fetch-depth: 0
-      - id: result_step
-        uses: mstachniuk/ci-skip@master
-        with:
-          commit-filter: '[skip ci];[ci skip];[skip github]'
-          commit-filter-separator: ';'
+  # check_skip:
+  #   runs-on: ubuntu-latest
+  #   outputs:
+  #     skip: ${{ steps.result_step.outputs.ci-skip }}
+  #   steps:
+  #     - uses: actions/checkout@v3
+  #       with:
+  #         fetch-depth: 0
+  #     - id: result_step
+  #       uses: mstachniuk/ci-skip@master
+  #       with:
+  #         commit-filter: '[skip ci];[ci skip];[skip github]'
+  #         commit-filter-separator: ';'
 
   latest:
-    needs: check_skip
+    # needs: check_skip
     if: ${{ needs.check_skip.outputs.skip == 'false' }}
     runs-on: ${{ matrix.os }}
     strategy:
@@ -78,12 +78,12 @@ jobs:
           $GITHUB_WORKSPACE/build_tools/github/test.sh
         working-directory: ${{ runner.temp }}
         name: 'Run tests'
-      - uses: codecov/codecov-action@v3
-        with:
-          directory: ${{ runner.temp }}
-          verbose: true
-        if: success()
-        name: 'Upload coverage to CodeCov'
+      # - uses: codecov/codecov-action@v3
+      #   with:
+      #     directory: ${{ runner.temp }}
+      #     verbose: true
+      #   if: success()
+      #   name: 'Upload coverage to CodeCov'
 
   run_nightly:
     runs-on: ubuntu-latest
