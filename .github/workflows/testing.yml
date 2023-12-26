@@ -3,14 +3,14 @@ name: 'build'
 on:
   push:
     branches:
-      - "main"
+      - "master"
   pull_request:
     branches:
       - '*'
   schedule:
     - cron: "30 2 * * *"
       branches:
-        - "main"
+        - "master"
 
 jobs:
   # check_skip:
