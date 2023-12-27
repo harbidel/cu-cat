@@ -12,7 +12,7 @@ core_requires = [
   'setuptools',
   'logging',
   'typing',
-  'sklearn',
+  'scikit-learn',
   'cuml',
   'cudf',
   'cupy'
