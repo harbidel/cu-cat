@@ -23,8 +23,8 @@ from setuptools import setup
 # if __name__ == "__main__":
 setup(
     name='cu-cat',
-    version='0.07.03',  # versioneer.get_version(),
-    cmdclass='0.07.03',  # versioneer.get_cmdclass(),
+    version='0.7.3',  # versioneer.get_version(),
+    cmdclass='0.7.3',  # versioneer.get_cmdclass(),
     packages = find_packages(),
     platforms='any',
     description = 'An end-to-end gpu Python library that encodes categorical variables into machine-learnable numerics',
