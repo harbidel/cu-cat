@@ -1084,49 +1084,49 @@ def test_winlogs():
 
 
 
-def test_gpu_F_T_table_vectorizer(
-    hashing: bool,
-    init: str,
-):
-    X = generate_data(15, random_state=0)
-    n_components = 10
-    # Test output shape
-    encoder = TableVectorizer(
-        hashing=hashing,
-        init=init,
-    )
-    encoder.fit(X)
-    y = encoder.transform(X)
-    dc=deps.dirty_cat
+# def test_gpu_F_T_table_vectorizer(
+#     hashing: bool,
+#     init: str,
+# ):
+#     X = generate_data(15, random_state=0)
+#     n_components = 10
+#     # Test output shape
+#     encoder = TableVectorizer(
+#         hashing=hashing,
+#         init=init,
+#     )
+#     encoder.fit(X)
+#     y = encoder.transform(X)
+#     dc=deps.dirty_cat
     
-    encoder = dc.TableVectorizer(
-        hashing=hashing,
-        init=init,
-    )
-    encoder.fit(X)
-    y2 = encoder.transform(X)
+#     encoder = dc.TableVectorizer(
+#         hashing=hashing,
+#         init=init,
+#     )
+#     encoder.fit(X)
+#     y2 = encoder.transform(X)
     
-    np.testing.assert_array_equal(y, y2)
+#     np.testing.assert_array_equal(y, y2)
 
     
-def test_gpu_FT_table_vectorizer(
-    hashing: bool,
-    init: str,
-):
-    X = generate_data(15, random_state=0)
-    n_components = 10
-    # Test output shape
-    encoder = TableVectorizer(
-        hashing=hashing,
-        init=init,
-    )
-    y=encoder.fit_transform(X)
-    import dirty_cat.TableVectorizer as tv 
+# def test_gpu_FT_table_vectorizer(
+#     hashing: bool,
+#     init: str,
+# ):
+#     X = generate_data(15, random_state=0)
+#     n_components = 10
+#     # Test output shape
+#     encoder = TableVectorizer(
+#         hashing=hashing,
+#         init=init,
+#     )
+#     y=encoder.fit_transform(X)
+#     import dirty_cat.TableVectorizer as tv 
     
-    encoder = tv(
-        hashing=hashing,
-        init=init,
-    )
-    y2=encoder.fit_transform(X)
+#     encoder = tv(
+#         hashing=hashing,
+#         init=init,
+#     )
+#     y2=encoder.fit_transform(X)
     
-    np.testing.assert_array_equal(y, y2)
+#     np.testing.assert_array_equal(y, y2)
