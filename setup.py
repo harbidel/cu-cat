@@ -13,6 +13,7 @@ core_requires = [
   'logging',
   'typing',
   'scikit-learn',
+  'flake8>=5.0',
 #   'cuml', ## cannot test on github actions
 #   'cudf',
 #   'cupy'
