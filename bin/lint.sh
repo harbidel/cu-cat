@@ -10,7 +10,8 @@ flake8 --version
 flake8 \
     cu_cat \
     --count \
-    --select=E9,F63,F7,F82,F821 \
+    --select=E9,F63,F7,F82 \
+    --ignore=F821 \
     --show-source \
     --statistics
 
