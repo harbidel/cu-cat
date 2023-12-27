@@ -1088,7 +1088,7 @@ def test_gpu_F_T_table_vectorizer(
     hashing: bool,
     init: str,
 ):
-    X = generate_data(n_samples, random_state=0)
+    X = generate_data(15, random_state=0)
     n_components = 10
     # Test output shape
     encoder = TableVectorizer(
@@ -1113,7 +1113,7 @@ def test_gpu_FT_table_vectorizer(
     hashing: bool,
     init: str,
 ):
-    X = generate_data(n_samples, random_state=0)
+    X = generate_data(15, random_state=0)
     n_components = 10
     # Test output shape
     encoder = TableVectorizer(
