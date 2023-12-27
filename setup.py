@@ -13,9 +13,9 @@ core_requires = [
   'logging',
   'typing',
   'scikit-learn',
-  'cuml',
-  'cudf',
-  'cupy'
+#   'cuml', ## cannot test on github actions
+#   'cudf',
+#   'cupy'
 ]
 
 from setuptools import setup
