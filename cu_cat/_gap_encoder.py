@@ -1,3 +1,4 @@
+# type: ignore
 """
 Online Gamma-Poisson factorization of string arrays.
 The principle is as follows:
@@ -20,7 +21,7 @@ This dynamicity is accomplished through get_gpu_memory() and the gmem variable, 
 If the gpu memory is too small, it will default to serializing dot products on the GPU, and in some (rare) cases the CPU will be faster until sufficient samples are provided to outcompete the parallelization of the CPU loops across features.
 """
 
-import warnings,sys,gc,os,logging
+import warnings,sys,gc,os,logging,typing
 from typing import Dict, Generator, List, Literal, Optional, Tuple, Union
 from inspect import getmodule
 
@@ -1045,6 +1046,7 @@ class GapEncoder(BaseEstimator, TransformerMixin):
 
         return self.get_feature_names_out(col_names, n_labels)
 
+@typing.no_type_check
 def _rescale_W(W: np.array, A: np.array) -> None:
     """
     Rescale the topics W to have a L1-norm equal to 1.
@@ -1054,7 +1056,7 @@ def _rescale_W(W: np.array, A: np.array) -> None:
     W /= s
     A /= s
 
-
+@typing.no_type_check
 def _multiplicative_update_w(
     self,
     Vt: np.array,
@@ -1109,6 +1111,7 @@ def _multiplicative_update_w(
             _rescale_W(W, A)
     return cp.array(W), cp.array(A), cp.array(B)
 
+@typing.no_type_check
 def _multiplicative_update_w_smallfast(
     Vt: np.array,
     W: np.array,
@@ -1139,7 +1142,7 @@ def _multiplicative_update_w_smallfast(
     gc.collect()
     return W,A,B
 
-
+@typing.no_type_check
 def _rescale_h(self, V: np.array, H: np.array) -> np.array:
     """
     Rescale the activations H.
@@ -1155,7 +1158,7 @@ def _rescale_h(self, V: np.array, H: np.array) -> np.array:
 
     return cudf.DataFrame(H)
 
-
+@typing.no_type_check
 def _multiplicative_update_h(
     self,
     Vt: np.array,
@@ -1239,6 +1242,7 @@ def _multiplicative_update_h(
                     break
     return Ht
 
+@typing.no_type_check
 def _multiplicative_update_h_smallfast(
     Vt: np.array,
     W: np.array,

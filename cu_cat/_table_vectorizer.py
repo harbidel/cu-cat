@@ -7,7 +7,7 @@ Implemented on GPU exclusively through use of GapEncoder in cu_cat
 """
 
 from typing import Dict, List, Literal, Optional, Tuple, Union
-from warnings import warn
+import warnings
 from inspect import getmodule
 
 import numpy as np
@@ -70,6 +70,10 @@ def _infer_date_format(date_column: pd.Series, n_trials: int = 100) -> Optional[
     with warnings.catch_warnings():
         # pandas warns when dayfirst is not strictly applied
         warnings.simplefilter("ignore")
+        # if pd.__version >= 2.2.0 or pd.__version <= 0.24.0:
+            # pandas 2.2.0 and above, and 0.24.0 and below
+            # have a bug where dayfirst is not strictly applied
+            # so we need to check both dayfirst and monthfirst
         date_format_monthfirst = date_column_sample.apply(
             lambda x: guess_datetime_format(x)
         )
@@ -643,14 +647,14 @@ class TableVectorizer(ColumnTransformer):
         # Next part: construct the transformers
         # Create the list of all the transformers.
         if self.datetime_transformer_ != "passthrough":
-            all_transformers: List[Tuple[str, OptionalTransformer, List[str]]] = [
+            all_transformers: List[Tuple[str, OptionalTransformer, List[str]]] = [  # noqa
                 ("numeric", self.numerical_transformer, numeric_columns),
                 ("datetime", self.datetime_transformer_, datetime_columns),
                 ("low_card_cat", self.low_card_cat_transformer_, low_card_cat_columns),
                 ("high_card_cat", self.high_card_cat_transformer_, high_card_cat_columns),
             ]
         else:
-            all_transformers: List[Tuple[str, OptionalTransformer, List[str]]] = [
+            all_transformers: List[Tuple[str, OptionalTransformer, List[str]]] = [  # noqa
             ("numeric", self.numerical_transformer, numeric_columns),
             # ("datetime", self.datetime_transformer_, datetime_columns), ## commented out if in dt format so pyg can handle
             ("low_card_cat", self.low_card_cat_transformer_, low_card_cat_columns),
@@ -683,7 +687,7 @@ class TableVectorizer(ColumnTransformer):
 
                 elif self.impute_missing == "auto":
                     for name, trans, cols in all_transformers:
-                        impute: bool = False
+                        impute: bool = False  # noqa
 
                         if isinstance(trans, OneHotEncoder) and parse_version(
                             sklearn_version
@@ -727,7 +731,7 @@ class TableVectorizer(ColumnTransformer):
         for i, (name, enc, cols) in enumerate(self.transformers_):
             if name == "remainder" and len(cols) < 20:
                 # In this case, "cols" is a list of ints (the indices)
-                cols: List[int]
+                cols: List[int]  # noqa
                 self.transformers_[i] = (name, enc, [self.columns_[j] for j in cols])
 
         if (self.datetime_transformer_ == "passthrough") & (datetime_columns != []):
@@ -825,7 +829,7 @@ class TableVectorizer(ColumnTransformer):
             all_trans_feature_names.extend(trans_feature_names)
 
         if len(ct_feature_names) != len(all_trans_feature_names):
-            warn("Could not extract clean feature names; returning defaults. ")
+            warnings.warn("Could not extract clean feature names; returning defaults. ")
             return list(ct_feature_names)
 
         return all_trans_feature_names
@@ -846,7 +850,7 @@ class TableVectorizer(ColumnTransformer):
             Feature names.
         """
         if parse_version(sklearn_version) >= parse_version("1.0"):
-            warn(
+            warnings.warn(
                 "Following the changes in scikit-learn 1.0, "
                 "get_feature_names is deprecated. "
                 "Use get_feature_names_out instead. ",
