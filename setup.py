@@ -1,8 +1,7 @@
 #!/usr/bin/env python
 
 from setuptools import setup, find_packages
-#FIXME: prevents pyproject.toml - same as https://github.com/SciTools/cartopy/issues/1270
-import versioneer
+# import versioneer
 
 def unique_flatten_dict(d):
   return list(set(sum( d.values(), [] )))
@@ -24,8 +23,8 @@ from setuptools import setup
 # if __name__ == "__main__":
 setup(
     name='cu-cat',
-    version=versioneer.get_version(),
-    cmdclass=versioneer.get_cmdclass(),
+    version='0.07.03'  # versioneer.get_version(),
+    cmdclass='0.07.03'  # versioneer.get_cmdclass(),
     packages = find_packages(),
     platforms='any',
     description = 'An end-to-end gpu Python library that encodes categorical variables into machine-learnable numerics',
