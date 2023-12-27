@@ -4,11 +4,12 @@ from inspect import getmodule
 import numpy as np
 from sklearn.utils import check_array
 from ._dep_manager import deps
+import subprocess as sp
 
 cp = deps.cupy
 cudf = deps.cudf
 psutil = deps.psutil
-import subprocess as sp
+
 # import cupy as cp
 
 try:
@@ -66,7 +67,7 @@ def check_input(X) -> np.ndarray:
         if X_.dtype.kind in {"U", "S"}:  # contains strings
             if np.any(X_ == "nan"):  # missing value converted to string
                 return check_array(
-                    np.array(X, dtype=object),  ## had been using cp here, but not necessary
+                    np.array(X, dtype=object),  # had been using cp here, but not necessary
                     dtype=None,
                     ensure_2d=True,
                     force_all_finite=False,
@@ -74,7 +75,7 @@ def check_input(X) -> np.ndarray:
     if 'numpy' not in str(getmodule(X)):
         for k in range(X.shape[1]):
             try:
-                X.iloc[:,k]=cudf.to_numeric(X.iloc[:,k], downcast='float').to_cupy()
+                X.iloc[:,k] = cudf.to_numeric(X.iloc[:,k], downcast='float').to_cupy()
             except:
                 pass
         X_ = X
@@ -86,9 +87,9 @@ def df_type(df):
     Returns df type
     """
 
-    try: # if not cp:
+    try:  # if not cp:
         X = str(getmodule(df))
-    except: # if cp:
+    except:  # if cp:
         X = str(cp.get_array_module(df))
     return X
 

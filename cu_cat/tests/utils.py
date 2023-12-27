@@ -58,7 +58,7 @@ def is_valid_attribute(attribute):
 
 def transformers_equal(transformer1, transformer2, ignore_params=None):
     # Check if the transformers are of the same type
-    if type(transformer1) != type(transformer2):
+    if not isinstance(type(transformer1),type(transformer2)):
         return False
 
     # if string transformers, check if they are the same

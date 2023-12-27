@@ -194,13 +194,7 @@ def test_get_feature_names_out_no_words():
     enc = GapEncoder(random_state=42)
     # A dataframe with words too short
     df = pd.DataFrame(
-        20
-        * [
-            [
-                "a b c d",
-            ],
-        ],
-    )
+        20 * [["a b c d",],],)
 
     enc.fit(df)
     # The difficulty here is that, in this specific case short words
@@ -215,13 +209,7 @@ def test_get_feature_names_out_redundent():
     # which themselves lead to errors in the TableVectorizer
     # get_feature_names_out() method.
     df = pd.DataFrame(
-        40
-        * [
-            [
-                "aaa bbb cccc ddd",
-            ],
-        ],
-    )
+        40 * [["aaa bbb cccc ddd",],],)
 
     tv = TableVectorizer(cardinality_threshold=1)
     tv.fit(df)
