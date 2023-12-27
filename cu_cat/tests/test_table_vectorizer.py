@@ -1072,15 +1072,15 @@ def test_check_same_transformers_empty():
 def test_winlogs():
     subprocess.run(["l!wget -nc https://www.dropbox.com/s/31dx1g6g59exoc3/part.88.parquet"])
     winlogsA = pd.read_parquet('part.88.parquet')
-    winlogs = winlogsA[['LogonID','UserName','LogHost','Time','DomainName','LogonType','SubjectLogonID','Status','Destination','ServiceName']]  #.convert_dtypes() #.replace('nan',np.nan).fillna('0o0o0')
+    winlogs = winlogsA[['LogonID','UserName','LogHost','Time','DomainName','LogonType','SubjectLogonID','Status','Destination','ServiceName']]  # .convert_dtypes() #.replace('nan',np.nan).fillna('0o0o0')
     winlogs = winlogs.sample(10000,replace=False)
 
     table_vec = TableVectorizer()
-    aa=table_vec.fit_transform((winlogs))
+    aa = table_vec.fit_transform((winlogs))
     # if deps.cudf:
     #     bb = table_vec.fit_transform(cudf.from_pandas(winlogs))
     #     assert aa == bb
-    assert(aa.shape[0]==winlogs.shape[0])
+    assert aa.shape[0] == winlogs.shape[0]
 
 
 # def test_gpu_F_T_table_vectorizer(
