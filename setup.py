@@ -14,7 +14,7 @@ core_requires = [
   'typing',
   'scikit-learn',
   'flake8>=5.0',
-  ''
+  'mypy'
 #   'cuml', ## cannot test on github actions
 #   'cudf',
 #   'cupy'
