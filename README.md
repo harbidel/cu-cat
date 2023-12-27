@@ -15,6 +15,12 @@ The Graphistry team has been growing the library out of need. The straw that bro
 
 Hinted by its name, cu_cat is our GPU-accelerated open source fork of the popular CPU Python  library dirty_cat.   Like dirty_cat, cu_cat makes it easy to convert messy dataframes filled with numbers, strings, and timestamps into numeric feature columns optimized for AI models. It adds interoperability for GPU dataframes and replaces key kernels and algorithms with faster and more scalable GPU variants. Even on low-end GPUs, we are now able to tackle much larger datasets in the same amount of time – or for the first time! – with end-to-end pipelines. We typically save time with **3-5X speedups and will even see 10X+**, to the point that the more data you encode, the more time you save!
 
+# What can NOT **cu-cat** do?
+
+Since cu_cat is largely limited to CUDF/CUML dataframes, it is not a drop-in replacement for dirty_cat.  It is also not a drop-in replacement for the CPU-based dirty_cat, and we are not planning to make it one.  We developed this library to accelerate our own end-to-end pipelines.
+
+Similarly, it requires pandas or cudf input, as well as a GPU; numpy array will not suffice as they can featurize but cannot be UMAP-ed since they lack index.
+
 ## Startup Code:
 
     # !pip install graphistry[ai] ## future releases will have this by default
