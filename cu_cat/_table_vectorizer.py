@@ -20,7 +20,7 @@ from sklearn.utils.deprecation import deprecated
 from sklearn.utils.validation import check_is_fitted
 
 from cu_cat import GapEncoder
-from cu_cat._gap_encoder import make_safe_gpu_dataframes
+from ._gap_encoder import make_safe_gpu_dataframes
 from ._dep_manager import deps
 from cu_cat._utils import parse_version, df_type
 

@@ -29,6 +29,7 @@ __all__ = [
     "GapEncoder",
     "SuperVectorizer",
     "TableVectorizer",
+    "DepManager",
     "deduplicate",
     "compute_ngram_distance"
 ]
