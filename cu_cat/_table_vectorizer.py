@@ -111,7 +111,7 @@ def _has_missing_values(self, df: Union[pd.DataFrame, pd.Series]) -> bool:
     Returns True if `array` contains missing values, False otherwise.
     """
     if 'cudf' in self.Xt_:
-        df=df.to_pandas()
+        df = df.to_pandas()
     return any(df.isnull())
 
 def _replace_false_missing(
@@ -145,7 +145,7 @@ def _replace_false_missing(
         "#N/A",
         "NaN",
     ]  # taken from pandas.io.parsers (version 1.1.4)
-    Xt_= df_type(df)
+    Xt_ = df_type(df)
     if 'cudf' not in Xt_:
         df = df.replace(STR_NA_VALUES + [None, "?", "..."], np.nan)
         df = df.replace(r"^\s+$", np.nan, regex=True)  # Replace whitespaces
@@ -156,9 +156,9 @@ def _replace_false_missing(
                 df[i] = df[i].astype('str')
                 df[i] = df[i].replace(STR_NA_VALUES + [None, "?", "..."], 'None')
             try:
-                df[i]=df[i].str.normalize_spaces()
+                df[i] = df[i].str.normalize_spaces()
             except:
-                df[i]=df[i]
+                df[i] = df[i]
             try:
                 df[i] = df[i].replace({pd.NA: np.nan})
             except:
@@ -168,7 +168,7 @@ def _replace_false_missing(
             except:
                 pass
             try:
-                df[i]=cudf.from_pandas(df[i],nan_as_null=False)
+                df[i] = cudf.from_pandas(df[i],nan_as_null=False)
             except:
                 pass
     return df
@@ -706,12 +706,12 @@ class TableVectorizer(ColumnTransformer):
             print(f"[TableVectorizer] Assigned transformers: {self.transformers}")
         if 'cudf' not in str(getmodule(X)) and deps.cudf:
         # if deps.cudf and 'cudf' not in str(getmodule(X)):
-            X=cudf.from_pandas(X)#,nan_as_null=True) ### see how flag acts
+            X = cudf.from_pandas(X)#,nan_as_null=True) ### see how flag acts
         X.fillna(0.0,inplace=True)    
         X, y = make_safe_gpu_dataframes(X, None, self.engine_)
         
         if (self.datetime_transformer_ == "passthrough") and (datetime_columns !=[]):
-            Z=X.drop(columns=datetime_columns)
+            Z = X.drop(columns=datetime_columns)
             X_enc = super().fit_transform(Z, y)
         elif 'cudf' not in str(getmodule(X)):
             X_enc = super().fit_transform(X.astype(str), y)
