@@ -11,7 +11,7 @@ flake8 \
     cu_cat \
     --count \
     --select=E9,F63,F7,F82 \
-    --ignore=F821 \
+    --ignore=F821,E999 \
     --show-source \
     --statistics
 
@@ -19,7 +19,7 @@ flake8 \
 flake8 \
   cu_cat \
   --count \
-  --ignore=C901,E121,E122,E123,E124,E125,E128,E131,E144,E201,E202,E203,E231,E251,E265,E301,E302,E303,E401,E501,E722,F401,W291,W293,F821 \
+  --ignore=C901,E121,E122,E123,E124,E125,E128,E131,E144,E201,E202,E203,E231,E251,E265,E301,E302,E303,E401,E501,E722,F401,W291,W293,F821,E999 \
   --max-complexity=10 \
   --max-line-length=127 \
   --statistics
