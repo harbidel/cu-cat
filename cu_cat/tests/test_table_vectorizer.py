@@ -775,53 +775,53 @@ def test_mixed_types() -> None:
     check_same_transformers(expected_transformers_array, table_vec.transformers_)
 
 
-@pytest.mark.parametrize(
-    "X_fit, X_transform_original, X_transform_with_missing_original",
-    [
-        # All nans during fit, 1 category during transform
-        (
-            pd.DataFrame({"col1": [np.nan, np.nan, np.nan]}),
-            pd.DataFrame({"col1": [np.nan, np.nan, "placeholder"]}),
-            pd.DataFrame({"col1": [np.nan, np.nan, np.nan]}),
-        ),
-        # All floats during fit, 1 category during transform
-        (
-            pd.DataFrame({"col1": [1.0, 2.0, 3.0]}),
-            pd.DataFrame({"col1": [1.0, 2.0, "placeholder"]}),
-            pd.DataFrame({"col1": [1.0, 2.0, np.nan]}),
-        ),
-        # All datetimes during fit, 1 category during transform
-        pytest.param(
-            pd.DataFrame(
-                {
-                    "col1": [
-                        pd.Timestamp("2019-01-01"),
-                        pd.Timestamp("2019-01-02"),
-                        pd.Timestamp("2019-01-03"),
-                    ]
-                }
-            ),
-            pd.DataFrame(
-                {
-                    "col1": [
-                        pd.Timestamp("2019-01-01"),
-                        pd.Timestamp("2019-01-02"),
-                        "placeholder",
-                    ]
-                }
-            ),
-            pd.DataFrame(
-                {
-                    "col1": [
-                        pd.Timestamp("2019-01-01"),
-                        pd.Timestamp("2019-01-02"),
-                        np.nan,
-                    ]
-                }
-            ),
-        ),
-    ],
-)
+# @pytest.mark.parametrize(
+#     "X_fit, X_transform_original, X_transform_with_missing_original",
+#     [
+#         # All nans during fit, 1 category during transform
+#         (
+#             pd.DataFrame({"col1": [np.nan, np.nan, np.nan]}),
+#             pd.DataFrame({"col1": [np.nan, np.nan, "placeholder"]}),
+#             pd.DataFrame({"col1": [np.nan, np.nan, np.nan]}),
+#         ),
+#         # All floats during fit, 1 category during transform
+#         (
+#             pd.DataFrame({"col1": [1.0, 2.0, 3.0]}),
+#             pd.DataFrame({"col1": [1.0, 2.0, "placeholder"]}),
+#             pd.DataFrame({"col1": [1.0, 2.0, np.nan]}),
+#         ),
+#         # All datetimes during fit, 1 category during transform
+#         pytest.param(
+#             pd.DataFrame(
+#                 {
+#                     "col1": [
+#                         pd.Timestamp("2019-01-01"),
+#                         pd.Timestamp("2019-01-02"),
+#                         pd.Timestamp("2019-01-03"),
+#                     ]
+#                 }
+#             ),
+#             pd.DataFrame(
+#                 {
+#                     "col1": [
+#                         pd.Timestamp("2019-01-01"),
+#                         pd.Timestamp("2019-01-02"),
+#                         "placeholder",
+#                     ]
+#                 }
+#             ),
+#             pd.DataFrame(
+#                 {
+#                     "col1": [
+#                         pd.Timestamp("2019-01-01"),
+#                         pd.Timestamp("2019-01-02"),
+#                         np.nan,
+#                     ]
+#                 }
+#             ),
+#         ),
+#     ],
+# )
 # def test_changing_types(
 #     X_fit, X_transform_original, X_transform_with_missing_original
 # ) -> None:
