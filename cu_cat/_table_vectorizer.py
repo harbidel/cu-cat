@@ -61,7 +61,7 @@ def _infer_date_format(date_column: pd.Series, n_trials: int = 100) -> Optional[
         If no format could be inferred, returns None.
     """
     if len(date_column) == 0:
-        return
+        return None
     date_column_sample = date_column.dropna().sample(
         frac=min(n_trials / len(date_column), 1), random_state=42
     )
@@ -82,7 +82,7 @@ def _infer_date_format(date_column: pd.Series, n_trials: int = 100) -> Optional[
         )
     # if one row could not be parsed, return None
     if date_format_monthfirst.isnull().any() or date_format_dayfirst.isnull().any():
-        return
+        return None
     # even with dayfirst=True, monthfirst format can be inferred
     # so we need to check if the format is the same for all the rows
     elif date_format_monthfirst.nunique() == 1:
@@ -108,7 +108,7 @@ def _infer_date_format(date_column: pd.Series, n_trials: int = 100) -> Optional[
     else:
         # more than two different formats were found
         # TODO: maybe we could deal with this case
-        return
+        return None
 
 def _has_missing_values(self, df: Union[pd.DataFrame, pd.Series]) -> bool:
     """
@@ -399,7 +399,7 @@ class TableVectorizer(ColumnTransformer):
             Literal["drop", "passthrough"], TransformerMixin
         ] = "passthrough",
         sparse_threshold: float = 0.3,
-        n_jobs: int = None, ## this fills up parallelization; prev None = 1 process
+        n_jobs: int = 1, ## this fills up parallelization; prev None = 1 process, 1 also = 1 process
         transformer_weights=None,
         verbose: bool = False,
     ):

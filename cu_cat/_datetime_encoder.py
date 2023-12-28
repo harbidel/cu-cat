@@ -2,6 +2,7 @@ from typing import Dict, List, Literal, Optional
 from warnings import warn
 
 from ._dep_manager import deps
+
 cudf = deps.cudf
 if cudf is None:
     cudf = deps.pandas
@@ -134,6 +135,7 @@ class DatetimeEncoder(BaseEstimator, TransformerMixin):
             )
 
     @staticmethod
+    @typing.no_type_check
     def _extract_from_date(date_series: cudf.Series, feature: str):
         if feature == "year":
             return cudf.Series(cudf.DatetimeIndex(date_series.to_pandas()).year.to_numpy())#.to_cupy()
@@ -222,7 +224,8 @@ class DatetimeEncoder(BaseEstimator, TransformerMixin):
         )
 
         return self
-
+    
+    @typing.no_type_check
     def transform(self, X, y=None) -> np.ndarray:
         """Transform X by replacing each datetime column with corresponding numerical features.
 

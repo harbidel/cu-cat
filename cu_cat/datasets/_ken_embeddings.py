@@ -1,3 +1,4 @@
+# type: ignore
 """
 Get the Wikipedia embeddings for feature augmentation.
 """
