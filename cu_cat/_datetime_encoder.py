@@ -14,7 +14,7 @@ from sklearn import __version__ as sklearn_version
 from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.utils.validation import check_is_fitted
 
-from ._utils import check_input, parse_version
+from ._utils import check_input, parse_version  # type: ignore
 
 # Required for ignoring lines too long in the docstrings
 # flake8: noqa: E501
