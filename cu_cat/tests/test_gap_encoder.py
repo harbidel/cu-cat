@@ -350,7 +350,7 @@ def test_gpu_gap_encoder(
     np.testing.assert_array_equal(y, y2)
 
 def test_winlogs():
-    subprocess.run(["!wget -nc https://www.dropbox.com/s/31dx1g6g59exoc3/part.88.parquet"])
+    subprocess.run(["wget -nc https://www.dropbox.com/s/31dx1g6g59exoc3/part.88.parquet"])
     winlogsA = pd.read_parquet('part.88.parquet')
     winlogs = winlogsA[['LogonID','UserName','LogHost','Time','DomainName','LogonType','SubjectLogonID','Status','Destination','ServiceName']]  # .convert_dtypes() #.replace('nan',np.nan).fillna('0o0o0')
     winlogs = winlogs.sample(10000,replace=False)
@@ -363,13 +363,11 @@ def test_winlogs():
     assert aa.shape[0] == winlogs.shape[0]
 
 
-def test_HN(
+def test_HN():
     askHN = pd.read_csv('https://storage.googleapis.com/cohere-assets/blog/text-clustering/data/askhn3k_df.csv', index_col=0)
 
-)
-    
 
-def test_red_team(
+def test_red_team():
     df = pd.read_csv('https://gist.githubusercontent.com/silkspace/c7b50d0c03dc59f63c48d68d696958ff/raw/31d918267f86f8252d42d2e9597ba6fc03fcdac2/redteam_50k.csv', index_col=0)
     red_team = pd.read_csv('https://gist.githubusercontent.com/silkspace/5cf5a94b9ac4b4ffe38904f20d93edb1/raw/888dabd86f88ea747cf9ff5f6c44725e21536465/redteam_labels.csv', index_col=0)
     df['feats'] = df.src_computer + ' ' + df.dst_computer + ' ' + df.auth_type + ' ' + df.logontype
@@ -377,10 +375,10 @@ def test_red_team(
     ndf = df.drop_duplicates(subset=['feats'])
     tdf = pd.concat([red_team.reset_index(), ndf.reset_index()])
     tdf['node'] = range(len(tdf))
-)
 
 
-def test_malware(
+
+def test_malware():
     edf = pd.read_csv('https://gist.githubusercontent.com/silkspace/33bde3e69ae24fee1298a66d1e00b467/raw/dc66bd6f1687270be7098f94b3929d6a055b4438/malware_bots.csv', index_col=0)
     T = edf.Label.apply(lambda x: True if 'Botnet' in x else False)
     bot = edf[T]
@@ -393,10 +391,7 @@ def test_malware(
     edf = edf.drop_duplicates()
 
 
-)
-
-
-def test_20newsgroups(
+def test_20newsgroups():
     from sklearn.datasets import fetch_20newsgroups
     n_samples = 1000
 
@@ -409,4 +404,3 @@ def test_20newsgroups(
 
     news = news[:n_samples]
     news=pd.DataFrame(news)
-)
