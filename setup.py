@@ -15,6 +15,7 @@ core_requires = [
   'scikit-learn',
   'flake8>=5.0',
   'mypy'
+  'pytest',
 #   'cuml', ## cannot test on github actions
 #   'cudf',
 #   'cupy'
