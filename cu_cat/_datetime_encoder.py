@@ -14,7 +14,7 @@ from sklearn import __version__ as sklearn_version
 from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.utils.validation import check_is_fitted
 
-from cu_cat._utils import check_input, parse_version
+from ._utils import check_input, parse_version
 
 # Required for ignoring lines too long in the docstrings
 # flake8: noqa: E501
@@ -135,7 +135,7 @@ class DatetimeEncoder(BaseEstimator, TransformerMixin):
             )
 
     @staticmethod
-    @typing.no_type_check
+    @no_type_check
     def _extract_from_date(date_series: cudf.Series, feature: str):
         if feature == "year":
             return cudf.Series(cudf.DatetimeIndex(date_series.to_pandas()).year.to_numpy())#.to_cupy()
@@ -225,7 +225,7 @@ class DatetimeEncoder(BaseEstimator, TransformerMixin):
 
         return self
     
-    @typing.no_type_check
+    @no_type_check
     def transform(self, X, y=None) -> np.ndarray:
         """Transform X by replacing each datetime column with corresponding numerical features.
 
