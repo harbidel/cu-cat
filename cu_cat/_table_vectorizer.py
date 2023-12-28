@@ -75,10 +75,10 @@ def _infer_date_format(date_column: pd.Series, n_trials: int = 100) -> Optional[
             # have a bug where dayfirst is not strictly applied
             # so we need to check both dayfirst and monthfirst
         date_format_monthfirst = date_column_sample.apply(
-            lambda x: guess_datetime_format(x)
+            lambda x: pd.guess_datetime_format(x)
         )
         date_format_dayfirst = date_column_sample.apply(
-            lambda x: guess_datetime_format(x, dayfirst=True),
+            lambda x: pd.guess_datetime_format(x, dayfirst=True),
         )
     # if one row could not be parsed, return None
     if date_format_monthfirst.isnull().any() or date_format_dayfirst.isnull().any():
@@ -381,7 +381,7 @@ class TableVectorizer(ColumnTransformer):
     imputed_columns_: List[str]
 
     # Override required parameters
-    _required_parameters = []
+    _required_parameters = [] # type: ignore
 
     def __init__(
         self,
@@ -546,7 +546,7 @@ class TableVectorizer(ColumnTransformer):
             # if categorical, add the new categories to prevent	
             # them to be encoded as nan	
             if pd.api.types.is_categorical_dtype(dtype):	
-                known_categories = dtype.categories	
+                known_categories = dtype.categories # type: ignore
                 new_categories = pd.unique(X[col])	
                 dtype = pd.CategoricalDtype(	
                     categories=known_categories.union(new_categories)	
@@ -647,14 +647,14 @@ class TableVectorizer(ColumnTransformer):
         # Next part: construct the transformers
         # Create the list of all the transformers.
         if self.datetime_transformer_ != "passthrough":
-            all_transformers: List[Tuple[str, OptionalTransformer, List[str]]] = [  # noqa
+            all_transformers: List[Tuple[str, OptionalTransformer, List[str]]] = [  # type: ignore
                 ("numeric", self.numerical_transformer, numeric_columns),
                 ("datetime", self.datetime_transformer_, datetime_columns),
                 ("low_card_cat", self.low_card_cat_transformer_, low_card_cat_columns),
                 ("high_card_cat", self.high_card_cat_transformer_, high_card_cat_columns),
             ]
         else:
-            all_transformers: List[Tuple[str, OptionalTransformer, List[str]]] = [  # noqa
+            all_transformers: List[Tuple[str, OptionalTransformer, List[str]]] = [  # type: ignore
             ("numeric", self.numerical_transformer, numeric_columns),
             # ("datetime", self.datetime_transformer_, datetime_columns), ## commented out if in dt format so pyg can handle
             ("low_card_cat", self.low_card_cat_transformer_, low_card_cat_columns),
@@ -687,7 +687,7 @@ class TableVectorizer(ColumnTransformer):
 
                 elif self.impute_missing == "auto":
                     for name, trans, cols in all_transformers:
-                        impute: bool = False  # noqa
+                        impute: bool = False  # type: ignore
 
                         if isinstance(trans, OneHotEncoder) and parse_version(
                             sklearn_version
@@ -731,7 +731,7 @@ class TableVectorizer(ColumnTransformer):
         for i, (name, enc, cols) in enumerate(self.transformers_):
             if name == "remainder" and len(cols) < 20:
                 # In this case, "cols" is a list of ints (the indices)
-                cols: List[int]  # noqa
+                cols: List[int]  # type: ignore
                 self.transformers_[i] = (name, enc, [self.columns_[j] for j in cols])
 
         if (self.datetime_transformer_ == "passthrough") & (datetime_columns != []):

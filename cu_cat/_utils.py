@@ -1,3 +1,5 @@
+# type: ignore
+
 import collections
 from typing import Any, Hashable
 from inspect import getmodule
