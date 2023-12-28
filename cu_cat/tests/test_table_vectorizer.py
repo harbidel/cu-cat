@@ -193,7 +193,7 @@ def _test_possibilities(X) -> None:
     vectorizer_base = TableVectorizer(
         cardinality_threshold=4,
         # we must have n_samples = 5 >= n_components
-        high_cardinality_transformer=GapEncoder(n_components=2),
+        high_card_cat_transformer=GapEncoder(n_components=2),
         numerical_transformer=StandardScaler(),
     )
     # Warning: order-dependant
@@ -238,7 +238,7 @@ def _test_possibilities(X) -> None:
     vectorizer_cast = TableVectorizer(
         cardinality_threshold=4,
         # we must have n_samples = 5 >= n_components
-        high_cardinality_transformer=GapEncoder(n_components=2),
+        high_card_cat_transformer=GapEncoder(n_components=2),
         numerical_transformer=StandardScaler(),
     )
     X_str = X.astype("object")
@@ -361,7 +361,7 @@ def test_with_arrays() -> None:
     vectorizer = TableVectorizer(
         cardinality_threshold=4,
         # we must have n_samples = 5 >= n_components
-        high_cardinality_transformer=GapEncoder(n_components=2),
+        high_card_cat_transformer=GapEncoder(n_components=2),
         numerical_transformer=StandardScaler(),
     )
 
@@ -486,8 +486,8 @@ def test_passthrough() -> None:
     X_clean = _get_clean_dataframe()
 
     tv = TableVectorizer(
-        low_cardinality_transformer="passthrough",
-        high_cardinality_transformer="passthrough",
+        low_card_cat_transformer="passthrough",
+        high_card_cat_transformer="passthrough",
         datetime_transformer="passthrough",
         numerical_transformer="passthrough",
         impute_missing="skip",
@@ -732,7 +732,7 @@ def test_specific_transformers_unexpected_behavior():
 #             ],
 #         ),
 #         TableVectorizer(
-#             low_cardinality_transformer=MinHashEncoder(),
+#             low_card_cat_transformer=MinHashEncoder(),
 #         ),
 #     ],
 # )
@@ -872,13 +872,13 @@ def test_column_by_column() -> None:
     # when applied column by column
     X = _get_clean_dataframe()
     table_vec_all_cols = TableVectorizer(
-        high_cardinality_transformer=GapEncoder(n_components=2, random_state=0),
+        high_card_cat_transformer=GapEncoder(n_components=2, random_state=0),
         cardinality_threshold=4,
     )
     table_vec_all_cols.fit(X)
     for col in X.columns:
         table_vec_one_col = TableVectorizer(
-            high_cardinality_transformer=GapEncoder(n_components=2, random_state=0),
+            high_card_cat_transformer=GapEncoder(n_components=2, random_state=0),
             cardinality_threshold=4,
         )
         table_vec_one_col.fit(X[[col]])
@@ -901,7 +901,7 @@ def test_column_by_column() -> None:
 
 @skip_if_no_parallel
 @pytest.mark.parametrize(
-    "high_cardinality_transformer",
+    "high_card_cat_transformer",
     # the gap encoder
     # should be parallelized on all columns
     # the one hot encoder should not be parallelized
@@ -910,11 +910,11 @@ def test_column_by_column() -> None:
         OneHotEncoder(),
     ],
 )
-def test_parallelism(high_cardinality_transformer) -> None:
+def test_parallelism(high_card_cat_transformer) -> None:
     # Test that parallelism works
     X = _get_clean_dataframe()
     table_vec_no_parallel = TableVectorizer(
-        high_cardinality_transformer=high_cardinality_transformer,
+        high_card_cat_transformer=high_card_cat_transformer,
         cardinality_threshold=4,
     )
     X_trans = table_vec_no_parallel.fit_transform(X)
@@ -922,7 +922,7 @@ def test_parallelism(high_cardinality_transformer) -> None:
         for n_jobs in [None, 2, -1]:
             table_vec = TableVectorizer(
                 n_jobs=n_jobs,
-                high_cardinality_transformer=high_cardinality_transformer,
+                high_card_cat_transformer=high_card_cat_transformer,
                 cardinality_threshold=4,
             )
             X_trans_parallel = table_vec.fit_transform(X)
@@ -975,7 +975,7 @@ def test_table_vectorizer_policy_propagate_n_jobs():
 
     table_vectorizer = TableVectorizer(
         numerical_transformer=DummyTransformerWithJobs(n_jobs=None),
-        low_cardinality_transformer=DummyTransformerWithJobs(n_jobs=None),
+        low_card_cat_transformer=DummyTransformerWithJobs(n_jobs=None),
         n_jobs=None,
     ).fit(X)
     assert table_vectorizer.named_transformers_["numeric"].n_jobs is None
@@ -983,7 +983,7 @@ def test_table_vectorizer_policy_propagate_n_jobs():
 
     table_vectorizer = TableVectorizer(
         numerical_transformer=DummyTransformerWithJobs(n_jobs=2),
-        low_cardinality_transformer=DummyTransformerWithJobs(n_jobs=None),
+        low_card_cat_transformer=DummyTransformerWithJobs(n_jobs=None),
         n_jobs=None,
     ).fit(X)
     assert table_vectorizer.named_transformers_["numeric"].n_jobs == 2
@@ -993,7 +993,7 @@ def test_table_vectorizer_policy_propagate_n_jobs():
     # when the underlying transformer `n_jobs` is not set explicitly.
     table_vectorizer = TableVectorizer(
         numerical_transformer=DummyTransformerWithJobs(n_jobs=None),
-        low_cardinality_transformer=DummyTransformerWithJobs(n_jobs=None),
+        low_card_cat_transformer=DummyTransformerWithJobs(n_jobs=None),
         n_jobs=2,
     ).fit(X)
     assert table_vectorizer.named_transformers_["numeric"].n_jobs == 2
@@ -1003,7 +1003,7 @@ def test_table_vectorizer_policy_propagate_n_jobs():
     # when the underlying transformer `n_jobs` is set explicitly.
     table_vectorizer = TableVectorizer(
         numerical_transformer=DummyTransformerWithJobs(n_jobs=4),
-        low_cardinality_transformer=DummyTransformerWithJobs(n_jobs=None),
+        low_card_cat_transformer=DummyTransformerWithJobs(n_jobs=None),
         n_jobs=2,
     ).fit(X)
     assert table_vectorizer.named_transformers_["numeric"].n_jobs == 4
@@ -1017,14 +1017,14 @@ def test_table_vectorizer_remainder_cloning():
     df = pd.concat([df1, df2], axis=1)
     remainder = FunctionTransformer()
     table_vectorizer = TableVectorizer(
-        low_cardinality_transformer="remainder",
-        high_cardinality_transformer="remainder",
+        low_card_cat_transformer="remainder",
+        high_card_cat_transformer="remainder",
         numerical_transformer="remainder",
         datetime_transformer="remainder",
         remainder=remainder,
     ).fit(df)
-    assert table_vectorizer.low_cardinality_transformer_ is not remainder
-    assert table_vectorizer.high_cardinality_transformer_ is not remainder
+    assert table_vectorizer.low_card_cat_transformer_ is not remainder
+    assert table_vectorizer.high_card_cat_transformer_ is not remainder
     assert table_vectorizer.numerical_transformer_ is not remainder
     assert table_vectorizer.datetime_transformer_ is not remainder
 
@@ -1129,3 +1129,67 @@ def test_winlogs():
 #     y2=encoder.fit_transform(X)
     
 #     np.testing.assert_array_equal(y, y2)
+
+
+
+def test_winlogs():
+    subprocess.run(["!wget -nc https://www.dropbox.com/s/31dx1g6g59exoc3/part.88.parquet"])
+    winlogsA = pd.read_parquet('part.88.parquet')
+    winlogs = winlogsA[['LogonID','UserName','LogHost','Time','DomainName','LogonType','SubjectLogonID','Status','Destination','ServiceName']]  # .convert_dtypes() #.replace('nan',np.nan).fillna('0o0o0')
+    winlogs = winlogs.sample(10000,replace=False)
+
+    table_vec = TableVectorizer()
+    aa = table_vec.fit_transform((winlogs))
+    # if deps.cudf:
+    #     bb = table_vec.fit_transform(cudf.from_pandas(winlogs))
+    #     assert aa == bb
+    assert aa.shape[0] == winlogs.shape[0]
+
+
+def test_HN(
+    askHN = pd.read_csv('https://storage.googleapis.com/cohere-assets/blog/text-clustering/data/askhn3k_df.csv', index_col=0)
+
+)
+    
+
+def test_red_team(
+    df = pd.read_csv('https://gist.githubusercontent.com/silkspace/c7b50d0c03dc59f63c48d68d696958ff/raw/31d918267f86f8252d42d2e9597ba6fc03fcdac2/redteam_50k.csv', index_col=0)
+    red_team = pd.read_csv('https://gist.githubusercontent.com/silkspace/5cf5a94b9ac4b4ffe38904f20d93edb1/raw/888dabd86f88ea747cf9ff5f6c44725e21536465/redteam_labels.csv', index_col=0)
+    df['feats'] = df.src_computer + ' ' + df.dst_computer + ' ' + df.auth_type + ' ' + df.logontype
+    df['feats2'] = df.src_computer + ' ' + df.dst_computer
+    ndf = df.drop_duplicates(subset=['feats'])
+    tdf = pd.concat([red_team.reset_index(), ndf.reset_index()])
+    tdf['node'] = range(len(tdf))
+)
+
+
+def test_malware(
+    edf = pd.read_csv('https://gist.githubusercontent.com/silkspace/33bde3e69ae24fee1298a66d1e00b467/raw/dc66bd6f1687270be7098f94b3929d6a055b4438/malware_bots.csv', index_col=0)
+    T = edf.Label.apply(lambda x: True if 'Botnet' in x else False)
+    bot = edf[T]
+    nbot = edf[~T]
+    print(f'Botnet abundance: {100*len(bot)/len(edf):0.2f}%')# so botnet traffic makes up a tiny fraction of total
+
+    # let's balance the dataset in a 10-1 ratio, for speed and demonstrative purposes
+    negs = nbot.sample(10*len(bot))
+    edf = pd.concat([bot, negs])  # top part of arrays are bot traffic, then all non-bot traffic
+    edf = edf.drop_duplicates()
+
+
+)
+
+
+def test_20newsgroups(
+    from sklearn.datasets import fetch_20newsgroups
+    n_samples = 1000
+
+    news, _ = fetch_20newsgroups(
+        shuffle=True,
+        random_state=1,
+        remove=("headers", "footers", "quotes"),
+        return_X_y=True,
+    )
+
+    news = news[:n_samples]
+    news=pd.DataFrame(news)
+)
