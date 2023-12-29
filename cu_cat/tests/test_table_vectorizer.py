@@ -12,6 +12,8 @@ from cu_cat._gap_encoder import GapEncoder
 from cu_cat._table_vectorizer import _infer_date_format, TableVectorizer
 from cu_cat.tests.utils import transformers_list_equal
 from cu_cat._dep_manager import deps
+dirty_cat = deps.dirty_cat
+
 
 MSG_PANDAS_DEPRECATED_WARNING = "Skip deprecation warning"
 
@@ -1140,15 +1142,22 @@ def test_winlogs():
 
     table_vec = TableVectorizer()
     aa = table_vec.fit_transform((winlogs))
-    # if deps.cudf:
-    #     bb = table_vec.fit_transform(cudf.from_pandas(winlogs))
-    #     assert aa == bb
-    assert aa.shape[0] == winlogs.shape[0]
+    if deps.dirty_cat:
+        bb = dirty_cat.TableVectorizer.fit_transform(winlogs)
+        assert aa.shape[0] == bb.shape[0]
+    else:
+        assert aa.shape[0] == winlogs.shape[0]
 
 
 def test_HN():
     askHN = pd.read_csv('https://storage.googleapis.com/cohere-assets/blog/text-clustering/data/askhn3k_df.csv', index_col=0)
-
+    table_vec = TableVectorizer()
+    aa = table_vec.fit_transform((askHN))
+    if deps.dirty_cat:
+        bb = dirty_cat.TableVectorizer.fit_transform(askHN)
+        assert aa.shape[0] == bb.shape[0]
+    else:
+        assert aa.shape[0] == askHN.shape[0]
 
 def test_red_team():
     df = pd.read_csv('https://gist.githubusercontent.com/silkspace/c7b50d0c03dc59f63c48d68d696958ff/raw/31d918267f86f8252d42d2e9597ba6fc03fcdac2/redteam_50k.csv', index_col=0)
@@ -1158,7 +1167,13 @@ def test_red_team():
     ndf = df.drop_duplicates(subset=['feats'])
     tdf = pd.concat([red_team.reset_index(), ndf.reset_index()])
     tdf['node'] = range(len(tdf))
-
+    table_vec = TableVectorizer()
+    aa = table_vec.fit_transform((tdf))
+    if deps.dirty_cat:
+        bb = dirty_cat.TableVectorizer.fit_transform(tdf)
+        assert aa.shape[0] == bb.shape[0]
+    else:
+        assert aa.shape[0] == tdf.shape[0]
 
 
 def test_malware():
@@ -1172,7 +1187,13 @@ def test_malware():
     negs = nbot.sample(10*len(bot))
     edf = pd.concat([bot, negs])  # top part of arrays are bot traffic, then all non-bot traffic
     edf = edf.drop_duplicates()
-
+    table_vec = TableVectorizer()
+    aa = table_vec.fit_transform((edf))
+    if deps.dirty_cat:
+        bb = dirty_cat.TableVectorizer.fit_transform(edf)
+        assert aa.shape[0] == bb.shape[0]
+    else:
+        assert aa.shape[0] == edf.shape[0]
 
 def test_20newsgroups():
     from sklearn.datasets import fetch_20newsgroups
@@ -1187,3 +1208,10 @@ def test_20newsgroups():
 
     news = news[:n_samples]
     news=pd.DataFrame(news)
+    table_vec = TableVectorizer()
+    aa = table_vec.fit_transform((news))
+    if deps.dirty_cat:
+        bb = dirty_cat.TableVectorizer.fit_transform(news)
+        assert aa.shape[0] == bb.shape[0]
+    else:
+        assert aa.shape[0] == news.shape[0]

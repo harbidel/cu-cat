@@ -795,16 +795,21 @@ class TableVectorizer(ColumnTransformer):
         typing.List[str]
             Feature names.
         """
-        if 'cudf' not in self.Xt_ and not deps.cudf:
-            if parse_version(sklearn_version) < parse_version("1.0"):
-                ct_feature_names = super().get_feature_names()
-            else:
-                ct_feature_names = super().get_feature_names_out()
-        else:
-            if parse_version(sklearn_version) > parse_version("1.0"):
-                ct_feature_names = super().get_feature_names()
-            else:
-                ct_feature_names = super().get_feature_names_out()
+        # if 'cudf' not in self.Xt_ and not deps.cudf:
+        #     if parse_version(sklearn_version) < parse_version("1.0"):
+        #         ct_feature_names = super().get_feature_names()
+        #     else:
+        #         ct_feature_names = super().get_feature_names_out()
+        # else:
+        #     if parse_version(sklearn_version) > parse_version("1.0"):
+        try:
+            ct_feature_names = super().get_feature_names_out()
+        except:
+            pass
+        try:
+            ct_feature_names = super().get_feature_names()
+        except:
+            pass
         all_trans_feature_names = []
 
         for name, trans, cols, _ in self._iter(fitted=True):
@@ -815,16 +820,14 @@ class TableVectorizer(ColumnTransformer):
                     cols = self.columns_.to_list()
                     all_trans_feature_names.extend(cols)
                 continue
-            if 'cudf' not in self.Xt_ and not deps.cudf:
-                if parse_version(sklearn_version) < parse_version("1.0"):
-                    trans_feature_names = trans.get_feature_names(cols)
-                else:
-                    trans_feature_names = trans.get_feature_names_out(cols)
-            else:
-                if parse_version(sklearn_version) > parse_version("1.0"):
-                    trans_feature_names = trans.get_feature_names(cols)
-                else:
-                    trans_feature_names = trans.get_feature_names_out(cols)
+            try:
+                ct_feature_names = super().get_feature_names_out()
+            except:
+                pass
+            try:
+                ct_feature_names = super().get_feature_names()
+            except:
+                pass
             all_trans_feature_names.extend(trans_feature_names)
 
         if len(ct_feature_names) != len(all_trans_feature_names):
