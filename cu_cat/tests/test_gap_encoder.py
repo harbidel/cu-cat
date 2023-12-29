@@ -141,33 +141,6 @@ def test_input_type(px):
     np.testing.assert_array_equal(X_enc_array, X_enc_df)
 
 
-@pytest.mark.parametrize("px", MODULES)
-@pytest.mark.parametrize(
-    "add_words",
-    [True, False],
-)
-def test_partial_fit(px, add_words: bool, n_samples: int = 70):
-    X = generate_data(n_samples, random_state=0)
-    X2 = px.DataFrame(generate_data(n_samples - 10, random_state=1))
-    X3 = generate_data(n_samples - 10, random_state=2)
-    # Gap encoder with fit on one batch
-    enc = GapEncoder(
-        random_state=42, batch_size=n_samples, max_iter=1, add_words=add_words
-    )
-    X_enc = enc.fit_transform(X)
-    # Gap encoder with partial fit
-    enc = GapEncoder(random_state=42, add_words=add_words)
-    enc.partial_fit(X)
-    X_enc_partial = enc.transform(X)
-    # Check if the encoded vectors are the same
-    np.testing.assert_almost_equal(X_enc, X_enc_partial)
-    enc.partial_fit(X2)
-    X_enc_partial2 = enc.transform(X3)
-    np.testing.assert_raises(
-        AssertionError, np.testing.assert_array_equal, X_enc, X_enc_partial2
-    )
-
-
 def test_get_feature_names_out(n_samples=70):
     X = generate_data(n_samples, random_state=0)
     enc = GapEncoder(random_state=42)

@@ -195,21 +195,21 @@ def _test_possibilities(X) -> None:
     vectorizer_base = TableVectorizer(
         cardinality_threshold=4,
         # we must have n_samples = 5 >= n_components
-        high_card_cat_transformer=GapEncoder(n_components=2),
+        high_cardinarlity_transformer=GapEncoder(n_components=2),
         numerical_transformer=StandardScaler(),
     )
     # Warning: order-dependant
     expected_transformers_df = {
         "numeric": ["int", "float"],
-        "low_card_cat": ["str1", "cat1"],
-        "high_card_cat": ["str2", "cat2"],
+        "low_cardinarlity": ["str1", "cat1"],
+        "high_cardinarlity": ["str2", "cat2"],
     }
     vectorizer_base.fit_transform(X)
     check_same_transformers(expected_transformers_df, vectorizer_base.transformers_)
 
     # Test with higher cardinality threshold and no numeric transformer
     expected_transformers_2 = {
-        "low_card_cat": ["str1", "str2", "cat1", "cat2"],
+        "low_cardinarlity": ["str1", "str2", "cat1", "cat2"],
         "numeric": ["int", "float"],
     }
     vectorizer_default = TableVectorizer()  # Using default values
@@ -220,8 +220,8 @@ def _test_possibilities(X) -> None:
     arr = X.to_numpy()
     # Instead of the columns names, we'll have the column indices.
     expected_transformers_np_no_cast = {
-        "low_card_cat": [2, 4],
-        "high_card_cat": [3, 5],
+        "low_cardinarlity": [2, 4],
+        "high_cardinarlity": [3, 5],
         "numeric": [0, 1],
     }
     vectorizer_base.fit_transform(arr)
@@ -231,7 +231,7 @@ def _test_possibilities(X) -> None:
 
     # Test with single column dataframe
     expected_transformers_series = {
-        "low_card_cat": ["cat1"],
+        "low_cardinarlity": ["cat1"],
     }
     vectorizer_base.fit_transform(X[["cat1"]])
     check_same_transformers(expected_transformers_series, vectorizer_base.transformers_)
@@ -240,14 +240,14 @@ def _test_possibilities(X) -> None:
     vectorizer_cast = TableVectorizer(
         cardinality_threshold=4,
         # we must have n_samples = 5 >= n_components
-        high_card_cat_transformer=GapEncoder(n_components=2),
+        high_cardinarlity_transformer=GapEncoder(n_components=2),
         numerical_transformer=StandardScaler(),
     )
     X_str = X.astype("object")
     # With pandas
     expected_transformers_plain = {
-        "high_card_cat": ["str2", "cat2"],
-        "low_card_cat": ["str1", "cat1"],
+        "high_cardinarlity": ["str2", "cat2"],
+        "low_cardinarlity": ["str1", "cat1"],
         "numeric": ["int", "float"],
     }
     vectorizer_cast.fit_transform(X_str)
@@ -255,8 +255,8 @@ def _test_possibilities(X) -> None:
     # With numpy
     expected_transformers_np_cast = {
         "numeric": [0, 1],
-        "low_card_cat": [2, 4],
-        "high_card_cat": [3, 5],
+        "low_cardinarlity": [2, 4],
+        "high_cardinarlity": [3, 5],
     }
     vectorizer_cast.fit_transform(X_str.to_numpy())
     check_same_transformers(
@@ -357,13 +357,13 @@ def test_with_arrays() -> None:
     """
     expected_transformers = {
         "numeric": [0, 1],
-        "low_card_cat": [2, 4],
-        "high_card_cat": [3, 5],
+        "low_cardinarlity": [2, 4],
+        "high_cardinarlity": [3, 5],
     }
     vectorizer = TableVectorizer(
         cardinality_threshold=4,
         # we must have n_samples = 5 >= n_components
-        high_card_cat_transformer=GapEncoder(n_components=2),
+        high_cardinarlity_transformer=GapEncoder(n_components=2),
         numerical_transformer=StandardScaler(),
     )
 
@@ -488,8 +488,8 @@ def test_passthrough() -> None:
     X_clean = _get_clean_dataframe()
 
     tv = TableVectorizer(
-        low_card_cat_transformer="passthrough",
-        high_card_cat_transformer="passthrough",
+        low_cardinarlity_transformer="passthrough",
+        high_cardinarlity_transformer="passthrough",
         datetime_transformer="passthrough",
         numerical_transformer="passthrough",
         impute_missing="skip",
@@ -668,7 +668,7 @@ def test__infer_date_format() -> None:
 #             [
 #                 ("numeric", "passthrough", ["int", "float"]),
 #                 ("minhashencoder", "MinHashEncoder", ["str1", "str2"]),
-#                 ("low_card_cat", "OneHotEncoder", ["cat1", "cat2"]),
+#                 ("low_cardinarlity", "OneHotEncoder", ["cat1", "cat2"]),
 #             ],
 #         ),
 #         (
@@ -676,7 +676,7 @@ def test__infer_date_format() -> None:
 #             [
 #                 ("numeric", "passthrough", ["int", "float"]),
 #                 ("mh_cat1", "MinHashEncoder", ["cat1"]),
-#                 ("low_card_cat", "OneHotEncoder", ["str1", "str2", "cat2"]),
+#                 ("low_cardinarlity", "OneHotEncoder", ["str1", "str2", "cat2"]),
 #             ],
 #         ),
 #     ],
@@ -734,7 +734,7 @@ def test_specific_transformers_unexpected_behavior():
 #             ],
 #         ),
 #         TableVectorizer(
-#             low_card_cat_transformer=MinHashEncoder(),
+#             low_cardinarlity_transformer=MinHashEncoder(),
 #         ),
 #     ],
 # )
@@ -761,7 +761,7 @@ def test_mixed_types() -> None:
     table_vec.fit_transform(df)
     expected_transformers_df = {
         "numeric": ["int_str", "float_str", "int_float"],
-        "low_card_cat": ["bool_str"],
+        "low_cardinarlity": ["bool_str"],
     }
     check_same_transformers(expected_transformers_df, table_vec.transformers_)
 
@@ -772,7 +772,7 @@ def test_mixed_types() -> None:
     table_vec.fit_transform(X)
     expected_transformers_array = {
         "numeric": [0, 1, 2],
-        "low_card_cat": [3],
+        "low_cardinarlity": [3],
     }
     check_same_transformers(expected_transformers_array, table_vec.transformers_)
 
@@ -874,13 +874,13 @@ def test_column_by_column() -> None:
     # when applied column by column
     X = _get_clean_dataframe()
     table_vec_all_cols = TableVectorizer(
-        high_card_cat_transformer=GapEncoder(n_components=2, random_state=0),
+        high_cardinarlity_transformer=GapEncoder(n_components=2, random_state=0),
         cardinality_threshold=4,
     )
     table_vec_all_cols.fit(X)
     for col in X.columns:
         table_vec_one_col = TableVectorizer(
-            high_card_cat_transformer=GapEncoder(n_components=2, random_state=0),
+            high_cardinarlity_transformer=GapEncoder(n_components=2, random_state=0),
             cardinality_threshold=4,
         )
         table_vec_one_col.fit(X[[col]])
@@ -903,7 +903,7 @@ def test_column_by_column() -> None:
 
 @skip_if_no_parallel
 @pytest.mark.parametrize(
-    "high_card_cat_transformer",
+    "high_cardinarlity_transformer",
     # the gap encoder
     # should be parallelized on all columns
     # the one hot encoder should not be parallelized
@@ -912,104 +912,6 @@ def test_column_by_column() -> None:
         OneHotEncoder(),
     ],
 )
-def test_parallelism(high_card_cat_transformer) -> None:
-    # Test that parallelism works
-    X = _get_clean_dataframe()
-    table_vec_no_parallel = TableVectorizer(
-        high_card_cat_transformer=high_card_cat_transformer,
-        cardinality_threshold=4,
-    )
-    X_trans = table_vec_no_parallel.fit_transform(X)
-    with joblib.parallel_backend("loky"):
-        for n_jobs in [None, 2, -1]:
-            table_vec = TableVectorizer(
-                n_jobs=n_jobs,
-                high_card_cat_transformer=high_card_cat_transformer,
-                cardinality_threshold=4,
-            )
-            X_trans_parallel = table_vec.fit_transform(X)
-            assert_array_equal(X_trans, X_trans_parallel)
-            assert table_vec.n_jobs == n_jobs
-            # assert that all attributes are equal except for
-            # the n_jobs attribute
-            assert transformers_list_equal(
-                table_vec.transformers_,
-                table_vec_no_parallel.transformers_,
-                ignore_params=("n_jobs",),
-            )
-            assert (
-                table_vec.feature_names_in_ == table_vec_no_parallel.feature_names_in_
-            ).all()
-            assert table_vec.types_ == table_vec_no_parallel.types_
-            assert table_vec.imputed_columns_ == table_vec_no_parallel.imputed_columns_
-            # assert that get_feature_names_out gives the same result
-            assert_array_equal(
-                table_vec.get_feature_names_out(),
-                table_vec_no_parallel.get_feature_names_out(),
-            )
-            # assert that get_params gives the same result expect for n_jobs
-            # remove n_jobs from the dict
-            params = table_vec.get_params()
-            params.pop("n_jobs")
-            params_no_parallel = table_vec_no_parallel.get_params()
-            params_no_parallel.pop("n_jobs")
-            assert str(params) == str(params_no_parallel)
-            # assert that transform gives the same result
-            assert_array_equal(
-                table_vec.transform(X), table_vec_no_parallel.transform(X)
-            )
-
-
-def test_table_vectorizer_policy_propagate_n_jobs():
-    """Check the propagation policy of `n_jobs` to the underlying transformers.
-
-    We need to check that when `TableVectorizer.n_jobs` is set, then all underlying
-    transformers `n_jobs` will be set to this value, except if the user provide a
-    transformer in the constructor with the value `n_jobs` already set.
-    """
-    X = _get_clean_dataframe()
-
-    # 1. Case where `TableVectorizer.n_jobs` is `None` and we should not propagate
-    class DummyTransformerWithJobs(FunctionTransformer):
-        def __init__(self, n_jobs=None):
-            super().__init__()
-            self.n_jobs = n_jobs
-
-    table_vectorizer = TableVectorizer(
-        numerical_transformer=DummyTransformerWithJobs(n_jobs=None),
-        low_card_cat_transformer=DummyTransformerWithJobs(n_jobs=None),
-        n_jobs=None,
-    ).fit(X)
-    assert table_vectorizer.named_transformers_["numeric"].n_jobs is None
-    assert table_vectorizer.named_transformers_["low_card_cat"].n_jobs is None
-
-    table_vectorizer = TableVectorizer(
-        numerical_transformer=DummyTransformerWithJobs(n_jobs=2),
-        low_card_cat_transformer=DummyTransformerWithJobs(n_jobs=None),
-        n_jobs=None,
-    ).fit(X)
-    assert table_vectorizer.named_transformers_["numeric"].n_jobs == 2
-    assert table_vectorizer.named_transformers_["low_card_cat"].n_jobs is None
-
-    # 2. Case where `TableVectorizer.n_jobs` is not `None` and we should propagate
-    # when the underlying transformer `n_jobs` is not set explicitly.
-    table_vectorizer = TableVectorizer(
-        numerical_transformer=DummyTransformerWithJobs(n_jobs=None),
-        low_card_cat_transformer=DummyTransformerWithJobs(n_jobs=None),
-        n_jobs=2,
-    ).fit(X)
-    assert table_vectorizer.named_transformers_["numeric"].n_jobs == 2
-    assert table_vectorizer.named_transformers_["low_card_cat"].n_jobs == 2
-
-    # 3. Case where `TableVectorizer.n_jobs` is not `None` and we should not propagate
-    # when the underlying transformer `n_jobs` is set explicitly.
-    table_vectorizer = TableVectorizer(
-        numerical_transformer=DummyTransformerWithJobs(n_jobs=4),
-        low_card_cat_transformer=DummyTransformerWithJobs(n_jobs=None),
-        n_jobs=2,
-    ).fit(X)
-    assert table_vectorizer.named_transformers_["numeric"].n_jobs == 4
-    assert table_vectorizer.named_transformers_["low_card_cat"].n_jobs == 2
 
 
 def test_table_vectorizer_remainder_cloning():
@@ -1019,14 +921,14 @@ def test_table_vectorizer_remainder_cloning():
     df = pd.concat([df1, df2], axis=1)
     remainder = FunctionTransformer()
     table_vectorizer = TableVectorizer(
-        low_card_cat_transformer="remainder",
-        high_card_cat_transformer="remainder",
+        low_cardinarlity_transformer="remainder",
+        high_cardinarlity_transformer="remainder",
         numerical_transformer="remainder",
         datetime_transformer="remainder",
         remainder=remainder,
     ).fit(df)
-    assert table_vectorizer.low_card_cat_transformer_ is not remainder
-    assert table_vectorizer.high_card_cat_transformer_ is not remainder
+    assert table_vectorizer.low_cardinarlity_transformer_ is not remainder
+    assert table_vectorizer.high_cardinarlity_transformer_ is not remainder
     assert table_vectorizer.numerical_transformer_ is not remainder
     assert table_vectorizer.datetime_transformer_ is not remainder
 

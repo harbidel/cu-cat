@@ -214,12 +214,12 @@ class TableVectorizer(ColumnTransformer):
         under this value, the low cardinality categorical features, and above or
         equal, the high cardinality categorical features.
         Different transformers will be applied to these two groups,
-        defined by the parameters `low_card_cat_transformer` and
-        `high_card_cat_transformer` respectively.
+        defined by the parameters `low_cardinarlity_transformer` and
+        `high_cardinarlity_transformer` respectively.
         Note: currently, missing values are counted as a single unique value
         (so they count in the cardinality).
 
-    low_card_cat_transformer : {"drop", "remainder", "passthrough"} or Transformer, optional
+    low_cardinarlity_transformer : {"drop", "remainder", "passthrough"} or Transformer, optional
         Transformer used on categorical/string features with low cardinality
         (threshold is defined by `cardinality_threshold`).
         Can either be a transformer object instance
@@ -233,7 +233,7 @@ class TableVectorizer(ColumnTransformer):
         Features classified under this category are imputed based on the
         strategy defined with `impute_missing`.
 
-    high_card_cat_transformer : {"drop", "remainder", "passthrough"} or Transformer, optional
+    high_cardinarlity_transformer : {"drop", "remainder", "passthrough"} or Transformer, optional
         Transformer used on categorical/string features with high cardinality
         (threshold is defined by `cardinality_threshold`).
         Can either be a transformer object instance
@@ -386,8 +386,8 @@ class TableVectorizer(ColumnTransformer):
         self,
         *,
         cardinality_threshold: int = 40,
-        low_card_cat_transformer: OptionalTransformer = None,
-        high_card_cat_transformer: OptionalTransformer = None,
+        low_cardinarlity_transformer: OptionalTransformer = None,
+        high_cardinarlity_transformer: OptionalTransformer = None,
         numerical_transformer: OptionalTransformer = None,
         datetime_transformer: OptionalTransformer = "passthrough",
         auto_cast: bool = True,
@@ -405,8 +405,8 @@ class TableVectorizer(ColumnTransformer):
         super().__init__(transformers=[])
 
         self.cardinality_threshold = cardinality_threshold
-        self.low_card_cat_transformer = low_card_cat_transformer
-        self.high_card_cat_transformer = high_card_cat_transformer
+        self.low_cardinarlity_transformer = low_cardinarlity_transformer
+        self.high_cardinarlity_transformer = high_cardinarlity_transformer
         self.numerical_transformer = numerical_transformer
         self.datetime_transformer = "passthrough"
         self.auto_cast = auto_cast
@@ -434,26 +434,26 @@ class TableVectorizer(ColumnTransformer):
         Note: typos are not detected here, they are left in and are detected
         down the line in `ColumnTransformer.fit_transform`.
         """
-        if isinstance(self.low_card_cat_transformer, sklearn.base.TransformerMixin):
-            self.low_card_cat_transformer_ = clone(self.low_card_cat_transformer)
-        elif self.low_card_cat_transformer is None:
+        if isinstance(self.low_cardinarlity_transformer, sklearn.base.TransformerMixin):
+            self.low_cardinarlity_transformer_ = clone(self.low_cardinarlity_transformer)
+        elif self.low_cardinarlity_transformer is None:
             if deps.cuml:
-                self.low_card_cat_transformer_ = OneHotEncoder(output_type= self.output_type, handle_unknown='ignore')
+                self.low_cardinarlity_transformer_ = OneHotEncoder(output_type= self.output_type, handle_unknown='ignore')
             else:
-                self.low_card_cat_transformer_ = OneHotEncoder( handle_unknown='ignore')
-        elif self.low_card_cat_transformer == "remainder":
-            self.low_card_cat_transformer_ = self.remainder
+                self.low_cardinarlity_transformer_ = OneHotEncoder( handle_unknown='ignore')
+        elif self.low_cardinarlity_transformer == "remainder":
+            self.low_cardinarlity_transformer_ = self.remainder
         else:
-            self.low_card_cat_transformer_ = self.low_card_cat_transformer
+            self.low_cardinarlity_transformer_ = self.low_cardinarlity_transformer
 
-        if isinstance(self.high_card_cat_transformer, sklearn.base.TransformerMixin):
-            self.high_card_cat_transformer_ = clone(self.high_card_cat_transformer)
-        elif self.high_card_cat_transformer is None:
-            self.high_card_cat_transformer_ = GapEncoder(n_components=30)
-        elif self.high_card_cat_transformer == "remainder":
-            self.high_card_cat_transformer_ = self.remainder
+        if isinstance(self.high_cardinarlity_transformer, sklearn.base.TransformerMixin):
+            self.high_cardinarlity_transformer_ = clone(self.high_cardinarlity_transformer)
+        elif self.high_cardinarlity_transformer is None:
+            self.high_cardinarlity_transformer_ = GapEncoder(n_components=30)
+        elif self.high_cardinarlity_transformer == "remainder":
+            self.high_cardinarlity_transformer_ = self.remainder
         else:
-            self.high_card_cat_transformer_ = self.high_card_cat_transformer
+            self.high_cardinarlity_transformer_ = self.high_cardinarlity_transformer
 
         if isinstance(self.numerical_transformer, sklearn.base.TransformerMixin):
             self.numerical_transformer_ = clone(self.numerical_transformer)
@@ -630,12 +630,12 @@ class TableVectorizer(ColumnTransformer):
         _nunique_values = {  # Cache results
             col: X[col].nunique() for col in categorical_columns
         }
-        low_card_cat_columns = [
+        low_cardinarlity_columns = [
             col
             for col in categorical_columns
             if _nunique_values[col] < self.cardinality_threshold
         ]
-        high_card_cat_columns = [
+        high_cardinarlity_columns = [
             col
             for col in categorical_columns
             if _nunique_values[col] >= self.cardinality_threshold
@@ -649,15 +649,15 @@ class TableVectorizer(ColumnTransformer):
             all_transformers: List[Tuple[str, OptionalTransformer, List[str]]] = [  # type: ignore
                 ("numeric", self.numerical_transformer, numeric_columns),
                 ("datetime", self.datetime_transformer_, datetime_columns),
-                ("low_card_cat", self.low_card_cat_transformer_, low_card_cat_columns),
-                ("high_card_cat", self.high_card_cat_transformer_, high_card_cat_columns),
+                ("low_cardinarlity", self.low_cardinarlity_transformer_, low_cardinarlity_columns),
+                ("high_cardinarlity", self.high_cardinarlity_transformer_, high_cardinarlity_columns),
             ]
         else:
             all_transformers: List[Tuple[str, OptionalTransformer, List[str]]] = [  # type: ignore
             ("numeric", self.numerical_transformer, numeric_columns),
             # ("datetime", self.datetime_transformer_, datetime_columns), ## commented out if in dt format so pyg can handle
-            ("low_card_cat", self.low_card_cat_transformer_, low_card_cat_columns),
-            ("high_card_cat", self.high_card_cat_transformer_, high_card_cat_columns),
+            ("low_cardinarlity", self.low_cardinarlity_transformer_, low_cardinarlity_columns),
+            ("high_cardinarlity", self.high_cardinarlity_transformer_, high_cardinarlity_columns),
         ]
         # We will now filter this list, by keeping only the ones with:
         # - at least one column
