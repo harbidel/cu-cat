@@ -821,11 +821,11 @@ class TableVectorizer(ColumnTransformer):
                     all_trans_feature_names.extend(cols)
                 continue
             try:
-                ct_feature_names = super().get_feature_names_out()
+                trans_feature_names = super().get_feature_names_out()
             except:
                 pass
             try:
-                ct_feature_names = super().get_feature_names()
+                trans_feature_names = super().get_feature_names()
             except:
                 pass
             all_trans_feature_names.extend(trans_feature_names)
