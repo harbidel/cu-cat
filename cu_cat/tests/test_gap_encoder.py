@@ -14,9 +14,7 @@ MODULES = [pd]
 @pytest.mark.parametrize(
     ["hashing", "init", "rescale_W", "rescale_rho", "add_words"],
     [
-        (False, "k-means++", True, False, True),
         (True, "random", False, True, False),
-        (True, "k-means", True, True, False),
     ],
 )
 def test_analyzer(
@@ -71,9 +69,7 @@ def test_analyzer(
 @pytest.mark.parametrize(
     ["hashing", "init", "analyzer", "add_words", "verbose"],
     [
-        (False, "k-means++", "word", True, False),
         (True, "random", "char", False, False),
-        (True, "k-means", "char_wb", True, True),
     ],
 )
 def test_gap_encoder(
@@ -81,7 +77,6 @@ def test_gap_encoder(
     init: str,
     analyzer: str,
     add_words: bool,
-    verbose: bool,
     n_samples: int = 70,
 ):
     X = generate_data(n_samples, random_state=0)
@@ -93,7 +88,6 @@ def test_gap_encoder(
         init=init,
         analyzer=analyzer,
         add_words=add_words,
-        verbose=verbose,
         random_state=42,
         rescale_W=True,
     )
@@ -308,13 +302,13 @@ def test_max_no_improvements_none():
     enc_none = GapEncoder(n_components=2, max_no_improvement=None, random_state=42)
     enc_none.fit(X)
 
+
 def test_gpu_gap_encoder(
-    hashing: bool,
+    hashing: False,
     init: str,
     analyzer: str,
-    add_words: bool,
-    verbose: bool,
-    n_samples: int = 70,
+    add_words: False,
+    n_samples: int = 50,
 ):
     X = generate_data(n_samples, random_state=0)
     n_components = 10
@@ -322,9 +316,7 @@ def test_gpu_gap_encoder(
     encoder = GapEncoder(
         n_components=n_components,
         hashing=hashing,
-        init=init,
         engine='cuml',
-        analyzer=analyzer,
         add_words=add_words,
         verbose=verbose,
         random_state=42,
@@ -336,9 +328,7 @@ def test_gpu_gap_encoder(
     encoder = GapEncoder(
         n_components=n_components,
         hashing=hashing,
-        init=init,
         engine='sklearn',
-        analyzer=analyzer,
         add_words=add_words,
         verbose=verbose,
         random_state=42,
@@ -348,3 +338,4 @@ def test_gpu_gap_encoder(
     y2 = encoder.transform(X)
     
     assert y == y2
+

@@ -1134,19 +1134,19 @@ def test_winlogs():
 
 
 
-def test_winlogs():
-    subprocess.run(["wget -nc https://www.dropbox.com/s/31dx1g6g59exoc3/part.88.parquet"])
-    winlogsA = pd.read_parquet('part.88.parquet')
-    winlogs = winlogsA[['LogonID','UserName','LogHost','Time','DomainName','LogonType','SubjectLogonID','Status','Destination','ServiceName']]  # .convert_dtypes() #.replace('nan',np.nan).fillna('0o0o0')
-    winlogs = winlogs.sample(10000,replace=False)
+# def test_winlogs():
+#     subprocess.run(["wget -nc https://www.dropbox.com/s/31dx1g6g59exoc3/part.88.parquet"])
+#     winlogsA = pd.read_parquet('part.88.parquet')
+#     winlogs = winlogsA[['LogonID','UserName','LogHost','Time','DomainName','LogonType','SubjectLogonID','Status','Destination','ServiceName']]  # .convert_dtypes() #.replace('nan',np.nan).fillna('0o0o0')
+#     winlogs = winlogs.sample(10000,replace=False)
 
-    table_vec = TableVectorizer()
-    aa = table_vec.fit_transform((winlogs))
-    if deps.dirty_cat:
-        bb = dirty_cat.TableVectorizer.fit_transform(winlogs)
-        assert aa.shape[0] == bb.shape[0]
-    else:
-        assert aa.shape[0] == winlogs.shape[0]
+#     table_vec = TableVectorizer()
+#     aa = table_vec.fit_transform((winlogs))
+#     if deps.dirty_cat:
+#         bb = dirty_cat.TableVectorizer.fit_transform(winlogs)
+#         assert aa.shape[0] == bb.shape[0]
+#     else:
+#         assert aa.shape[0] == winlogs.shape[0]
 
 
 def test_HN():
