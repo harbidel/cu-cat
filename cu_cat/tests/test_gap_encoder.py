@@ -77,6 +77,7 @@ def test_gap_encoder(
     init: str,
     analyzer: str,
     add_words: bool,
+    verbose: bool,
     n_samples: int = 70,
 ):
     X = generate_data(n_samples, random_state=0)
@@ -88,6 +89,7 @@ def test_gap_encoder(
         init=init,
         analyzer=analyzer,
         add_words=add_words,
+        verbose=verbose,
         random_state=42,
         rescale_W=True,
     )
@@ -308,6 +310,7 @@ def test_gpu_gap_encoder(
     init: str,
     analyzer: str,
     add_words: False,
+    verbose: False,
     n_samples: int = 50,
 ):
     X = generate_data(n_samples, random_state=0)
