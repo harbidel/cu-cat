@@ -195,7 +195,7 @@ def _test_possibilities(X) -> None:
     vectorizer_base = TableVectorizer(
         cardinality_threshold=4,
         # we must have n_samples = 5 >= n_components
-        high_cardinarlity_transformer=GapEncoder(n_components=2),
+        high_card_cat_transformer=GapEncoder(n_components=2),
         numerical_transformer=StandardScaler(),
     )
     # Warning: order-dependant
@@ -240,7 +240,7 @@ def _test_possibilities(X) -> None:
     vectorizer_cast = TableVectorizer(
         cardinality_threshold=4,
         # we must have n_samples = 5 >= n_components
-        high_cardinarlity_transformer=GapEncoder(n_components=2),
+        high_card_cat_transformer=GapEncoder(n_components=2),
         numerical_transformer=StandardScaler(),
     )
     X_str = X.astype("object")
@@ -363,7 +363,7 @@ def test_with_arrays() -> None:
     vectorizer = TableVectorizer(
         cardinality_threshold=4,
         # we must have n_samples = 5 >= n_components
-        high_cardinarlity_transformer=GapEncoder(n_components=2),
+        high_card_cat_transformer=GapEncoder(n_components=2),
         numerical_transformer=StandardScaler(),
     )
 
@@ -488,8 +488,8 @@ def test_passthrough() -> None:
     X_clean = _get_clean_dataframe()
 
     tv = TableVectorizer(
-        low_cardinarlity_transformer="passthrough",
-        high_cardinarlity_transformer="passthrough",
+        low_card_cat_transformer="passthrough",
+        high_card_cat_transformer="passthrough",
         datetime_transformer="passthrough",
         numerical_transformer="passthrough",
         impute_missing="skip",
@@ -734,7 +734,7 @@ def test_specific_transformers_unexpected_behavior():
 #             ],
 #         ),
 #         TableVectorizer(
-#             low_cardinarlity_transformer=MinHashEncoder(),
+#             low_card_cat_transformer=MinHashEncoder(),
 #         ),
 #     ],
 # )
@@ -874,13 +874,13 @@ def test_column_by_column() -> None:
     # when applied column by column
     X = _get_clean_dataframe()
     table_vec_all_cols = TableVectorizer(
-        high_cardinarlity_transformer=GapEncoder(n_components=2, random_state=0),
+        high_card_cat_transformer=GapEncoder(n_components=2, random_state=0),
         cardinality_threshold=4,
     )
     table_vec_all_cols.fit(X)
     for col in X.columns:
         table_vec_one_col = TableVectorizer(
-            high_cardinarlity_transformer=GapEncoder(n_components=2, random_state=0),
+            high_card_cat_transformer=GapEncoder(n_components=2, random_state=0),
             cardinality_threshold=4,
         )
         table_vec_one_col.fit(X[[col]])
@@ -903,7 +903,7 @@ def test_column_by_column() -> None:
 
 @skip_if_no_parallel
 @pytest.mark.parametrize(
-    "high_cardinarlity_transformer",
+    "high_card_cat_transformer",
     # the gap encoder
     # should be parallelized on all columns
     # the one hot encoder should not be parallelized
@@ -921,14 +921,14 @@ def test_table_vectorizer_remainder_cloning():
     df = pd.concat([df1, df2], axis=1)
     remainder = FunctionTransformer()
     table_vectorizer = TableVectorizer(
-        low_cardinarlity_transformer="remainder",
-        high_cardinarlity_transformer="remainder",
+        low_card_cat_transformer="remainder",
+        high_card_cat_transformer="remainder",
         numerical_transformer="remainder",
         datetime_transformer="remainder",
         remainder=remainder,
     ).fit(df)
-    assert table_vectorizer.low_cardinarlity_transformer_ is not remainder
-    assert table_vectorizer.high_cardinarlity_transformer_ is not remainder
+    assert table_vectorizer.low_card_cat_transformer_ is not remainder
+    assert table_vectorizer.high_card_cat_transformer_ is not remainder
     assert table_vectorizer.numerical_transformer_ is not remainder
     assert table_vectorizer.datetime_transformer_ is not remainder
 
