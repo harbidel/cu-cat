@@ -230,8 +230,9 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
         # Init H_dict_ with empty dict to train from scratch
         self.H_dict_ = dict()
         if deps.cudf and parse_version(cuml.__version__) > parse_version("23.04"):
-            X = X.replace('nan',np.nan).fillna('0o0o0') ## must be string w/len >= 3 (otherwise wont pass to gap encoder)
-        # X.convert_dtypes(inplace=True)
+            # X = X.replace('nan',np.nan).fillna('0o0o0') ## must be string w/len >= 3 (otherwise wont pass to gap encoder)
+            X=X[X.str.len()>=3]
+        # X.convert_dtypes()
         # Build the n-grams counts matrix unq_V on unique elements of X
         X, y = make_safe_gpu_dataframes(X, None, self.engine)
         if 'cudf' not in str(getmodule(X)) and 'cuml' not in self.engine:
@@ -345,7 +346,8 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
         self.Xt_= df_type(X)
         # Make n-grams counts matrix unq_V
         if deps.cudf and parse_version(cuml.__version__) > parse_version("23.04"):
-            X = X.replace('nan',np.nan).fillna('0o0o0')
+            # X = X.replace('nan',np.nan).fillna('0o0o0')
+            X=X[X.str.len()>=3]
         unq_X, unq_V, lookup = self._init_vars(X)
         n_batch = (len(X) - 1) // self.batch_size + 1
         # Get activations unq_H
@@ -572,7 +574,7 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
         check_is_fitted(self, "H_dict_")
         # Check if first item has str or np.str_ type
         if deps.cudf and parse_version(cuml.__version__) > parse_version("23.04"):
-            X=X.replace('nan',np.nan).fillna('0o0o0')
+            X=X[X.str.len()>=3] #replace('nan',np.nan).fillna('0o0o0')
         unq_X = X.unique()
         # Build the n-grams counts matrix V for the string data to encode
         unq_V = self.ngrams_count_.transform(unq_X)#.astype(str))
