@@ -6,14 +6,9 @@ manually categorize them beforehand, or construct complex Pipelines.
 Implemented on GPU exclusively through use of GapEncoder in cu_cat
 """
 
-from typing import Dict, List, Optional, Tuple, Union
+from typing import Dict, List, Literal, Optional, Tuple, Union
 import warnings
 from inspect import getmodule
-try:
-    from typing import Literal
-except ImportError:
-    from typing_extensions import Literal
-
 
 import numpy as np
 import pandas as pd

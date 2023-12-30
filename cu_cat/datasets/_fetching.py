@@ -18,13 +18,9 @@ import warnings
 from dataclasses import dataclass
 from itertools import chain
 from pathlib import Path
-from typing import Any, TextIO
+from typing import Any, Literal, TextIO
 from urllib.error import URLError
 from zipfile import BadZipFile, ZipFile
-try:
-    from typing import Literal
-except ImportError:
-    from typing_extensions import Literal
 
 import pandas as pd
 from sklearn import __version__ as sklearn_version
