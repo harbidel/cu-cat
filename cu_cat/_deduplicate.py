@@ -3,7 +3,12 @@ Implements deduplication based on clustering string distance matrices.
 This works best if there is a number of underlying categories that
 sometimes appear in the data with small variations and/or misspellings.
 """
-from typing import List, Literal, Optional, Sequence, Tuple, Union
+from typing import List, Optional, Sequence, Tuple, Union
+try:
+    from typing import Literal
+except ImportError:
+    from typing_extensions import Literal
+
 
 import numpy as np
 import pandas as pd

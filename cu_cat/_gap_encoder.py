@@ -22,8 +22,14 @@ If the gpu memory is too small, it will default to serializing dot products on t
 """
 
 import warnings,sys,gc,os,logging,typing
-from typing import Dict, Generator, List, Literal, Optional, Tuple, Union
+from typing import Dict, Generator, List, Optional, Tuple, Union
 from inspect import getmodule
+
+try:
+    from typing import Literal
+except ImportError:
+    from typing_extensions import Literal
+
 
 import numpy as np
 import pandas as pd

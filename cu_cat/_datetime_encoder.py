@@ -1,5 +1,9 @@
-from typing import Dict, List, Literal, Optional,no_type_check
+from typing import Dict, List, Optional,no_type_check
 from warnings import warn
+try:
+    from typing import Literal
+except ImportError:
+    from typing_extensions import Literal
 
 from ._dep_manager import deps
 
