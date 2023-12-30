@@ -14,7 +14,7 @@ core_requires = [
   'typing',
   'pyarrow >= 0.15.0',
   'scikit-learn',
-  'flake8>=5.0',
+  'flake8',
   'mypy',
   'pytest',
   'psutil',

@@ -957,7 +957,10 @@ class GapEncoder(BaseEstimator, TransformerMixin):
             for k in range(X.shape[1]):
                 col_enc = self._create_column_gap_encoder()
                 self.fitted_models_.append(col_enc.fit(X.iloc[:, k]))
-            
+                if k == len(X):
+                    break
+                else:
+                    continue
         return self
 
     def transform(self, X) -> np.array:
