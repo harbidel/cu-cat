@@ -17,7 +17,8 @@ core_requires = [
   'flake8>=5.0',
   'mypy',
   'pytest',
-  'psutil'
+  'psutil',
+  'build',
 #   'cuml', ## cannot test on github actions
 #   'cudf',
 #   'cupy'
