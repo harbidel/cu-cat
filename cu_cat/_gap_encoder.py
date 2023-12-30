@@ -68,6 +68,8 @@ logger = logging.getLogger()
 
 def make_safe_gpu_dataframes(X, y, engine):
     cudf = deps.cudf
+    # if 'cudf' in str(getmodule(X)) and parse_version(cudf.__version__) > parse_version("23.04"):
+        # X=X.apply(lambda x: str((x)).zfill(4)) ## need at least >3 chars for gap encoder
     if cudf:
         assert cudf is not None
         new_kwargs = {}
@@ -79,15 +81,6 @@ def make_safe_gpu_dataframes(X, y, engine):
                 new_kwargs[key] = cudf.from_pandas(value)
             else:
                 new_kwargs[key] = value
-
-            try:
-                if 'cudf' in str(getmodule(X)) and parse_version(cudf.__version__) < parse_version("23.10"):
-                    new_kwargs[key] = cudf.from_pandas(new_kwargs[key].to_pandas().convert_dtypes())
-                else:
-                    new_kwargs[key] = new_kwargs[key].convert_dtypes()
-            except:
-                pass
-                    
         return new_kwargs['X'], new_kwargs['y']
     else:
         return X, y
@@ -165,7 +158,7 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
         elif  'cuml' in engine_resolved:
             # _, _, engine, gmem = lazy_cuml_import_has_dependancy()
             engine = deps.cuml
-            from cuml.feature_extraction.text import CountVectorizer,HashingVectorizer
+            from sklearn.feature_extraction.text import CountVectorizer,HashingVectorizer
             gmem = get_gpu_memory()
         smem = get_sys_memory()
             
@@ -230,8 +223,8 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
         # Init H_dict_ with empty dict to train from scratch
         self.H_dict_ = dict()
         if deps.cudf and parse_version(cuml.__version__) > parse_version("23.04"):
-            # X = X.replace('nan',np.nan).fillna('0o0o0') ## must be string w/len >= 3 (otherwise wont pass to gap encoder)
-            X=X[X.str.len()>=3]
+            X = X.replace('nan',np.nan).fillna('0o0o0') ## must be string w/len >= 3 (otherwise wont pass to gap encoder)
+            X = X.apply(lambda x: str((x)).zfill(4)) ## need at least >3 chars for gap encoder
         # X.convert_dtypes()
         # Build the n-grams counts matrix unq_V on unique elements of X
         X, y = make_safe_gpu_dataframes(X, None, self.engine)
@@ -240,7 +233,7 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
         elif 'cudf' in str(getmodule(X)) and 'cuml' in self.engine:
             unq_X = X.unique()
             tmp, lookup = np.unique(X.to_arrow(), return_inverse=True)
-        unq_V = self.ngrams_count_.fit_transform(unq_X)
+        unq_V = self.ngrams_count_.fit_transform(unq_X.to_arrow())
         if self.add_words:  # Add word counts to unq_V
             unq_V2 = self.word_count_.fit_transform(unq_X)
             unq_V = sparse.hstack((unq_V, unq_V2), format="csr")
@@ -346,8 +339,8 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
         self.Xt_= df_type(X)
         # Make n-grams counts matrix unq_V
         if deps.cudf and parse_version(cuml.__version__) > parse_version("23.04"):
-            # X = X.replace('nan',np.nan).fillna('0o0o0')
-            X=X[X.str.len()>=3]
+            X = X.replace('nan',np.nan).fillna('0o0o0')
+            X = X.apply(lambda x: str((x)).zfill(4)) ## need at least >3 chars for gap encoder
         unq_X, unq_V, lookup = self._init_vars(X)
         n_batch = (len(X) - 1) // self.batch_size + 1
         # Get activations unq_H
@@ -574,7 +567,8 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
         check_is_fitted(self, "H_dict_")
         # Check if first item has str or np.str_ type
         if deps.cudf and parse_version(cuml.__version__) > parse_version("23.04"):
-            X=X[X.str.len()>=3] #replace('nan',np.nan).fillna('0o0o0')
+            X.replace('nan',np.nan).fillna('0o0o0')
+            X = X.apply(lambda x: str((x)).zfill(4)) ## need at least >3 chars for gap encoder
         unq_X = X.unique()
         # Build the n-grams counts matrix V for the string data to encode
         unq_V = self.ngrams_count_.transform(unq_X)#.astype(str))
@@ -955,12 +949,9 @@ class GapEncoder(BaseEstimator, TransformerMixin):
             X = self._handle_missing(X)
             self.fitted_models_ = []
             for k in range(X.shape[1]):
+            # for k in X.columns:
                 col_enc = self._create_column_gap_encoder()
-                self.fitted_models_.append(col_enc.fit(X.iloc[:, k]))
-                if k == len(X):
-                    break
-                else:
-                    continue
+                self.fitted_models_.append(col_enc.fit(X.iloc[:,k]))#[k]))
         return self
 
     def transform(self, X) -> np.array:
@@ -989,12 +980,9 @@ class GapEncoder(BaseEstimator, TransformerMixin):
         X = check_input(X)
         X = self._handle_missing(X)
         X_enc = []
-        # if 'cudf' in str(getmodule(X)) or 'cuml' == self.engine:
-        #     for k in range(X.shape[1]):
-        #         X_enc.append(self.fitted_models_[k].transform(X.iloc[:, k]))
-        # else:
         for k in range(X.shape[1]):
-            X_enc.append(self.fitted_models_[k].transform(X.iloc[:, k]))
+        # for k in X.columns:
+            X_enc.append(self.fitted_models_[k].transform(X.iloc[:,k]))#[k]))
         X_enc = np.hstack(X_enc)
         return X_enc
 
