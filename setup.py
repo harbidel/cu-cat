@@ -24,13 +24,11 @@ core_requires = [
 #   'cupy'
 ]
 
-from setuptools import setup
-
 # if __name__ == "__main__":
 setup(
     name='cu-cat',
-    # version='0.7.3',  # versioneer.get_version(),
-    # cmdclass='0.7.3',  # versioneer.get_cmdclass(),
+    version='v0.07.07',  # versioneer.get_version(),
+    # cmdclass='0.7.7',  # versioneer.get_cmdclass(),
     packages = find_packages(),
     platforms='any',
     description = 'An end-to-end gpu Python library that encodes categorical variables into machine-learnable numerics',
@@ -46,4 +44,3 @@ setup(
     # dependency_links=['https://pypi.nvidia.com'],
     keywords=['cudf', 'cuml', 'GPU', 'Rapids']
 )
-

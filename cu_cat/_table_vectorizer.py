@@ -495,7 +495,11 @@ class TableVectorizer(ColumnTransformer):
         X = _replace_false_missing(X)
 
         # Handle missing values
-        for col in X.columns:
+        obj_col=X.select_dtypes(include=['object']).columns
+        for i in obj_col:
+            X[i]=X[i].replace('nan',np.nan).fillna('0o0o0')
+            X[i]=X[i].str.rjust(4,'0')
+        for col in X.columns:            
             # Convert pandas' NaN value (pd.NA) to numpy NaN value (np.nan)
             # because the former tends to raise all kind of issues when dealing
             # with scikit-learn (as of version 0.24).

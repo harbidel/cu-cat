@@ -68,8 +68,10 @@ logger = logging.getLogger()
 
 def make_safe_gpu_dataframes(X, y, engine):
     cudf = deps.cudf
+    # print(X.shape)
     # if 'cudf' in str(getmodule(X)) and parse_version(cudf.__version__) > parse_version("23.04"):
-        # X=X.apply(lambda x: str((x)).zfill(4)) ## need at least >3 chars for gap encoder
+        # for i in X.columns:
+            # X=X[i].apply(lambda x: str((x)).zfill(4)) ## need at least >3 chars for gap encoder
     if cudf:
         assert cudf is not None
         new_kwargs = {}
@@ -158,7 +160,7 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
         elif  'cuml' in engine_resolved:
             # _, _, engine, gmem = lazy_cuml_import_has_dependancy()
             engine = deps.cuml
-            from sklearn.feature_extraction.text import CountVectorizer,HashingVectorizer
+            from cuml.feature_extraction.text import CountVectorizer,HashingVectorizer
             gmem = get_gpu_memory()
         smem = get_sys_memory()
             
@@ -196,6 +198,8 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
         the topics W.
         """
         self.Xt_ = df_type(X)
+        # if deps.cudf and parse_version(cuml.__version__) > parse_version("23.04"):
+            # X.apply(lambda x: str((x)).zfill(4)) ## need at least >3 chars for gap encoder
         # cuml.set_global_output_type('cupy')
         # Init n-grams counts vectorizer
         if self.hashing:
@@ -222,9 +226,9 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
 
         # Init H_dict_ with empty dict to train from scratch
         self.H_dict_ = dict()
-        if deps.cudf and parse_version(cuml.__version__) > parse_version("23.04"):
-            X = X.replace('nan',np.nan).fillna('0o0o0') ## must be string w/len >= 3 (otherwise wont pass to gap encoder)
-            X = X.apply(lambda x: str((x)).zfill(4)) ## need at least >3 chars for gap encoder
+        # if deps.cudf and parse_version(cuml.__version__) > parse_version("23.04"):
+        #     X = X.replace('nan',np.nan).fillna('0o0o0') ## must be string w/len >= 3 (otherwise wont pass to gap encoder)
+        #     X = X.apply(lambda x: str((x)).zfill(4)) ## need at least >3 chars for gap encoder
         # X.convert_dtypes()
         # Build the n-grams counts matrix unq_V on unique elements of X
         X, y = make_safe_gpu_dataframes(X, None, self.engine)
@@ -233,7 +237,7 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
         elif 'cudf' in str(getmodule(X)) and 'cuml' in self.engine:
             unq_X = X.unique()
             tmp, lookup = np.unique(X.to_arrow(), return_inverse=True)
-        unq_V = self.ngrams_count_.fit_transform(unq_X.to_arrow())
+        unq_V = self.ngrams_count_.fit_transform(unq_X)
         if self.add_words:  # Add word counts to unq_V
             unq_V2 = self.word_count_.fit_transform(unq_X)
             unq_V = sparse.hstack((unq_V, unq_V2), format="csr")
@@ -338,9 +342,9 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
 
         self.Xt_= df_type(X)
         # Make n-grams counts matrix unq_V
-        if deps.cudf and parse_version(cuml.__version__) > parse_version("23.04"):
-            X = X.replace('nan',np.nan).fillna('0o0o0')
-            X = X.apply(lambda x: str((x)).zfill(4)) ## need at least >3 chars for gap encoder
+        # if deps.cudf and parse_version(cuml.__version__) > parse_version("23.04"):
+        #     X = X.replace('nan',np.nan).fillna('0o0o0')
+        #     X = X.apply(lambda x: str((x)).zfill(4)) ## need at least >3 chars for gap encoder
         unq_X, unq_V, lookup = self._init_vars(X)
         n_batch = (len(X) - 1) // self.batch_size + 1
         # Get activations unq_H
@@ -566,9 +570,9 @@ class GapEncoderColumn(BaseEstimator, TransformerMixin):
         t = time()
         check_is_fitted(self, "H_dict_")
         # Check if first item has str or np.str_ type
-        if deps.cudf and parse_version(cuml.__version__) > parse_version("23.04"):
-            X.replace('nan',np.nan).fillna('0o0o0')
-            X = X.apply(lambda x: str((x)).zfill(4)) ## need at least >3 chars for gap encoder
+        # if deps.cudf and parse_version(cuml.__version__) > parse_version("23.04"):
+        #     X.replace('nan',np.nan).fillna('0o0o0')
+        #     X = X.apply(lambda x: str((x)).zfill(4)) ## need at least >3 chars for gap encoder
         unq_X = X.unique()
         # Build the n-grams counts matrix V for the string data to encode
         unq_V = self.ngrams_count_.transform(unq_X)#.astype(str))
