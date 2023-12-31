@@ -499,6 +499,7 @@ class TableVectorizer(ColumnTransformer):
         for i in obj_col:
             X[i]=X[i].replace('nan',np.nan).fillna('0o0o0')
             X[i]=X[i].str.rjust(4,'0')
+            X[i]=X[i].str.replace('.', 'dot', regex=False)
         for col in X.columns:            
             # Convert pandas' NaN value (pd.NA) to numpy NaN value (np.nan)
             # because the former tends to raise all kind of issues when dealing
@@ -799,21 +800,24 @@ class TableVectorizer(ColumnTransformer):
         typing.List[str]
             Feature names.
         """
-        # if 'cudf' not in self.Xt_ and not deps.cudf:
-        #     if parse_version(sklearn_version) < parse_version("1.0"):
-        #         ct_feature_names = super().get_feature_names()
-        #     else:
-        #         ct_feature_names = super().get_feature_names_out()
-        # else:
-        #     if parse_version(sklearn_version) > parse_version("1.0"):
-        try:
-            ct_feature_names = super().get_feature_names_out()
-        except:
-            pass
-        try:
-            ct_feature_names = super().get_feature_names()
-        except:
-            pass
+        if 'cudf' not in self.Xt_ and not deps.cudf:
+            if parse_version(sklearn_version) > parse_version("1.0"):
+                ct_feature_names = super().get_feature_names()
+            else:
+                ct_feature_names = super().get_feature_names_out()
+        else:
+            if parse_version(sklearn_version) < parse_version("1.0"):
+                ct_feature_names = super().get_feature_names_out()
+            else:
+                ct_feature_names = super().get_feature_names()
+        # try:
+        #     ct_feature_names = super().get_feature_names_out()
+        # except:
+        #     pass
+        # try:
+        #     ct_feature_names = super().get_feature_names()
+        # except:
+        #     pass
         all_trans_feature_names = []
 
         for name, trans, cols, _ in self._iter(fitted=True):
@@ -824,14 +828,16 @@ class TableVectorizer(ColumnTransformer):
                     cols = self.columns_.to_list()
                     all_trans_feature_names.extend(cols)
                 continue
-            try:
-                trans_feature_names = super().get_feature_names_out()
-            except:
-                pass
-            try:
-                trans_feature_names = super().get_feature_names()
-            except:
-                pass
+            if 'cudf' not in self.Xt_ and not deps.cudf:
+                if parse_version(sklearn_version) > parse_version("1.0"):
+                    trans_feature_names = super().get_feature_names()
+                else:
+                    trans_feature_names = super().get_feature_names_out()
+            else:
+                if parse_version(sklearn_version) < parse_version("1.0"):
+                    trans_feature_names = super().get_feature_names_out()
+                else:
+                    trans_feature_names = super().get_feature_names()
             all_trans_feature_names.extend(trans_feature_names)
 
         if len(ct_feature_names) != len(all_trans_feature_names):
