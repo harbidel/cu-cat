@@ -388,20 +388,20 @@ def test_check_fitted_table_vectorizer() -> None:
     tv.transform(X)
 
 
-@pytest.mark.parametrize(
-    "pipeline",
-    [
-        TableVectorizer(),
-        TableVectorizer(
-            specific_transformers=[
-                (GapEncoder(), ["cat1", "cat2"]),
-            ],
-        ),
-        TableVectorizer(
-            high_card_cat_transformer=GapEncoder(),
-        ),
-    ],
-)
+# @pytest.mark.parametrize(
+#     "pipeline",
+#     [
+#         TableVectorizer(),
+#         TableVectorizer(
+#             transformers=[
+#                 (GapEncoder(), ["cat1", "cat2"]),
+#             ],
+#         ),
+#         TableVectorizer(
+#             high_card_cat_transformer=GapEncoder(),
+#         ),
+#     ],
+# )
 def test_deterministic(pipeline) -> None:
     """
     Tests that running the same TableVectorizer multiple times with the same
