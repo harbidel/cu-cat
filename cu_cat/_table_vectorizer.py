@@ -801,24 +801,17 @@ class TableVectorizer(ColumnTransformer):
         typing.List[str]
             Feature names.
         """
-        if not deps.cudf:
-            if parse_version(sklearn_version) > parse_version("1.0"):
-                ct_feature_names = super().get_feature_names()
-            else:
-                ct_feature_names = super().get_feature_names_out()
+        # if not deps.cudf:
+        if parse_version(sklearn_version) > parse_version("1.0"):
+            ct_feature_names = super().get_feature_names_out()
         else:
-            if parse_version(sklearn_version) < parse_version("1.0"):
-                ct_feature_names = super().get_feature_names_out()
-            else:
-                ct_feature_names = super().get_feature_names()
-        # try:
-        #     ct_feature_names = super().get_feature_names_out()
-        # except:
-        #     pass
-        # try:
-        #     ct_feature_names = super().get_feature_names()
-        # except:
-        #     pass
+            ct_feature_names = super().get_feature_names()
+        # else:
+        #     if parse_version(sklearn_version) < parse_version("1.0"):
+        #         ct_feature_names = super().get_feature_names_out()
+        #     else:
+        #         ct_feature_names = super().get_feature_names()
+
         all_trans_feature_names = []
 
         for name, trans, cols, _ in self._iter(fitted=True):
@@ -829,17 +822,17 @@ class TableVectorizer(ColumnTransformer):
                     cols = self.columns_.to_list()
                     all_trans_feature_names.extend(cols)
                 continue
-            if 'cudf' not in self.Xt_ and not deps.cudf:
-                if parse_version(sklearn_version) > parse_version("1.0"):
-                    trans_feature_names = super().get_feature_names()
-                else:
-                    trans_feature_names = super().get_feature_names_out()
+            # if 'cudf' not in self.Xt_ and not deps.cudf:
+            if parse_version(sklearn_version) > parse_version("1.0"):
+                trans_feature_names = super().get_feature_names_out()
             else:
-                if parse_version(sklearn_version) < parse_version("1.0"):
-                    trans_feature_names = super().get_feature_names_out()
-                else:
-                    trans_feature_names = super().get_feature_names()
-            all_trans_feature_names.extend(trans_feature_names)
+                trans_feature_names = super().get_feature_names()
+            # else:
+            #     if parse_version(sklearn_version) < parse_version("1.0"):
+            #         trans_feature_names = super().get_feature_names_out()
+            #     else:
+            #         trans_feature_names = super().get_feature_names()
+            # all_trans_feature_names.extend(trans_feature_names)
 
         if len(ct_feature_names) != len(all_trans_feature_names):
             warnings.warn("Could not extract clean feature names; returning defaults. ")

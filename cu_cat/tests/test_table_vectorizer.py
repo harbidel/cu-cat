@@ -91,15 +91,15 @@ def _get_dirty_dataframe(categorical_dtype="object") -> pd.DataFrame:
     )
 
 
-# def _get_mixed_types_dataframe() -> pd.DataFrame:
-#     return pd.DataFrame(
-#         {
-#             "int_str": ["1", "2", 3, "3", 5],
-#             "float_str": ["1.0", pd.NA, 3.0, "3.0", 5.0],
-#             "int_float": [1, 2, 3.0, 3, 5.0],
-#             "bool_str": ["True", False, True, "False", "True"],
-#         }
-#     )
+def _get_mixed_types_dataframe() -> pd.DataFrame:
+    return pd.DataFrame(
+        {
+            "int_str": ["1", "2", 3, "3", 5],
+            "float_str": ["1.0", pd.NA, 3.0, "3.0", 5.0],
+            "int_float": [1, 2, 3.0, 3, 5.0],
+            "bool_str": ["True", False, True, "False", "True"],
+        }
+    )
 
 
 # def _get_mixed_types_array() -> np.ndarray:
@@ -185,83 +185,83 @@ def _get_dirty_dataframe(categorical_dtype="object") -> pd.DataFrame:
 #     )
 
 
-# def _test_possibilities(X) -> None:
-#     """
-#     Do a bunch of tests with the TableVectorizer.
-#     We take some expected transformers results as argument. They're usually
-#     lists or dictionaries.
-#     """
-#     # Test with low cardinality and a StandardScaler for the numeric columns
-#     vectorizer_base = TableVectorizer(
-#         cardinality_threshold=4,
-#         # we must have n_samples = 5 >= n_components
-#         high_card_cat_transformer=GapEncoder(n_components=2),
-#         numerical_transformer=StandardScaler(),
-#     )
-#     # Warning: order-dependant
-#     expected_transformers_df = {
-#         "numeric": ["int", "float"],
-#         "low_card_cat": ["str1", "cat1"],
-#         "high_card_cat": ["str2", "cat2"],
-#     }
-#     vectorizer_base.fit_transform(X)
-#     check_same_transformers(expected_transformers_df, vectorizer_base.transformers_)
+def _test_possibilities(X) -> None:
+    """
+    Do a bunch of tests with the TableVectorizer.
+    We take some expected transformers results as argument. They're usually
+    lists or dictionaries.
+    """
+    # Test with low cardinality and a StandardScaler for the numeric columns
+    vectorizer_base = TableVectorizer(
+        cardinality_threshold=4,
+        # we must have n_samples = 5 >= n_components
+        high_card_cat_transformer=GapEncoder(n_components=2),
+        numerical_transformer=StandardScaler(),
+    )
+    # Warning: order-dependant
+    expected_transformers_df = {
+        "numeric": ["int", "float"],
+        "low_card_cat": ["str1", "cat1"],
+        "high_card_cat": ["str2", "cat2"],
+    }
+    vectorizer_base.fit_transform(X)
+    check_same_transformers(expected_transformers_df, vectorizer_base.transformers_)
 
-#     # Test with higher cardinality threshold and no numeric transformer
-#     expected_transformers_2 = {
-#         "low_card_cat": ["str1", "str2", "cat1", "cat2"],
-#         "numeric": ["int", "float"],
-#     }
-#     vectorizer_default = TableVectorizer()  # Using default values
-#     vectorizer_default.fit_transform(X)
-#     check_same_transformers(expected_transformers_2, vectorizer_default.transformers_)
+    # Test with higher cardinality threshold and no numeric transformer
+    expected_transformers_2 = {
+        "low_card_cat": ["str1", "str2", "cat1", "cat2"],
+        "numeric": ["int", "float"],
+    }
+    vectorizer_default = TableVectorizer()  # Using default values
+    vectorizer_default.fit_transform(X)
+    check_same_transformers(expected_transformers_2, vectorizer_default.transformers_)
 
-#     # Test with a numpy array
-#     arr = X.to_numpy()
-#     # Instead of the columns names, we'll have the column indices.
-#     expected_transformers_np_no_cast = {
-#         "low_card_cat": [2, 4],
-#         "high_card_cat": [3, 5],
-#         "numeric": [0, 1],
-#     }
-#     vectorizer_base.fit_transform(arr)
-#     check_same_transformers(
-#         expected_transformers_np_no_cast, vectorizer_base.transformers_
-#     )
+    # # Test with a numpy array
+    # arr = X.to_numpy()
+    # # Instead of the columns names, we'll have the column indices.
+    # expected_transformers_np_no_cast = {
+    #     "low_card_cat": [2, 4],
+    #     "high_card_cat": [3, 5],
+    #     "numeric": [0, 1],
+    # }
+    # vectorizer_base.fit_transform(arr)
+    # check_same_transformers(
+    #     expected_transformers_np_no_cast, vectorizer_base.transformers_
+    # )
 
-#     # Test with single column dataframe
-#     expected_transformers_series = {
-#         "low_card_cat": ["cat1"],
-#     }
-#     vectorizer_base.fit_transform(X[["cat1"]])
-#     check_same_transformers(expected_transformers_series, vectorizer_base.transformers_)
+    # Test with single column dataframe
+    expected_transformers_series = {
+        "low_card_cat": ["cat1"],
+    }
+    vectorizer_base.fit_transform(X[["cat1"]])
+    check_same_transformers(expected_transformers_series, vectorizer_base.transformers_)
 
-#     # Test casting values
-#     vectorizer_cast = TableVectorizer(
-#         cardinality_threshold=4,
-#         # we must have n_samples = 5 >= n_components
-#         high_card_cat_transformer=GapEncoder(n_components=2),
-#         numerical_transformer=StandardScaler(),
-#     )
-#     X_str = X.astype("object")
-#     # With pandas
-#     expected_transformers_plain = {
-#         "high_card_cat": ["str2", "cat2"],
-#         "low_card_cat": ["str1", "cat1"],
-#         "numeric": ["int", "float"],
-#     }
-#     vectorizer_cast.fit_transform(X_str)
-#     check_same_transformers(expected_transformers_plain, vectorizer_cast.transformers_)
-#     # With numpy
-#     expected_transformers_np_cast = {
-#         "numeric": [0, 1],
-#         "low_card_cat": [2, 4],
-#         "high_card_cat": [3, 5],
-#     }
-#     vectorizer_cast.fit_transform(X_str.to_numpy())
-#     check_same_transformers(
-#         expected_transformers_np_cast, vectorizer_cast.transformers_
-#     )
+    # Test casting values
+    vectorizer_cast = TableVectorizer(
+        cardinality_threshold=4,
+        # we must have n_samples = 5 >= n_components
+        high_card_cat_transformer=GapEncoder(n_components=2),
+        numerical_transformer=StandardScaler(),
+    )
+    X_str = X.astype("object")
+    # With pandas
+    expected_transformers_plain = {
+        "high_card_cat": ["str2", "cat2"],
+        "low_card_cat": ["str1", "cat1"],
+        "numeric": ["int", "float"],
+    }
+    vectorizer_cast.fit_transform(X_str)
+    check_same_transformers(expected_transformers_plain, vectorizer_cast.transformers_)
+    # With numpy
+    expected_transformers_np_cast = {
+        "numeric": [0, 1],
+        "low_card_cat": [2, 4],
+        "high_card_cat": [3, 5],
+    }
+    vectorizer_cast.fit_transform(X_str.to_numpy())
+    check_same_transformers(
+        expected_transformers_np_cast, vectorizer_cast.transformers_
+    )
 
 
 # def test_duplicate_column_names() -> None:
