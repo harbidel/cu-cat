@@ -66,79 +66,54 @@ MODULES = [pd]
 #     np.testing.assert_raises(AssertionError, np.testing.assert_array_equal, s1, s2)
 
 
-# @pytest.mark.parametrize(
-#     ["hashing", "init", "analyzer", "add_words", "verbose"],
-#     [
-#         (True, "random", "char", False, False),
-#     ],
-# )
-# def test_gap_encoder(
-#     hashing: bool,
-#     init: str,
-#     analyzer: str,
-#     add_words: bool,
-#     verbose: bool,
-#     n_samples: int = 70,
-# ):
-#     X = generate_data(n_samples, random_state=0)
-#     n_components = 10
-#     # Test output shape
-#     encoder = GapEncoder(
-#         n_components=n_components,
-#         hashing=hashing,
-#         init=init,
-#         analyzer=analyzer,
-#         add_words=add_words,
-#         verbose=verbose,
-#         random_state=42,
-#         rescale_W=True,
-#     )
-#     encoder.fit(X)
-#     y = encoder.transform(X)
-#     assert y.shape == (n_samples, n_components * X.shape[1]), str(y.shape)
+@pytest.mark.parametrize(
+    ["hashing", "init", "analyzer", "add_words", "verbose"],
+    [
+        (True, "random", "char", False, False),
+    ],
+)
+def test_gap_encoder(
+    hashing: bool,
+    init: str,
+    analyzer: str,
+    add_words: bool,
+    verbose: bool,
+    n_samples: int = 70,
+):
+    X = generate_data(n_samples, random_state=0)
+    n_components = 10
+    # Test output shape
+    encoder = GapEncoder(
+        n_components=n_components,
+        hashing=hashing,
+        init=init,
+        analyzer=analyzer,
+        add_words=add_words,
+        verbose=verbose,
+        random_state=42,
+        rescale_W=True,
+    )
+    encoder.fit(X)
+    y = encoder.transform(X)
+    assert y.shape == (n_samples, n_components * X.shape[1]), str(y.shape)
 
-#     # Test L1-norm of topics W.
-#     for col_enc in encoder.fitted_models_:
-#         l1_norm_W = np.abs(col_enc.W_).sum(axis=1)
-#         np.testing.assert_array_almost_equal(l1_norm_W, np.ones(n_components))
+    # Test L1-norm of topics W.
+    for col_enc in encoder.fitted_models_:
+        l1_norm_W = np.abs(col_enc.W_).sum(axis=1)
+        np.testing.assert_array_almost_equal(l1_norm_W, np.ones(n_components))
 
-#     # Test same seed return the same output
-#     encoder = GapEncoder(
-#         n_components=n_components,
-#         hashing=hashing,
-#         init=init,
-#         analyzer=analyzer,
-#         add_words=add_words,
-#         random_state=42,
-#     )
-#     encoder.fit(X)
-#     y2 = encoder.transform(X)
-#     np.testing.assert_array_equal(y, y2)
-
-
-# @pytest.mark.parametrize("px", MODULES)
-# def test_input_type(px):
-#     # Numpy array with one column
-#     X = np.array([["alice"], ["bob"]])
-#     enc = GapEncoder(n_components=2, random_state=42)
-#     X_enc_array = enc.fit_transform(X)
-#     # List
-#     X2 = [["alice"], ["bob"]]
-#     enc = GapEncoder(n_components=2, random_state=42)
-#     X_enc_list = enc.fit_transform(X2)
-#     # Check if the encoded vectors are the same
-#     np.testing.assert_array_equal(X_enc_array, X_enc_list)
-
-#     # Numpy array with two columns
-#     X = np.array([["alice", "charlie"], ["bob", "delta"]])
-#     enc = GapEncoder(n_components=2, random_state=42)
-#     X_enc_array = enc.fit_transform(X)
-#     # Dataframe with two columns
-#     df = px.DataFrame(X)
-#     enc = GapEncoder(n_components=2, random_state=42)
-#     X_enc_df = enc.fit_transform(df)
-#     # Check if the encoded vectors are the same
-#     np.testing.assert_array_equal(X_enc_array, X_enc_df)
+    # Test same seed return the same output
+    encoder = GapEncoder(
+        n_components=n_components,
+        hashing=hashing,
+        init=init,
+        analyzer=analyzer,
+        add_words=add_words,
+        random_state=42,
+    )
+    encoder.fit(X)
+    y2 = encoder.transform(X)
+    np.testing.assert_array_equal(y, y2)
 
 
 def test_get_feature_names_out(n_samples=70):

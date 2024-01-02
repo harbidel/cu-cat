@@ -2,6 +2,7 @@ from __future__ import annotations
 import random
 import numpy as np
 from numpy.typing import NDArray
+import pandas as pd
 
 
 def generate_data(
@@ -22,11 +23,11 @@ def generate_data(
             if random_integer < 50:
                 random_string += "  "
         str_list += [random_string]
-    if as_list is True:
-        X = str_list
-    else:
+    # if as_list is True:
+        # X = str_list
+    # else:
         X = np.array(str_list).reshape(n_samples, 1)
-    return X
+    return pd.DataFrame(X)
 
 
 def is_valid_attribute(attribute):
