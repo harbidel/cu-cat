@@ -635,12 +635,12 @@ class TableVectorizer(ColumnTransformer):
         _nunique_values = {  # Cache results
             col: X[col].nunique() for col in categorical_columns
         }
-        low_cardinality_columns = [
+        low_card_cat_columns = [
             col
             for col in categorical_columns
             if _nunique_values[col] < self.cardinality_threshold
         ]
-        high_cardinality_columns = [
+        high_card_cat_columns = [
             col
             for col in categorical_columns
             if _nunique_values[col] >= self.cardinality_threshold
@@ -654,15 +654,15 @@ class TableVectorizer(ColumnTransformer):
             all_transformers: List[Tuple[str, OptionalTransformer, List[str]]] = [  # type: ignore
                 ("numeric", self.numerical_transformer, numeric_columns),
                 ("datetime", self.datetime_transformer_, datetime_columns),
-                ("low_cardinarlity", self.low_card_cat_transformer_, low_cardinality_columns),
-                ("high_cardinarlity", self.high_card_cat_transformer_, high_cardinality_columns),
+                ("low_card_str", self.low_card_cat_transformer_, low_card_cat_columns),
+                ("high_card_str", self.high_card_cat_transformer_, high_card_cat_columns),
             ]
         else:
             all_transformers: List[Tuple[str, OptionalTransformer, List[str]]] = [  # type: ignore
             ("numeric", self.numerical_transformer, numeric_columns),
             # ("datetime", self.datetime_transformer_, datetime_columns), ## commented out if in dt format so pyg can handle
-            ("low_cardinarlity", self.low_card_cat_transformer_, low_cardinality_columns),
-            ("high_cardinarlity", self.high_card_cat_transformer_, high_cardinality_columns),
+            ("low_card_str", self.low_card_cat_transformer_, low_card_cat_columns),
+            ("high_card_str", self.high_card_cat_transformer_, high_card_cat_columns),
         ]
         # We will now filter this list, by keeping only the ones with:
         # - at least one column
@@ -768,6 +768,7 @@ class TableVectorizer(ColumnTransformer):
                 f"array seen during fit. Got {X.shape[1]} "
                 f"columns, expected {len(self.columns_)}"
             )
+        self.Xt_= df_type(X)
         X, y = make_safe_gpu_dataframes(X, None, self.engine_)
         if not isinstance(X, pd.DataFrame) and not 'cudf' in self.Xt_:
             X = pd.DataFrame(X)
@@ -800,7 +801,7 @@ class TableVectorizer(ColumnTransformer):
         typing.List[str]
             Feature names.
         """
-        if 'cudf' not in self.Xt_ and not deps.cudf:
+        if not deps.cudf:
             if parse_version(sklearn_version) > parse_version("1.0"):
                 ct_feature_names = super().get_feature_names()
             else:

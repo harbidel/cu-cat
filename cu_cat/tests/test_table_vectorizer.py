@@ -201,15 +201,15 @@ MSG_PANDAS_DEPRECATED_WARNING = "Skip deprecation warning"
 #     # Warning: order-dependant
 #     expected_transformers_df = {
 #         "numeric": ["int", "float"],
-#         "low_cardinarlity": ["str1", "cat1"],
-#         "high_cardinarlity": ["str2", "cat2"],
+#         "low_card_cat": ["str1", "cat1"],
+#         "high_card_cat": ["str2", "cat2"],
 #     }
 #     vectorizer_base.fit_transform(X)
 #     check_same_transformers(expected_transformers_df, vectorizer_base.transformers_)
 
 #     # Test with higher cardinality threshold and no numeric transformer
 #     expected_transformers_2 = {
-#         "low_cardinarlity": ["str1", "str2", "cat1", "cat2"],
+#         "low_card_cat": ["str1", "str2", "cat1", "cat2"],
 #         "numeric": ["int", "float"],
 #     }
 #     vectorizer_default = TableVectorizer()  # Using default values
@@ -220,8 +220,8 @@ MSG_PANDAS_DEPRECATED_WARNING = "Skip deprecation warning"
 #     arr = X.to_numpy()
 #     # Instead of the columns names, we'll have the column indices.
 #     expected_transformers_np_no_cast = {
-#         "low_cardinarlity": [2, 4],
-#         "high_cardinarlity": [3, 5],
+#         "low_card_cat": [2, 4],
+#         "high_card_cat": [3, 5],
 #         "numeric": [0, 1],
 #     }
 #     vectorizer_base.fit_transform(arr)
@@ -231,7 +231,7 @@ MSG_PANDAS_DEPRECATED_WARNING = "Skip deprecation warning"
 
 #     # Test with single column dataframe
 #     expected_transformers_series = {
-#         "low_cardinarlity": ["cat1"],
+#         "low_card_cat": ["cat1"],
 #     }
 #     vectorizer_base.fit_transform(X[["cat1"]])
 #     check_same_transformers(expected_transformers_series, vectorizer_base.transformers_)
@@ -246,8 +246,8 @@ MSG_PANDAS_DEPRECATED_WARNING = "Skip deprecation warning"
 #     X_str = X.astype("object")
 #     # With pandas
 #     expected_transformers_plain = {
-#         "high_cardinarlity": ["str2", "cat2"],
-#         "low_cardinarlity": ["str1", "cat1"],
+#         "high_card_cat": ["str2", "cat2"],
+#         "low_card_cat": ["str1", "cat1"],
 #         "numeric": ["int", "float"],
 #     }
 #     vectorizer_cast.fit_transform(X_str)
@@ -255,8 +255,8 @@ MSG_PANDAS_DEPRECATED_WARNING = "Skip deprecation warning"
 #     # With numpy
 #     expected_transformers_np_cast = {
 #         "numeric": [0, 1],
-#         "low_cardinarlity": [2, 4],
-#         "high_cardinarlity": [3, 5],
+#         "low_card_cat": [2, 4],
+#         "high_card_cat": [3, 5],
 #     }
 #     vectorizer_cast.fit_transform(X_str.to_numpy())
 #     check_same_transformers(
@@ -357,8 +357,8 @@ MSG_PANDAS_DEPRECATED_WARNING = "Skip deprecation warning"
 #     """
 #     expected_transformers = {
 #         "numeric": [0, 1],
-#         "low_cardinarlity": [2, 4],
-#         "high_cardinarlity": [3, 5],
+#         "low_card_cat": [2, 4],
+#         "high_card_cat": [3, 5],
 #     }
 #     vectorizer = TableVectorizer(
 #         cardinality_threshold=4,
@@ -668,7 +668,7 @@ MSG_PANDAS_DEPRECATED_WARNING = "Skip deprecation warning"
 # #             [
 # #                 ("numeric", "passthrough", ["int", "float"]),
 # #                 ("minhashencoder", "MinHashEncoder", ["str1", "str2"]),
-# #                 ("low_cardinarlity", "OneHotEncoder", ["cat1", "cat2"]),
+# #                 ("low_card_cat", "OneHotEncoder", ["cat1", "cat2"]),
 # #             ],
 # #         ),
 # #         (
@@ -676,7 +676,7 @@ MSG_PANDAS_DEPRECATED_WARNING = "Skip deprecation warning"
 # #             [
 # #                 ("numeric", "passthrough", ["int", "float"]),
 # #                 ("mh_cat1", "MinHashEncoder", ["cat1"]),
-# #                 ("low_cardinarlity", "OneHotEncoder", ["str1", "str2", "cat2"]),
+# #                 ("low_card_cat", "OneHotEncoder", ["str1", "str2", "cat2"]),
 # #             ],
 # #         ),
 # #     ],
@@ -761,7 +761,7 @@ MSG_PANDAS_DEPRECATED_WARNING = "Skip deprecation warning"
 #     table_vec.fit_transform(df)
 #     expected_transformers_df = {
 #         "numeric": ["int_str", "float_str", "int_float"],
-#         "low_cardinarlity": ["bool_str"],
+#         "low_card_cat": ["bool_str"],
 #     }
 #     check_same_transformers(expected_transformers_df, table_vec.transformers_)
 
@@ -772,7 +772,7 @@ MSG_PANDAS_DEPRECATED_WARNING = "Skip deprecation warning"
 #     table_vec.fit_transform(X)
 #     expected_transformers_array = {
 #         "numeric": [0, 1, 2],
-#         "low_cardinarlity": [3],
+#         "low_card_cat": [3],
 #     }
 #     check_same_transformers(expected_transformers_array, table_vec.transformers_)
 

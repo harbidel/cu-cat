@@ -27,7 +27,7 @@ core_requires = [
 # if __name__ == "__main__":
 setup(
     name='cu-cat',
-    version='v0.07.09',  # versioneer.get_version(),
+    version='v0.07.10',  # versioneer.get_version(),
     # cmdclass='0.7.7',  # versioneer.get_cmdclass(),
     packages = find_packages(),
     platforms='any',
