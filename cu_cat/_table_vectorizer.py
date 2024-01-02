@@ -435,25 +435,25 @@ class TableVectorizer(ColumnTransformer):
         down the line in `ColumnTransformer.fit_transform`.
         """
         if isinstance(self.low_card_cat_transformer, sklearn.base.TransformerMixin):
-            self.low_card_cat_transformer_ = clone(self.low_card_cat_transformer)
+            self.low_cardinality_transformer_ = clone(self.low_card_cat_transformer)
         elif self.low_card_cat_transformer is None:
             if deps.cuml:
-                self.low_card_cat_transformer_ = OneHotEncoder(output_type= self.output_type, handle_unknown='ignore')
+                self.low_cardinality_transformer_ = OneHotEncoder(output_type= self.output_type, handle_unknown='ignore')
             else:
-                self.low_card_cat_transformer_ = OneHotEncoder( handle_unknown='ignore')
+                self.low_cardinality_transformer_ = OneHotEncoder( handle_unknown='ignore')
         elif self.low_card_cat_transformer == "remainder":
-            self.low_card_cat_transformer_ = self.remainder
+            self.low_cardinality_transformer_ = self.remainder
         else:
-            self.low_card_cat_transformer_ = self.low_card_cat_transformer
+            self.low_cardinality_transformer_ = self.low_card_cat_transformer
 
         if isinstance(self.high_card_cat_transformer, sklearn.base.TransformerMixin):
-            self.high_card_cat_transformer_ = clone(self.high_card_cat_transformer)
+            self.high_cardinality_transformer_ = clone(self.high_card_cat_transformer)
         elif self.high_card_cat_transformer is None:
-            self.high_card_cat_transformer_ = GapEncoder(n_components=30)
+            self.high_cardinality_transformer_ = GapEncoder(n_components=30)
         elif self.high_card_cat_transformer == "remainder":
-            self.high_card_cat_transformer_ = self.remainder
+            self.high_cardinality_transformer_ = self.remainder
         else:
-            self.high_card_cat_transformer_ = self.high_card_cat_transformer
+            self.high_cardinality_transformer_ = self.high_card_cat_transformer
 
         if isinstance(self.numerical_transformer, sklearn.base.TransformerMixin):
             self.numerical_transformer_ = clone(self.numerical_transformer)
@@ -635,12 +635,12 @@ class TableVectorizer(ColumnTransformer):
         _nunique_values = {  # Cache results
             col: X[col].nunique() for col in categorical_columns
         }
-        low_card_cat_columns = [
+        low_cardinality_columns = [
             col
             for col in categorical_columns
             if _nunique_values[col] < self.cardinality_threshold
         ]
-        high_card_cat_columns = [
+        high_cardinality_columns = [
             col
             for col in categorical_columns
             if _nunique_values[col] >= self.cardinality_threshold
@@ -654,15 +654,15 @@ class TableVectorizer(ColumnTransformer):
             all_transformers: List[Tuple[str, OptionalTransformer, List[str]]] = [  # type: ignore
                 ("numeric", self.numerical_transformer, numeric_columns),
                 ("datetime", self.datetime_transformer_, datetime_columns),
-                ("low_card_str", self.low_card_cat_transformer_, low_card_cat_columns),
-                ("high_card_str", self.high_card_cat_transformer_, high_card_cat_columns),
+                ("low_cardinality", self.low_cardinality_transformer_, low_cardinality_columns),
+                ("high_cardinality", self.high_cardinality_transformer_, high_cardinality_columns),
             ]
         else:
             all_transformers: List[Tuple[str, OptionalTransformer, List[str]]] = [  # type: ignore
             ("numeric", self.numerical_transformer, numeric_columns),
             # ("datetime", self.datetime_transformer_, datetime_columns), ## commented out if in dt format so pyg can handle
-            ("low_card_str", self.low_card_cat_transformer_, low_card_cat_columns),
-            ("high_card_str", self.high_card_cat_transformer_, high_card_cat_columns),
+            ("low_cardinality", self.low_cardinality_transformer_, low_cardinality_columns),
+            ("high_cardinality", self.high_cardinality_transformer_, high_cardinality_columns),
         ]
         # We will now filter this list, by keeping only the ones with:
         # - at least one column
