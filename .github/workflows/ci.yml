@@ -108,12 +108,7 @@ jobs:
     - name: Core tests
       run: |
         source cu_cat/bin/activate
-        ./bin/test.sh
-    
-    - name: Minimal tests
-      run: |
-        source cu_cat/bin/activate
-        ./bin/minimal-test.sh
+        ./bin/test-core.sh
 
   test-build:
 
