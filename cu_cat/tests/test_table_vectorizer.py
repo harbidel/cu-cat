@@ -350,30 +350,30 @@ MSG_PANDAS_DEPRECATED_WARNING = "Skip deprecation warning"
 #         assert type_equality(expected_types_dirty_dataframe[col], X_trans[col].dtype)
 
 
-# def test_with_arrays() -> None:
-#     """
-#     Check that the TableVectorizer works if we input
-#     a list of lists or a numpy array.
-#     """
-#     expected_transformers = {
-#         "numeric": [0, 1],
-#         "low_card_cat": [2, 4],
-#         "high_card_cat": [3, 5],
-#     }
-#     vectorizer = TableVectorizer(
-#         cardinality_threshold=4,
-#         # we must have n_samples = 5 >= n_components
-#         high_card_cat_transformer=GapEncoder(n_components=2),
-#         numerical_transformer=StandardScaler(),
-#     )
+def test_with_arrays() -> None:
+    """
+    Check that the TableVectorizer works if we input
+    a list of lists or a numpy array.
+    """
+    expected_transformers = {
+        "numeric": [0, 1],
+        "low_card_cat": [2, 4],
+        "high_card_cat": [3, 5],
+    }
+    vectorizer = TableVectorizer(
+        cardinality_threshold=4,
+        # we must have n_samples = 5 >= n_components
+        high_card_cat_transformer=GapEncoder(n_components=2),
+        numerical_transformer=StandardScaler(),
+    )
 
-#     X = _get_numpy_array()
-#     vectorizer.fit_transform(X)
-#     check_same_transformers(expected_transformers, vectorizer.transformers_)
+    X = _get_numpy_array()
+    vectorizer.fit_transform(X)
+    check_same_transformers(expected_transformers, vectorizer.transformers_)
 
-#     X = _get_list_of_lists()
-#     vectorizer.fit_transform(X)
-#     check_same_transformers(expected_transformers, vectorizer.transformers_)
+    X = _get_list_of_lists()
+    vectorizer.fit_transform(X)
+    check_same_transformers(expected_transformers, vectorizer.transformers_)
 
 
 # def test_get_feature_names_out() -> None:
@@ -429,13 +429,13 @@ MSG_PANDAS_DEPRECATED_WARNING = "Skip deprecation warning"
 #     assert vec_w_drop.get_feature_names_out().tolist() == expected_feature_names_drop
 
 
-# def test_fit() -> None:
-#     # Simply checks sklearn's `check_is_fitted` function raises an error if
-#     # the TableVectorizer is instantiated but not fitted.
-#     # See GH#193
-#     table_vec = TableVectorizer()
-#     with pytest.raises(NotFittedError):
-#         assert check_is_fitted(table_vec)
+def test_fit() -> None:
+    # Simply checks sklearn's `check_is_fitted` function raises an error if
+    # the TableVectorizer is instantiated but not fitted.
+    # See GH#193
+    table_vec = TableVectorizer()
+    with pytest.raises(NotFittedError):
+        assert check_is_fitted(table_vec)
 
 
 # def test_transform() -> None:
@@ -701,27 +701,27 @@ MSG_PANDAS_DEPRECATED_WARNING = "Skip deprecation warning"
 #     assert sorted(clean_transformers_) == sorted(expected_transformers_)
 
 
-# def test_specific_transformers_unexpected_behavior():
-#     """
-#     Tests a few cases of unsupported behavior when using `specific_transformers`.
-#     """
-#     X = _get_clean_dataframe()
+def test_specific_transformers_unexpected_behavior():
+    """
+    Tests a few cases of unsupported behavior when using `specific_transformers`.
+    """
+    X = _get_clean_dataframe()
 
-#     # Test that using tuple lengths other than 2 or 3 raises an error
-#     with pytest.raises(TypeError):
-#         assert TableVectorizer(specific_transformers=[(StandardScaler(),)]).fit(X)
-#         assert TableVectorizer(
-#             specific_transformers=[("dummy", StandardScaler(), ["float"], 1)]
-#         ).fit(X)
+    # Test that using tuple lengths other than 2 or 3 raises an error
+    with pytest.raises(TypeError):
+        assert TableVectorizer(specific_transformers=[(StandardScaler(),)]).fit(X)
+        assert TableVectorizer(
+            specific_transformers=[("dummy", StandardScaler(), ["float"], 1)]
+        ).fit(X)
 
-#     # Test that using mixed length tuples raises an error
-#     with pytest.raises(TypeError):
-#         assert TableVectorizer(
-#             specific_transformers=[
-#                 (StandardScaler(), ["float"]),
-#                 ("dummy", StandardScaler(), ["float"]),
-#             ]
-#         ).fit(X)
+    # Test that using mixed length tuples raises an error
+    with pytest.raises(TypeError):
+        assert TableVectorizer(
+            specific_transformers=[
+                (StandardScaler(), ["float"]),
+                ("dummy", StandardScaler(), ["float"]),
+            ]
+        ).fit(X)
 
 
 # # @pytest.mark.parametrize(
@@ -953,24 +953,24 @@ MSG_PANDAS_DEPRECATED_WARNING = "Skip deprecation warning"
 # #         TableVectorizer().fit(df)
 
 
-# def test_check_same_transformers():
-#     expected_transformers = {"trans1": ["col1", "col2"], "trans2": ["col3", "col4"]}
-#     actual_transformers = [("trans1", None, ["col1", "col2"]), ("trans2", None, ["col3", "col4"])]
+def test_check_same_transformers():
+    expected_transformers = {"trans1": ["col1", "col2"], "trans2": ["col3", "col4"]}
+    actual_transformers = [("trans1", None, ["col1", "col2"]), ("trans2", None, ["col3", "col4"])]
 
-#     check_same_transformers(expected_transformers, actual_transformers)
+    check_same_transformers(expected_transformers, actual_transformers)
 
-# def test_check_same_transformers_fail():
-#     expected_transformers = {"trans1": ["col1", "col2"], "trans2": ["col3", "col4"]}
-#     actual_transformers = [("trans1", None, ["col1", "col2"]), ("trans3", None, ["col3", "col4"])]
+def test_check_same_transformers_fail():
+    expected_transformers = {"trans1": ["col1", "col2"], "trans2": ["col3", "col4"]}
+    actual_transformers = [("trans1", None, ["col1", "col2"]), ("trans3", None, ["col3", "col4"])]
 
-#     with pytest.raises(AssertionError):
-#         check_same_transformers(expected_transformers, actual_transformers)
+    with pytest.raises(AssertionError):
+        check_same_transformers(expected_transformers, actual_transformers)
 
-# def test_check_same_transformers_empty():
-#     expected_transformers = {}
-#     actual_transformers = []
+def test_check_same_transformers_empty():
+    expected_transformers = {}
+    actual_transformers = []
 
-#     check_same_transformers(expected_transformers, actual_transformers)
+    check_same_transformers(expected_transformers, actual_transformers)
 
 
 # def test_gpu_F_T_table_vectorizer(

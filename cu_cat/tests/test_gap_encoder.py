@@ -141,21 +141,21 @@ MODULES = [pd]
 #     np.testing.assert_array_equal(X_enc_array, X_enc_df)
 
 
-# def test_get_feature_names_out(n_samples=70):
-#     X = generate_data(n_samples, random_state=0)
-#     enc = GapEncoder(random_state=42)
-#     enc.fit(X)
-#     feature_names_1 = enc.get_feature_names_out()
-#     feature_names_2 = enc.get_feature_names_out()
-#     for topic_labels in [feature_names_1, feature_names_2]:
-#         # Check number of labels
-#         assert len(topic_labels) == enc.n_components * X.shape[1]
-#         # Test different parameters for col_names
-#         topic_labels_2 = enc.get_feature_names_out(col_names="auto")
-#         assert topic_labels_2[0] == "col0: " + topic_labels[0]
-#         topic_labels_3 = enc.get_feature_names_out(col_names=["abc", "def"])
-#         assert topic_labels_3[0] == "abc: " + topic_labels[0]
-#     return
+def test_get_feature_names_out(n_samples=70):
+    X = generate_data(n_samples, random_state=0)
+    enc = GapEncoder(random_state=42)
+    enc.fit(X)
+    feature_names_1 = enc.get_feature_names_out()
+    feature_names_2 = enc.get_feature_names_out()
+    for topic_labels in [feature_names_1, feature_names_2]:
+        # Check number of labels
+        assert len(topic_labels) == enc.n_components * X.shape[1]
+        # # Test different parameters for col_names
+        # topic_labels_2 = enc.get_feature_names_out(col_names="auto")
+        # assert topic_labels_2[0] == "col0: " + topic_labels[0]
+        # topic_labels_3 = enc.get_feature_names_out(col_names=["abc", "def"])
+        # assert topic_labels_3[0] == "abc: " + topic_labels[0]
+    return
 
 
 # def test_get_feature_names_out_no_words():
@@ -172,17 +172,17 @@ MODULES = [pd]
 #     return
 
 
-# def test_get_feature_names_out_redundent():
-#     # With the following dataframe, the GapEncoder can produce feature names
-#     # that have the same name, which leads duplicated features names,
-#     # which themselves lead to errors in the TableVectorizer
-#     # get_feature_names_out() method.
-#     df = pd.DataFrame(
-#         40 * [["aaa bbb cccc ddd",],],)
+def test_get_feature_names_out_redundent():
+    # With the following dataframe, the GapEncoder can produce feature names
+    # that have the same name, which leads duplicated features names,
+    # which themselves lead to errors in the TableVectorizer
+    # get_feature_names_out() method.
+    df = pd.DataFrame(
+        40 * [["aaa bbb cccc ddd",],],)
 
-#     tv = TableVectorizer(cardinality_threshold=1)
-#     tv.fit(df)
-#     tv.get_feature_names_out()
+    tv = TableVectorizer(cardinality_threshold=1)
+    tv.fit(df)
+    tv.get_feature_names_out()
 
 
 # def test_overflow_error():
@@ -210,30 +210,30 @@ MODULES = [pd]
 #     "missing",
 #     ["zero_impute", "error", "aaa"],
 # )
-# def test_missing_values(px, missing: str):
-#     """Test what happens when missing values are in the data"""
-#     observations = [
-#         ["alice", "bob"],
-#         [pd.NA, "alice"],
-#         ["bob", None],
-#         ["alice", "charlie"],
-#         [np.nan, "alice"],
-#     ]
-#     observations = np.array(observations, dtype=object)
-#     enc = GapEncoder(handle_missing=missing, n_components=3)
-#     if missing == "error":
-#         with pytest.raises(ValueError, match="Input data contains missing values"):
-#             enc.fit_transform(observations)
-#     elif missing == "zero_impute":
-#         enc.fit_transform(observations)
-#         enc.partial_fit(observations)
-#     else:
-#         with pytest.raises(
-#             ValueError,
-#             match=r"handle_missing should be either "
-#             r"'error' or 'zero_impute', got 'aaa'",
-#         ):
-#             enc.fit_transform(observations)
+def test_missing_values(px, missing: str):
+    """Test what happens when missing values are in the data"""
+    observations = [
+        ["alice", "bob"],
+        [pd.NA, "alice"],
+        ["bob", None],
+        ["alice", "charlie"],
+        [np.nan, "alice"],
+    ]
+    observations = np.array(observations, dtype=object)
+    enc = GapEncoder(handle_missing=missing, n_components=3)
+    if missing == "error":
+        with pytest.raises(ValueError, match="Input data contains missing values"):
+            enc.fit_transform(observations)
+    elif missing == "zero_impute":
+        enc.fit_transform(observations)
+        enc.partial_fit(observations)
+    else:
+        with pytest.raises(
+            ValueError,
+            match=r"handle_missing should be either "
+            r"'error' or 'zero_impute', got 'aaa'",
+        ):
+            enc.fit_transform(observations)
 
 
 # def test_check_fitted_gap_encoder():
@@ -248,13 +248,27 @@ MODULES = [pd]
 #     enc.transform(X)
 
 
-# def test_small_sample():
-#     """Test that having n_samples < n_components raises an error"""
-#     X = np.array([["alice"], ["bob"]])
-#     enc = GapEncoder(n_components=3, random_state=42)
-#     with pytest.raises(ValueError, match="should be >= n_components"):
-#         enc.fit_transform(X)
+def test_small_sample():
+    """Test that having n_samples < n_components raises an error"""
+    X = np.array([["alice"], ["bob"]])
+    enc = GapEncoder(n_components=3, random_state=42)
+    with pytest.raises(ValueError, match="should be >= n_components"):
+        enc.fit_transform(X)
 
+
+def test_transform_shape():
+    """Non-regression test for #188"""
+    dataset = fetch_midwest_survey()
+    X_train, X_test = train_test_split(
+        dataset.X[["What_would_you_call_the_part_of_the_country_you_live_in_now"]],
+        random_state=0,
+    )
+    enc = GapEncoder(n_components=2, random_state=2)
+    enc.fit_transform(X_train)
+    topics1 = enc.get_feature_names_out()
+    enc.transform(X_test)
+    topics2 = enc.get_feature_names_out()
+    assert len(topics1) == len(topics2)
 
 # def test_transform_deterministic():
 #     """Non-regression test for #188"""
