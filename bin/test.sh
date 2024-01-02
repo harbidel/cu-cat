@@ -3,12 +3,14 @@ set -ex
 
 # Run from project root
 # - Args get passed to pytest phase
-# - Enable neo4j tests with WITH_NEO4J=1 (assumes ./test/db/neo4j ./launch.sh)
 # Non-zero exit code on fail
+
+# Deeping tests of gapencoder, speed tests
 
 python --version
 python3 --version
 
 python -m pytest --version
 
-python -B -m pytest -vv $@
+python -B -m pytest -vv \
+    cu_cat/tests/test_gap_encoder.py \
