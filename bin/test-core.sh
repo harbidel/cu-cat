@@ -7,9 +7,6 @@ set -ex
 
 # Deeping tests of gapencoder, speed tests
 
-python --version
-python3 --version
-
 python -m pytest --version
 
 python -B -m pytest -vv \
