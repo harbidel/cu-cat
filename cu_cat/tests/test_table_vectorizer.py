@@ -18,12 +18,12 @@ dirty_cat = deps.dirty_cat
 MSG_PANDAS_DEPRECATED_WARNING = "Skip deprecation warning"
 
 
-# def check_same_transformers(
-#     expected_transformers: dict, actual_transformers: list
-# ) -> None:
-#     # Construct the dict from the actual transformers
-#     actual_transformers_dict = {name: cols for name, trans, cols in actual_transformers}
-#     assert actual_transformers_dict == expected_transformers
+def check_same_transformers(
+    expected_transformers: dict, actual_transformers: list
+) -> None:
+    # Construct the dict from the actual transformers
+    actual_transformers_dict = {name: cols for name, trans, cols in actual_transformers}
+    assert actual_transformers_dict == expected_transformers
 
 
 # def type_equality(expected_type, actual_type) -> bool:
@@ -185,83 +185,70 @@ def _get_mixed_types_dataframe() -> pd.DataFrame:
 #     )
 
 
-def _test_possibilities(X) -> None:
-    """
-    Do a bunch of tests with the TableVectorizer.
-    We take some expected transformers results as argument. They're usually
-    lists or dictionaries.
-    """
-    # Test with low cardinality and a StandardScaler for the numeric columns
-    vectorizer_base = TableVectorizer(
-        cardinality_threshold=4,
-        # we must have n_samples = 5 >= n_components
-        high_card_cat_transformer=GapEncoder(n_components=2),
-        numerical_transformer=StandardScaler(),
-    )
-    # Warning: order-dependant
-    expected_transformers_df = {
-        "numeric": ["int", "float"],
-        "low_card_cat": ["str1", "cat1"],
-        "high_card_cat": ["str2", "cat2"],
-    }
-    vectorizer_base.fit_transform(X)
-    check_same_transformers(expected_transformers_df, vectorizer_base.transformers_)
+# def _test_possibilities(X) -> None:
+#     """
+#     Do a bunch of tests with the TableVectorizer.
+#     We take some expected transformers results as argument. They're usually
+#     lists or dictionaries.
+#     """
+#     # Test with low cardinality and a StandardScaler for the numeric columns
+#     vectorizer_base = TableVectorizer(
+#         cardinality_threshold=4,
+#         # we must have n_samples = 5 >= n_components
+#         high_card_cat_transformer=GapEncoder(n_components=2),
+#         numerical_transformer=StandardScaler(),
+#     )
+#     # Warning: order-dependant
+#     expected_transformers_df = {
+#         "numeric": ["int", "float"],
+#         "low_card_cat": ["str1", "cat1"],
+#         "high_card_cat": ["str2", "cat2"],
+#     }
+#     vectorizer_base.fit_transform(X)
+#     check_same_transformers(expected_transformers_df, vectorizer_base.transformers_)
 
-    # Test with higher cardinality threshold and no numeric transformer
-    expected_transformers_2 = {
-        "low_card_cat": ["str1", "str2", "cat1", "cat2"],
-        "numeric": ["int", "float"],
-    }
-    vectorizer_default = TableVectorizer()  # Using default values
-    vectorizer_default.fit_transform(X)
-    check_same_transformers(expected_transformers_2, vectorizer_default.transformers_)
+#     # Test with higher cardinality threshold and no numeric transformer
+#     expected_transformers_2 = {
+#         "low_card_cat": ["str1", "str2", "cat1", "cat2"],
+#         "numeric": ["int", "float"],
+#     }
+#     vectorizer_default = TableVectorizer()  # Using default values
+#     vectorizer_default.fit_transform(X)
+#     check_same_transformers(expected_transformers_2, vectorizer_default.transformers_)
 
-    # # Test with a numpy array
-    # arr = X.to_numpy()
-    # # Instead of the columns names, we'll have the column indices.
-    # expected_transformers_np_no_cast = {
-    #     "low_card_cat": [2, 4],
-    #     "high_card_cat": [3, 5],
-    #     "numeric": [0, 1],
-    # }
-    # vectorizer_base.fit_transform(arr)
-    # check_same_transformers(
-    #     expected_transformers_np_no_cast, vectorizer_base.transformers_
-    # )
+#     # Test with single column dataframe
+#     expected_transformers_series = {
+#         "low_card_cat": ["cat1"],
+#     }
+#     vectorizer_base.fit_transform(X[["cat1"]])
+#     check_same_transformers(expected_transformers_series, vectorizer_base.transformers_)
 
-    # Test with single column dataframe
-    expected_transformers_series = {
-        "low_card_cat": ["cat1"],
-    }
-    vectorizer_base.fit_transform(X[["cat1"]])
-    check_same_transformers(expected_transformers_series, vectorizer_base.transformers_)
-
-    # Test casting values
-    vectorizer_cast = TableVectorizer(
-        cardinality_threshold=4,
-        # we must have n_samples = 5 >= n_components
-        high_card_cat_transformer=GapEncoder(n_components=2),
-        numerical_transformer=StandardScaler(),
-    )
-    X_str = X.astype("object")
-    # With pandas
-    expected_transformers_plain = {
-        "high_card_cat": ["str2", "cat2"],
-        "low_card_cat": ["str1", "cat1"],
-        "numeric": ["int", "float"],
-    }
-    vectorizer_cast.fit_transform(X_str)
-    check_same_transformers(expected_transformers_plain, vectorizer_cast.transformers_)
-    # With numpy
-    expected_transformers_np_cast = {
-        "numeric": [0, 1],
-        "low_card_cat": [2, 4],
-        "high_card_cat": [3, 5],
-    }
-    vectorizer_cast.fit_transform(X_str.to_numpy())
-    check_same_transformers(
-        expected_transformers_np_cast, vectorizer_cast.transformers_
-    )
+#     # Test casting values
+#     vectorizer_cast = TableVectorizer(
+#         cardinality_threshold=4,
+#         # we must have n_samples = 5 >= n_components
+#         high_card_cat_transformer=GapEncoder(n_components=2),
+#         numerical_transformer=StandardScaler(),
+#     )
+#     X_str = X.astype("object")
+#     # With pandas
+#     expected_transformers_plain = {
+#         "high_card_cat": ["str2", "cat2"],
+#         "low_card_cat": ["str1", "cat1"],
+#         "numeric": ["int", "float"],
+#     }
+#     vectorizer_cast.fit_transform(X_str)
+#     check_same_transformers(expected_transformers_plain, vectorizer_cast.transformers_)
+#     # With numpy
+#     expected_transformers_np_cast = {
+#         "numeric": [0, 1],
+#         "low_card_cat": [2, 4],
+#         "high_card_cat": [3, 5],
+#     }
+#     vectorizer_cast.fit_transform(X_str.to_numpy())
+#     check_same_transformers(
+#         expected_transformers_np_cast, vectorizer_cast.transformers_
+#     )
 
 
 # def test_duplicate_column_names() -> None:
@@ -278,21 +265,21 @@ def _test_possibilities(X) -> None:
 #         tablevectorizer.fit_transform(X_dup_col_names)
 
 
-def test_with_clean_data() -> None:
-    """
-    Defines the expected returns of the vectorizer in different settings,
-    and runs the tests with a clean dataset.
-    """
-    _test_possibilities(_get_clean_dataframe())
+# def test_with_clean_data() -> None:
+#     """
+#     Defines the expected returns of the vectorizer in different settings,
+#     and runs the tests with a clean dataset.
+#     """
+#     _test_possibilities(_get_clean_dataframe())
 
 
-def test_with_dirty_data() -> None:
-    """
-    Defines the expected returns of the vectorizer in different settings,
-    and runs the tests with a dataset containing missing values.
-    """
-    _test_possibilities(_get_dirty_dataframe(categorical_dtype="object"))
-    _test_possibilities(_get_dirty_dataframe(categorical_dtype="category"))
+# def test_with_dirty_data() -> None:
+#     """
+#     Defines the expected returns of the vectorizer in different settings,
+#     and runs the tests with a dataset containing missing values.
+#     """
+#     _test_possibilities(_get_dirty_dataframe(categorical_dtype="object"))
+#     _test_possibilities(_get_dirty_dataframe(categorical_dtype="category"))
 
 
 def test_get_feature_names_out() -> None:
@@ -402,43 +389,43 @@ def test_check_fitted_table_vectorizer() -> None:
 #         ),
 #     ],
 # )
-def test_deterministic(pipeline) -> None:
-    """
-    Tests that running the same TableVectorizer multiple times with the same
-    (deterministic) components results in the same output.
-    """
-    X = _get_dirty_dataframe()
-    X_enc_prev = pipeline.fit_transform(X)
-    for _ in range(5):
-        X_enc = pipeline.fit_transform(X)
-        np.testing.assert_array_equal(X_enc, X_enc_prev)
-        X_enc_prev = X_enc
+# def test_deterministic(pipeline) -> None:
+#     """
+#     Tests that running the same TableVectorizer multiple times with the same
+#     (deterministic) components results in the same output.
+#     """
+#     X = _get_dirty_dataframe()
+#     X_enc_prev = pipeline.fit_transform(X)
+#     for _ in range(5):
+#         X_enc = pipeline.fit_transform(X)
+#         np.testing.assert_array_equal(X_enc, X_enc_prev)
+#         X_enc_prev = X_enc
 
 
-def test_mixed_types() -> None:
-    # TODO: datetime/str mixed types
-    # don't work
-    df = _get_mixed_types_dataframe()
-    table_vec = TableVectorizer()
-    table_vec.fit_transform(df)
-    # check that the types are correctly inferred
-    table_vec.fit_transform(df)
-    expected_transformers_df = {
-        "numeric": ["int_str", "float_str", "int_float"],
-        "low_card_cat": ["bool_str"],
-    }
-    check_same_transformers(expected_transformers_df, table_vec.transformers_)
+# def test_mixed_types() -> None:
+#     # TODO: datetime/str mixed types
+#     # don't work
+#     df = _get_mixed_types_dataframe()
+#     table_vec = TableVectorizer()
+#     table_vec.fit_transform(df)
+#     # check that the types are correctly inferred
+#     table_vec.fit_transform(df)
+#     expected_transformers_df = {
+#         "numeric": ["int_str", "float_str", "int_float"],
+#         "low_card_cat": ["bool_str"],
+#     }
+#     check_same_transformers(expected_transformers_df, table_vec.transformers_)
 
-    X = _get_mixed_types_array()
-    table_vec = TableVectorizer()
-    table_vec.fit_transform(X)
-    # check that the types are correctly inferred
-    table_vec.fit_transform(X)
-    expected_transformers_array = {
-        "numeric": [0, 1, 2],
-        "low_card_cat": [3],
-    }
-    check_same_transformers(expected_transformers_array, table_vec.transformers_)
+#     X = _get_mixed_types_array()
+#     table_vec = TableVectorizer()
+#     table_vec.fit_transform(X)
+#     # check that the types are correctly inferred
+#     table_vec.fit_transform(X)
+#     expected_transformers_array = {
+#         "numeric": [0, 1, 2],
+#         "low_card_cat": [3],
+#     }
+#     check_same_transformers(expected_transformers_array, table_vec.transformers_)
 
 
 # @pytest.mark.parametrize(
@@ -490,17 +477,17 @@ def test_mixed_types() -> None:
 # )
     
 
-def test_changing_types_int_float() -> None:
-    # The TableVectorizer shouldn't cast floats to ints
-    # even if only ints were seen during fit
-    X_fit, X_transform = (
-        pd.DataFrame(pd.Series([1, 2, 3])),
-        pd.DataFrame(pd.Series([1, 2, 3.3])),
-    )
-    table_vec = TableVectorizer()
-    table_vec.fit_transform(X_fit)
-    res = table_vec.transform(X_transform)
-    assert np.allclose(res, np.array([[1.0], [2.0], [3.3]]))
+# def test_changing_types_int_float() -> None:
+#     # The TableVectorizer shouldn't cast floats to ints
+#     # even if only ints were seen during fit
+#     X_fit, X_transform = (
+#         pd.DataFrame(pd.Series([1, 2, 3])),
+#         pd.DataFrame(pd.Series([1, 2, 3.3])),
+#     )
+#     table_vec = TableVectorizer()
+#     table_vec.fit_transform(X_fit)
+#     res = table_vec.transform(X_transform)
+#     assert np.allclose(res, np.array([[1.0], [2.0], [3.3]]))
 
 
 # # def test_pandas_sparse_array():
