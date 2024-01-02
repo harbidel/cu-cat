@@ -28,8 +28,8 @@ core_requires = [
 # if __name__ == "__main__":
 setup(
     name='cu-cat',
-    version='v0.07.12',  # versioneer.get_version(),
-    # cmdclass='0.7.12',  # versioneer.get_cmdclass(),
+    version='v0.07.14',  # versioneer.get_version(),
+    # cmdclass='0.7.14',  # versioneer.get_cmdclass(),
     packages = find_packages(),
     platforms='any',
     description = 'An end-to-end gpu Python library that encodes categorical variables into machine-learnable numerics',

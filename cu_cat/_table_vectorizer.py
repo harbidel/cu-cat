@@ -802,9 +802,10 @@ class TableVectorizer(ColumnTransformer):
             Feature names.
         """
         # if not deps.cudf:
-        if parse_version(sklearn_version) > parse_version("1.0"):
+        # if parse_version(sklearn_version) > parse_version("1.0"):
+        try:
             ct_feature_names = super().get_feature_names_out()
-        else:
+        except:
             ct_feature_names = super().get_feature_names()
         # else:
         #     if parse_version(sklearn_version) < parse_version("1.0"):
@@ -823,9 +824,10 @@ class TableVectorizer(ColumnTransformer):
                     all_trans_feature_names.extend(cols)
                 continue
             # if 'cudf' not in self.Xt_ and not deps.cudf:
-            if parse_version(sklearn_version) > parse_version("1.0"):
+            # if parse_version(sklearn_version) > parse_version("1.0"):
+            try:
                 trans_feature_names = super().get_feature_names_out()
-            else:
+            except:
                 trans_feature_names = super().get_feature_names()
             # else:
             #     if parse_version(sklearn_version) < parse_version("1.0"):
