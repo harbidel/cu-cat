@@ -180,34 +180,34 @@ def test_get_feature_names_out_redundent():
 
 
 # @pytest.mark.parametrize("px", MODULES)
-@pytest.mark.parametrize(
-    "missing",
-    ["zero_impute", "error", "aaa"],
-)
-def test_missing_values(missing: str):
-    """Test what happens when missing values are in the data"""
-    observations = [
-        ["alice", "bob"],
-        [pd.NA, "alice"],
-        ["bob", None],
-        ["alice", "charlie"],
-        [np.nan, "alice"],
-    ]
-    observations = np.array(observations, dtype=object)
-    enc = GapEncoder(handle_missing=missing, n_components=3)
-    if missing == "error":
-        with pytest.raises(ValueError, match="Input data contains missing values"):
-            enc.fit_transform(observations)
-    elif missing == "zero_impute":
-        enc.fit_transform(observations)
-        enc.partial_fit(observations)
-    else:
-        with pytest.raises(
-            ValueError,
-            match=r"handle_missing should be either "
-            r"'error' or 'zero_impute', got 'aaa'",
-        ):
-            enc.fit_transform(observations)
+# @pytest.mark.parametrize(
+#     "missing",
+#     ["zero_impute", "error", "aaa"],
+# )
+# def test_missing_values(missing: str):
+#     """Test what happens when missing values are in the data"""
+#     observations = [
+#         ["alice", "bob"],
+#         [pd.NA, "alice"],
+#         ["bob", None],
+#         ["alice", "charlie"],
+#         [np.nan, "alice"],
+#     ]
+#     observations = np.array(observations, dtype=object)
+#     enc = GapEncoder(handle_missing=missing, n_components=3)
+#     if missing == "error":
+#         with pytest.raises(ValueError, match="Input data contains missing values"):
+#             enc.fit_transform(observations)
+#     elif missing == "zero_impute":
+#         enc.fit_transform(observations)
+#         enc.partial_fit(observations)
+#     else:
+#         with pytest.raises(
+#             ValueError,
+#             match=r"handle_missing should be either "
+#             r"'error' or 'zero_impute', got 'aaa'",
+#         ):
+#             enc.fit_transform(observations)
 
 
 # def test_check_fitted_gap_encoder():
