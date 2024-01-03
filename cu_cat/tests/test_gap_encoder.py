@@ -89,7 +89,6 @@ def test_gap_encoder(
         init=init,
         analyzer=analyzer,
         add_words=add_words,
-        verbose=verbose,
         random_state=42,
         rescale_W=True,
     )
@@ -283,7 +282,6 @@ def test_transform_shape():
 #         hashing=hashing,
 #         engine='cuml',
 #         add_words=add_words,
-#         verbose=verbose,
 #         random_state=42,
 #         rescale_W=True,
 #     )
@@ -295,7 +293,7 @@ def test_transform_shape():
 #         hashing=hashing,
 #         engine='sklearn',
 #         add_words=add_words,
-#         verbose=verbose,
+
 #         random_state=42,
 #         rescale_W=True,
 #     )
