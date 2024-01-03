@@ -180,11 +180,11 @@ def test_get_feature_names_out_redundent():
 
 
 # @pytest.mark.parametrize("px", MODULES)
-# @pytest.mark.parametrize(
-#     "missing",
-#     ["zero_impute", "error", "aaa"],
-# )
-def test_missing_values(px, missing: str):
+@pytest.mark.parametrize(
+    "missing",
+    ["zero_impute", "error", "aaa"],
+)
+def test_missing_values(missing: str):
     """Test what happens when missing values are in the data"""
     observations = [
         ["alice", "bob"],
