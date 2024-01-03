@@ -4,13 +4,12 @@ import numpy as np
 from numpy.typing import NDArray
 import pandas as pd
 
-
 def generate_data(
-    n_samples: int,
-    as_list: bool = False,
-    random_state: int | float | str | bytes | bytearray | None = None,
+    n_samples,
+    as_list=False,
+    random_state: Optional[Union[int, float, str, bytes, bytearray]] = None,
     sample_length: int = 100,
-) -> NDArray:
+) -> np.ndarray:
     if random_state is not None:
         random.seed(random_state)
     MAX_LIMIT = 255  # extended ASCII Character set
@@ -23,9 +22,9 @@ def generate_data(
             if random_integer < 50:
                 random_string += "  "
         str_list += [random_string]
-    # if as_list is True:
-        # X = str_list
-    # else:
+    if as_list is True:
+        X = str_list
+    else:
         X = np.array(str_list).reshape(n_samples, 1)
     return pd.DataFrame(X)
 
